@@ -1,0 +1,2162 @@
+<!DOCTYPE html>
+<html lang="zh-TW" class="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>配件庫存與尺寸查詢系統</title>
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- 進銷存：相機掃描 QR 碼 -->
+  <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+  <style>
+    /* 自訂深色模式滾動條 */
+    ::-webkit-scrollbar { width: 6px; }
+    ::-webkit-scrollbar-track { background: #1f2937; }
+    ::-webkit-scrollbar-thumb { background: #374151; border-radius: 3px; }
+
+    /* 隱藏 number 輸入框的上下箭頭 */
+    input::-webkit-outer-spin-button,
+    input::-webkit-inner-spin-button {
+      -webkit-appearance: none;
+      margin: 0;
+    }
+    input[type=number] {
+      -moz-appearance: textfield;
+    }
+  </style>
+</head>
+<body class="bg-gray-950 text-gray-100 min-h-screen flex flex-col md:flex-row font-sans">
+
+  <!-- ==================== 左側側邊欄選單 ==================== -->
+  <aside class="w-full md:w-64 bg-gray-900 border-b md:border-b-0 md:border-r border-gray-800 flex-shrink-0 p-4 flex flex-col justify-between">
+    <div>
+      <!-- 系統 Title -->
+      <div class="flex items-center space-x-3 mb-8 px-2">
+        <span class="text-lg font-bold tracking-wide text-white">配件管理系統</span>
+      </div>
+
+      <!-- 選單列表 -->
+      <nav class="space-y-1">
+        <a href="#" id="nav-spec" onclick="event.preventDefault(); switchView('search')"
+           class="flex items-center space-x-3 px-3 py-2.5 rounded-lg bg-blue-600 text-white font-medium transition cursor-default">
+          <span>配件查詢</span>
+        </a>
+        <a href="#" id="nav-inv" onclick="event.preventDefault(); switchView('inventory')"
+           class="flex items-center space-x-3 px-3 py-2.5 rounded-lg text-gray-400 hover:bg-gray-800 hover:text-white font-medium transition">
+          <span>進銷存（掃碼）</span>
+        </a>
+      </nav>
+    </div>
+
+    <!-- 左下角：新增資料按鈕 (+ 圖示) -->
+    <div class="mt-8 pt-4 border-t border-gray-800 px-1">
+      <button onclick="openAddModal()" 
+              class="w-full flex items-center justify-center space-x-2 bg-gray-800 hover:bg-green-600 text-gray-300 hover:text-white font-medium py-2.5 px-4 rounded-lg transition duration-200 border border-gray-700 hover:border-green-500 shadow-md">
+        <!-- SVG + 圖示 -->
+        <svg class="w-5 h-5 stroke-current" fill="none" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 4v16m8-8H4"></path>
+        </svg>
+        <span>新增資料</span>
+      </button>
+    </div>
+  </aside>
+
+  <!-- ==================== 右側主內容區 ==================== -->
+  <main class="flex-1 p-4 md:p-8 overflow-y-auto">
+    <div id="viewSearch" class="max-w-3xl mx-auto space-y-6">
+
+      <!-- 頁面標題與三個獨立搜尋按鈕 -->
+      <div class="border-b border-gray-800 pb-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <h1 class="text-2xl font-bold text-white">配件資料查詢</h1>
+        
+        <!-- 🌟 三個選擇方塊  -->
+        <div class="flex bg-gray-900 p-1 rounded-lg border border-gray-800 text-xs font-semibold gap-1">
+          <button id="tabBtnPartNo" onclick="switchSearchTab('partNo')" class="px-3 py-1.5 rounded-md text-gray-400 hover:text-white transition">
+            料號查詢
+          </button>
+          <button id="tabBtnName" onclick="switchSearchTab('name')" class="px-3 py-1.5 rounded-md text-gray-400 hover:text-white transition">
+            名稱查詢
+          </button>
+          <button id="tabBtnSpec" onclick="switchSearchTab('spec')" class="px-3 py-1.5 rounded-md bg-blue-600 text-white transition">
+            尺寸查詢
+          </button>
+        </div>
+      </div>
+
+      <!-- 🌟 搜尋卡片 1：料號查詢  -->
+      <div id="searchBoxPartNo" class="hidden bg-gray-900 border border-gray-800 rounded-xl p-5 space-y-4 shadow-xl">
+        <div>
+          <label class="block text-xs font-medium text-gray-400 mb-1">料號</label>
+          <input type="text" id="inputPartNo" placeholder="完整或部分料號" 
+                 oninput="handlePartNoInput()"
+                 onkeydown="if(event.key === 'Enter'){ event.preventDefault(); handleSearch('part_no'); }"
+                 class="w-full bg-gray-950 border border-gray-700 text-white placeholder-gray-500 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-blue-500">
+        </div>
+
+        <!-- 料號查詢相似項目清單 -->
+        <div id="partNoSuggestions" class="hidden flex flex-wrap items-center gap-1.5 pt-1"></div>
+
+        <div class="flex flex-col sm:flex-row gap-2 pt-2">
+          <button onclick="handleSearch('part_no')" class="flex-1 bg-blue-600 hover:bg-blue-500 text-white font-semibold py-2.5 rounded-lg transition shadow-lg shadow-blue-600/30">
+            查詢料號
+          </button>
+          <button onclick="clearInputs()" class="bg-gray-800 hover:bg-gray-700 text-gray-300 font-semibold px-4 py-2.5 rounded-lg transition">
+            清除輸入
+          </button>
+        </div>
+      </div>
+
+      <!-- 🌟 搜尋卡片 2：名稱查詢 -->
+      <div id="searchBoxName" class="hidden bg-gray-900 border border-gray-800 rounded-xl p-5 space-y-4 shadow-xl">
+        <div>
+          <label class="block text-xs font-medium text-gray-400 mb-1">名稱</label>
+          <input type="text" id="inputName" placeholder="輸入名稱" 
+                 onkeydown="if(event.key === 'Enter'){ event.preventDefault(); handleSearch('name'); }"
+                 class="w-full bg-gray-950 border border-gray-700 text-white placeholder-gray-500 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-blue-500">
+        </div>
+
+        <div class="flex flex-col sm:flex-row gap-2 pt-2">
+          <button onclick="handleSearch('name')" class="flex-1 bg-blue-600 hover:bg-blue-500 text-white font-semibold py-2.5 rounded-lg transition shadow-lg shadow-blue-600/30">
+            查詢名稱
+          </button>
+          <button onclick="clearInputs()" class="bg-gray-800 hover:bg-gray-700 text-gray-300 font-semibold px-4 py-2.5 rounded-lg transition">
+            清除輸入
+          </button>
+        </div>
+      </div>
+
+      <!-- 🌟 搜尋卡片 ：尺寸查詢  -->
+      <div id="searchBoxSpec" class="bg-gray-900 border border-gray-800 rounded-xl p-5 space-y-4 shadow-xl">
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          <div>
+            <label class="block text-xs font-medium text-gray-400 mb-1">長度</label>
+            <input type="number" step="any" id="inputLength" placeholder="" 
+                   oninput="handleSpecInput()"
+                   onkeydown="if(event.key === 'Enter'){ event.preventDefault(); handleSpecSearch(); }"
+                   class="w-full bg-gray-950 border border-gray-700 text-white placeholder-gray-500 rounded-lg px-3 py-2 focus:outline-none focus:border-blue-500">
+          </div>
+          <div>
+            <label class="block text-xs font-medium text-gray-400 mb-1">內徑</label>
+            <input type="number" step="any" id="inputInner" placeholder="" 
+                   oninput="handleSpecInput()"
+                   onkeydown="if(event.key === 'Enter'){ event.preventDefault(); handleSpecSearch(); }"
+                   class="w-full bg-gray-950 border border-gray-700 text-white placeholder-gray-500 rounded-lg px-3 py-2 focus:outline-none focus:border-blue-500">
+          </div>
+          <div>
+            <label class="block text-xs font-medium text-gray-400 mb-1">外徑</label>
+            <input type="number" step="any" id="inputOuter" placeholder="" 
+                   oninput="handleSpecInput()"
+                   onkeydown="if(event.key === 'Enter'){ event.preventDefault(); handleSpecSearch(); }"
+                   class="w-full bg-gray-950 border border-gray-700 text-white placeholder-gray-500 rounded-lg px-3 py-2 focus:outline-none focus:border-blue-500">
+          </div>
+        </div>
+
+        <!-- 尺寸查詢備選項目清單（如同新增資料中的 existSuggestions） -->
+        <div id="specSuggestions" class="hidden flex flex-wrap items-center gap-1.5 pt-1"></div>
+
+        <div class="flex flex-col sm:flex-row gap-2 pt-2">
+          <button onclick="handleSpecSearch()" class="flex-1 bg-blue-600 hover:bg-blue-500 text-white font-semibold py-2.5 rounded-lg transition shadow-lg shadow-blue-600/30">
+            查詢尺寸
+          </button>
+          <button onclick="clearInputs()" class="bg-gray-800 hover:bg-gray-700 text-gray-300 font-semibold px-4 py-2.5 rounded-lg transition">
+            清除輸入
+          </button>
+        </div>
+      </div>
+
+      <!-- 狀態提示：讀取中 -->
+      <div id="loading" class="hidden text-center text-gray-400 py-8">
+        <div class="inline-block animate-spin rounded-full h-8 w-8 border-4 border-gray-700 border-t-blue-500 mb-2"></div>
+        <p>正在搜尋符合條件的配件資料...</p>
+      </div>
+
+      <!-- 狀態提示：無結果 -->
+      <div id="notFound" class="hidden bg-red-950/40 border border-red-800/50 rounded-xl p-6 text-center text-red-400">
+        ❌ 查無符合條件的配件資料，請調整條件後重試。
+      </div>
+
+      <!-- 查詢結果列表容器 -->
+      <div id="resultContainer" class="space-y-4"></div>
+
+    </div>
+
+    <!-- ==================== 進銷存（QR 掃碼）區 ==================== -->
+    <div id="viewInventory" class="hidden max-w-3xl mx-auto space-y-6">
+
+      <!-- 頁面標題與三個子頁籤 -->
+      <div class="border-b border-gray-800 pb-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <h1 class="text-2xl font-bold text-white">進銷存管理</h1>
+        <div class="flex bg-gray-900 p-1 rounded-lg border border-gray-800 text-xs font-semibold gap-1">
+          <button id="invTabBtnScan" onclick="switchInvTab('scan')" class="px-3 py-1.5 rounded-md bg-blue-600 text-white transition">掃碼異動</button>
+          <button id="invTabBtnLookup" onclick="switchInvTab('lookup')" class="px-3 py-1.5 rounded-md text-gray-400 hover:text-white transition">庫存查詢</button>
+          <button id="invTabBtnLow" onclick="switchInvTab('low')" class="px-3 py-1.5 rounded-md text-gray-400 hover:text-white transition">低庫存清單</button>
+        </div>
+      </div>
+
+      <!-- 🌟 子頁 1：掃碼異動 -->
+      <div id="invBoxScan" class="space-y-4">
+
+        <!-- 掃描器卡片 -->
+        <div class="bg-gray-900 border border-gray-800 rounded-xl p-5 space-y-4 shadow-xl">
+          <div class="flex items-center justify-between">
+            <label class="block text-xs font-medium text-gray-400">相機掃描 QR 碼</label>
+            <span id="invScanStatus" class="text-xs px-2.5 py-0.5 rounded-full bg-gray-800 text-gray-400 border border-gray-700">相機未啟動</span>
+          </div>
+          <div id="invReader" class="hidden w-full overflow-hidden rounded-lg border border-gray-700 bg-black"></div>
+          <div class="flex flex-col sm:flex-row gap-2">
+            <button id="invBtnStartScan" onclick="startInvScanner()" class="flex-1 bg-blue-600 hover:bg-blue-500 text-white font-semibold py-3 rounded-lg transition shadow-lg shadow-blue-600/30">
+              📷 開啟相機掃描
+            </button>
+            <button id="invBtnStopScan" onclick="stopInvScanner()" class="hidden bg-gray-800 hover:bg-gray-700 text-gray-300 font-semibold px-4 py-3 rounded-lg transition">
+              關閉相機
+            </button>
+          </div>
+
+          <!-- 手動輸入料號（掃不到時使用） -->
+          <div class="pt-2 border-t border-gray-800">
+            <label class="block text-xs font-medium text-gray-400 mb-1 mt-3">或手動輸入料號</label>
+            <div class="flex gap-2">
+              <input type="text" id="invManualPartNo" placeholder="例: SA07-2211" autocapitalize="characters"
+                     onkeydown="if(event.key === 'Enter'){ event.preventDefault(); invManualLookup(); }"
+                     class="flex-1 bg-gray-950 border border-gray-700 text-white placeholder-gray-500 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-blue-500">
+              <button onclick="invManualLookup()" class="bg-gray-800 hover:bg-gray-700 text-gray-200 font-semibold px-4 py-2 rounded-lg transition text-sm">帶入</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- 讀取中 -->
+        <div id="invScanLoading" class="hidden text-center text-gray-400 py-6">
+          <div class="inline-block animate-spin rounded-full h-8 w-8 border-4 border-gray-700 border-t-blue-500 mb-2"></div>
+          <p>正在讀取配件與庫存資料...</p>
+        </div>
+
+        <!-- 掃到的配件確認 + 異動表單 -->
+        <div id="invMoveCard" class="hidden bg-gray-900 border border-gray-800 rounded-xl p-5 space-y-4 shadow-xl">
+          <div class="border-b border-gray-800 pb-3 flex items-start justify-between gap-3">
+            <div>
+              <span id="invPartCategory" class="text-sm font-semibold px-2 py-0.5 bg-blue-900/60 text-blue-300 border border-blue-700/50 rounded-md">未分類</span>
+              <h2 id="invPartName" class="text-xl font-bold text-white mt-1">-</h2>
+              <p id="invPartNo" class="font-mono font-semibold text-blue-400 mt-0.5">-</p>
+            </div>
+            <button onclick="resetInvMoveCard()" class="text-gray-400 hover:text-white text-2xl font-bold leading-none p-1 rounded-lg hover:bg-gray-800 transition" title="取消">&times;</button>
+          </div>
+
+          <div class="grid grid-cols-2 gap-3">
+            <div class="bg-gray-950 p-2.5 rounded border border-gray-800">
+              <span class="text-gray-400 text-sm">目前庫存</span>
+              <p id="invPartStock" class="font-mono font-extrabold text-2xl text-green-400 mt-0.5">-</p>
+            </div>
+            <div class="bg-gray-950 p-2.5 rounded border border-gray-800">
+              <span class="text-gray-400 text-sm">安全庫存</span>
+              <p id="invPartSafety" class="font-mono font-semibold text-2xl text-gray-300 mt-0.5">-</p>
+            </div>
+            <div class="bg-gray-950 p-2.5 rounded border border-gray-800">
+              <span class="text-gray-400 text-sm">規格 (長*內*外)</span>
+              <p id="invPartSpec" class="font-semibold text-gray-200 mt-0.5">-</p>
+            </div>
+            <div class="bg-gray-950 p-2.5 rounded border border-gray-800">
+              <span class="text-gray-400 text-sm">當前儲位</span>
+              <p id="invPartLoc" class="font-mono font-extrabold text-amber-400 mt-0.5">-</p>
+            </div>
+          </div>
+          <div id="invLowWarn" class="hidden bg-amber-950/40 border border-amber-800/50 rounded-lg p-3 text-sm text-amber-300">⚠️ 目前庫存已低於安全庫存</div>
+
+          <!-- 異動類型 -->
+          <div>
+            <label class="block text-xs font-medium text-gray-400 mb-1">異動類型</label>
+            <div class="grid grid-cols-4 gap-1.5" id="invTypeGroup">
+              <button type="button" data-type="進貨" onclick="setInvType('進貨')" class="py-2.5 rounded-lg text-sm font-semibold border transition">進貨</button>
+              <button type="button" data-type="出貨" onclick="setInvType('出貨')" class="py-2.5 rounded-lg text-sm font-semibold border transition">出貨</button>
+              <button type="button" data-type="退貨" onclick="setInvType('退貨')" class="py-2.5 rounded-lg text-sm font-semibold border transition">退貨</button>
+              <button type="button" data-type="盤點調整" onclick="setInvType('盤點調整')" class="py-2.5 rounded-lg text-sm font-semibold border transition">盤點</button>
+            </div>
+            <p id="invTypeHint" class="text-xs text-gray-500 mt-1.5"></p>
+          </div>
+
+          <!-- 數量 -->
+          <div>
+            <label id="invQtyLabel" class="block text-xs font-medium text-gray-400 mb-1">數量</label>
+            <div class="flex gap-2">
+              <button type="button" onclick="bumpInvQty(-1)" class="bg-gray-800 hover:bg-gray-700 text-white text-xl font-bold w-14 rounded-lg transition">−</button>
+              <input type="number" id="invQty" inputmode="numeric" min="0" step="1" value="1"
+                     class="flex-1 text-center text-2xl font-mono bg-gray-950 border border-gray-700 text-white rounded-lg px-3 py-2 focus:outline-none focus:border-blue-500">
+              <button type="button" onclick="bumpInvQty(1)" class="bg-gray-800 hover:bg-gray-700 text-white text-xl font-bold w-14 rounded-lg transition">＋</button>
+            </div>
+          </div>
+
+          <!-- 經手人與備註 -->
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div>
+              <label class="block text-xs font-medium text-gray-400 mb-1">經手人 <span class="text-blue-400">（會記住）</span></label>
+              <input type="text" id="invHandler" placeholder="你的名字"
+                     class="w-full bg-gray-950 border border-gray-700 text-white placeholder-gray-500 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-blue-500">
+            </div>
+            <div>
+              <label class="block text-xs font-medium text-gray-400 mb-1">備註</label>
+              <input type="text" id="invNote" placeholder="單號、客戶、原因…（選填）"
+                     class="w-full bg-gray-950 border border-gray-700 text-white placeholder-gray-500 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-blue-500">
+            </div>
+          </div>
+
+          <button id="invBtnSubmit" onclick="openInvConfirm()" class="w-full bg-green-600 hover:bg-green-500 text-white font-semibold py-3 rounded-lg transition shadow-lg shadow-green-600/30">
+            下一步：確認異動
+          </button>
+
+          <!-- 最近異動 -->
+          <div>
+            <h4 class="text-xs font-semibold text-gray-400 mb-2">最近異動</h4>
+            <div id="invPartRecent" class="space-y-1.5 text-sm"></div>
+          </div>
+        </div>
+
+        <!-- 查無料號 -->
+        <div id="invNotFound" class="hidden bg-red-950/40 border border-red-800/50 rounded-xl p-6 text-center text-red-400"></div>
+
+        <!-- 本次作業紀錄（本機） -->
+        <div id="invSessionLogWrap" class="hidden bg-gray-900 border border-gray-800 rounded-xl p-5 space-y-2 shadow-xl">
+          <h4 class="text-xs font-semibold text-gray-400">本次已送出</h4>
+          <div id="invSessionLog" class="space-y-1.5 text-sm"></div>
+        </div>
+      </div>
+
+      <!-- 🌟 子頁 2：庫存查詢 -->
+      <div id="invBoxLookup" class="hidden space-y-4">
+        <div class="bg-gray-900 border border-gray-800 rounded-xl p-5 space-y-4 shadow-xl">
+          <div>
+            <label class="block text-xs font-medium text-gray-400 mb-1">料號</label>
+            <input type="text" id="invLookupPartNo" placeholder="完整料號"
+                   onkeydown="if(event.key === 'Enter'){ event.preventDefault(); invLookup(); }"
+                   class="w-full bg-gray-950 border border-gray-700 text-white placeholder-gray-500 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-blue-500">
+          </div>
+          <button onclick="invLookup()" class="w-full bg-blue-600 hover:bg-blue-500 text-white font-semibold py-2.5 rounded-lg transition shadow-lg shadow-blue-600/30">查詢庫存與異動</button>
+        </div>
+        <div id="invLookupResult" class="space-y-4"></div>
+      </div>
+
+      <!-- 🌟 子頁 3：低庫存清單 -->
+      <div id="invBoxLow" class="hidden space-y-4">
+        <div class="bg-gray-900 border border-gray-800 rounded-xl p-5 space-y-3 shadow-xl">
+          <p class="text-sm text-gray-400">列出「目前庫存 ≤ 安全庫存」的配件（只計算有設定安全庫存的料號）。</p>
+          <button onclick="loadLowStock()" class="w-full bg-amber-600 hover:bg-amber-500 text-white font-semibold py-2.5 rounded-lg transition shadow-md shadow-amber-600/30">重新整理低庫存清單</button>
+        </div>
+        <div id="invLowResult" class="space-y-2"></div>
+      </div>
+    </div>
+  </main>
+
+  <!-- ==================== 新增資料彈窗 (Modal) ==================== -->
+  <div id="addModal" class="hidden fixed inset-0 bg-black/75 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+    <div class="bg-gray-900 border border-gray-800 rounded-2xl w-full max-w-5xl p-6 space-y-5 shadow-2xl overflow-y-auto max-h-[92vh]">
+      
+      <!-- 彈窗頂部標題 -->
+      <div class="flex justify-between items-center border-b border-gray-800 pb-4">
+        <div class="flex items-center space-x-2.5">
+          <span class="text-xl">➕</span>
+          <h3 class="text-lg font-bold text-white tracking-wide">新增配件資料</h3>
+        </div>
+        <button onclick="closeAddModal()" class="text-gray-400 hover:text-white text-2xl font-bold leading-none p-1 rounded-lg hover:bg-gray-800 transition">&times;</button>
+      </div>
+
+      <!-- 彈窗內容：分為左右兩部分 (左右對調：現有資料在左，暫時空著在右) -->
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 items-stretch">
+        
+        <!-- 左側：現有資料 (輸入料號後自動代入與修改) -->
+        <div class="flex flex-col bg-gray-950/60 border border-gray-800 rounded-xl p-5 space-y-4">
+          
+          <!-- 標題與狀態標籤 -->
+          <div class="flex items-center justify-between border-b border-gray-800 pb-3">
+            <div class="flex items-center space-x-2">
+              <span class="w-2.5 h-2.5 rounded-full bg-blue-500"></span>
+              <h4 class="text-sm font-semibold text-blue-400">現有資料</h4>
+            </div>
+            <div id="existStatusBadge" class="text-xs px-2.5 py-0.5 rounded-full bg-gray-800 text-gray-400 border border-gray-700 transition-colors">
+              請輸入料號
+            </div>
+          </div>
+
+          <!-- 料號輸入區 (輸入後自動代入) -->
+          <div class="space-y-1.5">
+            <label class="block text-xs font-semibold text-gray-300">
+              輸入料號 <span class="text-blue-400 text-xs font-normal">（輸入後自動代入相關資料）</span>
+            </label>
+            <div class="flex gap-2">
+              <div class="relative flex-1">
+                <input type="text" id="existPartNoInput" placeholder="輸入料號，例: SA07-2211"
+                       oninput="handleExistPartNoInput(this.value)"
+                       onkeydown="if(event.key === 'Enter'){ event.preventDefault(); triggerExistSearch(); }"
+                       class="w-full bg-gray-900 border border-blue-500/50 focus:border-blue-500 text-white placeholder-gray-500 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500">
+                <button id="existClearBtn" type="button" onclick="clearExistingData()" title="清除"
+                        class="hidden absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-white text-base">
+                  &times;
+                </button>
+              </div>
+              <!-- 修改 / 新增 / 儲存 / 取消 按鈕群 (取代原本的查詢按鈕) -->
+              <div id="existActionArea" class="flex items-center gap-1.5">
+                <button id="btnEditExist" type="button" onclick="handleEditClick()" 
+                        class="bg-amber-600 hover:bg-amber-500 text-white text-sm font-semibold px-4 py-2 rounded-lg transition flex items-center space-x-1.5 shadow-md shadow-amber-600/20">
+                  <svg id="btnEditIcon" class="w-4 h-4 stroke-current" fill="none" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path>
+                  </svg>
+                  <span id="btnEditText">修改</span>
+                </button>
+
+                <button id="btnSaveExist" type="button" onclick="saveExistingDataChanges()" 
+                        class="hidden bg-green-600 hover:bg-green-500 text-white text-sm font-semibold px-3.5 py-2 rounded-lg transition flex items-center space-x-1 shadow-md shadow-green-600/20">
+                  <svg class="w-4 h-4 stroke-current" fill="none" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                  </svg>
+                  <span id="saveBtnText">儲存</span>
+                </button>
+
+                <button id="btnCancelExist" type="button" onclick="cancelExistingDataEdit()" 
+                        class="hidden bg-gray-800 hover:bg-gray-700 text-gray-300 text-sm font-medium px-3 py-2 rounded-lg transition">
+                  <span>取消</span>
+                </button>
+              </div>
+            </div>
+            <!-- 多筆相符時的候選清單 -->
+            <div id="existSuggestions" class="hidden flex flex-wrap gap-1.5 pt-1"></div>
+          </div>
+
+          <!-- 代入之現有資料欄位 -->
+          <div class="space-y-3 text-xs">
+            
+            <!-- 料號與名稱 -->
+            <div class="grid grid-cols-2 gap-3">
+              <div>
+                <label class="block font-medium text-gray-400 mb-1">料號 (part_no)</label>
+                <input type="text" id="existPartNo" readonly placeholder="-" 
+                       class="w-full bg-gray-900 border border-gray-800 text-blue-400 font-mono font-medium rounded px-3 py-1.5 focus:outline-none cursor-default">
+              </div>
+              <div>
+                <label class="block font-medium text-gray-400 mb-1">名稱 (name)</label>
+                <input type="text" id="existName" readonly placeholder="-" 
+                       class="w-full bg-gray-900 border border-gray-800 text-gray-200 rounded px-3 py-1.5 focus:outline-none cursor-default">
+              </div>
+            </div>
+
+            <!-- 種類與規格 -->
+            <div class="grid grid-cols-2 gap-3">
+              <div>
+                <label class="block font-medium text-gray-400 mb-1">種類 (category)</label>
+                <input type="text" id="existCategory" readonly placeholder="-" 
+                       class="w-full bg-gray-900 border border-gray-800 text-gray-200 rounded px-3 py-1.5 focus:outline-none cursor-default">
+              </div>
+              <div>
+                <label class="block font-medium text-gray-400 mb-1">規格簡述 (spec)</label>
+                <input type="text" id="existSpec" readonly placeholder="-" 
+                       class="w-full bg-gray-900 border border-gray-800 text-gray-200 rounded px-3 py-1.5 focus:outline-none cursor-default">
+              </div>
+            </div>
+
+            <!-- 尺寸數據 -->
+            <div class="grid grid-cols-3 gap-2">
+              <div>
+                <label class="block font-medium text-gray-400 mb-1">長度 (length)</label>
+                <input type="text" id="existLength" readonly placeholder="-" 
+                       class="w-full bg-gray-900 border border-gray-800 text-gray-200 rounded px-3 py-1.5 focus:outline-none cursor-default">
+              </div>
+              <div>
+                <label class="block font-medium text-gray-400 mb-1">內徑 (inner_dia)</label>
+                <input type="text" id="existInner" readonly placeholder="-" 
+                       class="w-full bg-gray-900 border border-gray-800 text-gray-200 rounded px-3 py-1.5 focus:outline-none cursor-default">
+              </div>
+              <div>
+                <label class="block font-medium text-gray-400 mb-1">外徑 (outer_dia)</label>
+                <input type="text" id="existOuter" readonly placeholder="-" 
+                       class="w-full bg-gray-900 border border-gray-800 text-gray-200 rounded px-3 py-1.5 focus:outline-none cursor-default">
+              </div>
+            </div>
+
+            <!-- 儲位資訊 -->
+            <div class="grid grid-cols-2 gap-3">
+              <div>
+                <label class="block font-medium text-gray-400 mb-1">當前儲位 (location_in)</label>
+                <input type="text" id="existLocIn" readonly placeholder="-" 
+                       class="w-full bg-gray-900 border border-gray-800 text-amber-400 font-semibold rounded px-3 py-1.5 focus:outline-none cursor-default">
+              </div>
+              <div>
+                <label class="block font-medium text-gray-400 mb-1">組裝位置 (location_out)</label>
+                <input type="text" id="existLocOut" readonly placeholder="-" 
+                       class="w-full bg-gray-900 border border-gray-800 text-orange-400 font-semibold rounded px-3 py-1.5 focus:outline-none cursor-default">
+              </div>
+            </div>
+
+            <!-- 詳細規格 -->
+            <div>
+              <label class="block font-medium text-gray-400 mb-1">詳細規格 (spec_detail)</label>
+              <input type="text" id="existSpecDetail" readonly placeholder="-" 
+                     class="w-full bg-gray-900 border border-gray-800 text-gray-200 rounded px-3 py-1.5 focus:outline-none cursor-default">
+            </div>
+
+            <!-- 備註說明 -->
+            <div>
+              <label class="block font-medium text-gray-400 mb-1">備註說明 (notes)</label>
+              <textarea id="existNotes" rows="2" readonly placeholder="-" 
+                        class="w-full bg-gray-900 border border-gray-800 text-gray-200 rounded px-3 py-1.5 focus:outline-none cursor-default resize-none"></textarea>
+            </div>
+
+          </div>
+        </div>
+
+        <!-- 右側：暫時空著 -->
+        <div class="flex flex-col bg-gray-950/40 border border-dashed border-gray-800 rounded-xl p-5 min-h-[460px]">
+          <div class="flex items-center justify-between border-b border-gray-800/80 pb-3 mb-4">
+            <div class="flex items-center space-x-2">
+              <span class="w-2.5 h-2.5 rounded-full bg-gray-600"></span>
+              <h4 class="text-sm font-semibold text-gray-400">新增資料區</h4>
+            </div>
+            <span class="text-xs bg-gray-800 text-gray-400 px-2.5 py-0.5 rounded-full">暫時空著</span>
+          </div>
+          <div class="flex-1 flex flex-col items-center justify-center text-gray-500 py-12">
+            <div class="w-14 h-14 rounded-2xl bg-gray-900 border border-gray-800 flex items-center justify-center mb-3 text-gray-600">
+              <svg class="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 4v16m8-8H4"></path>
+              </svg>
+            </div>
+            <p class="text-sm font-medium text-gray-500">（右側欄位暫時空著，保留供後續使用）</p>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- 彈窗底部按鈕 -->
+      <div class="flex justify-end pt-3 border-t border-gray-800">
+        <button type="button" onclick="closeAddModal()" class="bg-gray-800 hover:bg-gray-700 text-gray-300 font-semibold px-5 py-2 rounded-lg transition text-sm">
+          關閉
+        </button>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ==================== 密碼驗證彈窗 (Modal) ==================== -->
+  <div id="passwordModal" class="hidden fixed inset-0 bg-black/80 backdrop-blur-sm z-[60] flex items-center justify-center p-4">
+    <div class="bg-gray-900 border border-gray-800 rounded-2xl w-full max-w-sm p-6 space-y-4 shadow-2xl">
+      <div class="flex items-center space-x-3 text-amber-400">
+        <div class="p-2.5 bg-amber-500/10 rounded-xl border border-amber-500/20">
+          <svg class="w-6 h-6 stroke-current" fill="none" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"></path>
+          </svg>
+        </div>
+        <div>
+          <h3 class="text-base font-bold text-white">管理權限驗證</h3>
+          <p class="text-xs text-gray-400">修改配件資料需輸入管理密碼</p>
+        </div>
+      </div>
+
+      <div class="space-y-1.5">
+        <label class="block text-xs font-semibold text-gray-300">管理密碼</label>
+        <input type="password" id="adminPasswordInput" placeholder="請輸入密碼"
+               onkeydown="if(event.key === 'Enter'){ event.preventDefault(); verifyAdminPassword(); }"
+               class="w-full bg-gray-950 border border-gray-700 focus:border-amber-500 text-white placeholder-gray-500 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-amber-500">
+        <p id="passwordErrorMsg" class="hidden text-xs text-red-400 pt-1">❌ 密碼錯誤，請重新輸入！</p>
+      </div>
+
+      <div class="flex gap-2 pt-2">
+        <button type="button" onclick="closePasswordModal()" 
+                class="flex-1 bg-gray-800 hover:bg-gray-700 text-gray-300 text-sm font-semibold py-2 rounded-lg transition">
+          取消
+        </button>
+        <button id="btnSubmitPassword" type="button" onclick="verifyAdminPassword()" 
+                class="flex-1 bg-amber-600 hover:bg-amber-500 text-white text-sm font-semibold py-2 rounded-lg transition shadow-md shadow-amber-600/30 flex items-center justify-center space-x-1">
+          <span>確認解鎖</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ==================== 進銷存：送出前確認彈窗 ==================== -->
+  <div id="invConfirmModal" class="hidden fixed inset-0 bg-black/80 backdrop-blur-sm z-[60] flex items-center justify-center p-4">
+    <div class="bg-gray-900 border border-gray-800 rounded-2xl w-full max-w-sm p-6 space-y-4 shadow-2xl">
+      <h3 class="text-base font-bold text-white">請確認這筆異動</h3>
+      <div id="invConfirmBody" class="bg-gray-950 border border-gray-800 rounded-lg p-4 space-y-1.5 text-sm text-gray-300"></div>
+      <div class="flex gap-2 pt-2">
+        <button type="button" onclick="closeInvConfirm()" class="flex-1 bg-gray-800 hover:bg-gray-700 text-gray-300 text-sm font-semibold py-2.5 rounded-lg transition">返回修改</button>
+        <button id="invBtnConfirmSend" type="button" onclick="submitInvMovement()" class="flex-1 bg-green-600 hover:bg-green-500 text-white text-sm font-semibold py-2.5 rounded-lg transition shadow-md shadow-green-600/30">確認送出</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 進銷存：提示訊息 -->
+  <div id="invToast" class="hidden fixed bottom-4 left-1/2 -translate-x-1/2 z-[70] px-4 py-2.5 rounded-lg text-sm font-semibold shadow-2xl"></div>
+
+  <!-- ==================== JavaScript 邏輯 ==================== -->
+  <script>
+    const API_URL = "https://script.google.com/macros/s/AKfycbz2VytI8-kk1e_wNyy-E2TDb8e6WTRd3lELyPri2vFm2k4hihXMLW4VCJGH379Ux8jp/exec";
+
+    // 切換三個搜尋頁籤
+    function switchSearchTab(tab) {
+      const boxPartNo = document.getElementById('searchBoxPartNo');
+      const boxName = document.getElementById('searchBoxName');
+      const boxSpec = document.getElementById('searchBoxSpec');
+
+      const btnPartNo = document.getElementById('tabBtnPartNo');
+      const btnName = document.getElementById('tabBtnName');
+      const btnSpec = document.getElementById('tabBtnSpec');
+
+      // 隱藏全部卡片
+      boxPartNo.classList.add('hidden');
+      boxName.classList.add('hidden');
+      boxSpec.classList.add('hidden');
+
+      // 重設按鈕樣式
+      const defaultBtnClass = "px-3 py-1.5 rounded-md text-gray-400 hover:text-white transition";
+      const activeBtnClass = "px-3 py-1.5 rounded-md bg-blue-600 text-white transition";
+
+      btnPartNo.className = defaultBtnClass;
+      btnName.className = defaultBtnClass;
+      btnSpec.className = defaultBtnClass;
+
+      // 依選取項目開啟對應卡片與亮燈
+      if (tab === 'partNo') {
+        boxPartNo.classList.remove('hidden');
+        btnPartNo.className = activeBtnClass;
+      } else if (tab === 'name') {
+        boxName.classList.remove('hidden');
+        btnName.className = activeBtnClass;
+      } else if (tab === 'spec') {
+        boxSpec.classList.remove('hidden');
+        btnSpec.className = activeBtnClass;
+      }
+      clearTimeout(partNoSearchDebounceTimer);
+      if (partNoSearchAbortController) partNoSearchAbortController.abort();
+      hidePartNoSuggestions();
+      clearTimeout(specSearchDebounceTimer);
+      if (specSearchAbortController) specSearchAbortController.abort();
+      hideSpecSuggestions();
+      hideAllStatus();
+    }
+
+    // 1. 處理料號或名稱單項搜尋
+    async function handleSearch(type) {
+      let keyword = '';
+      if (type === 'part_no') {
+        keyword = document.getElementById('inputPartNo').value.trim();
+        if (!keyword) { alert('請輸入料號關鍵字！'); return; }
+      } else if (type === 'name') {
+        keyword = document.getElementById('inputName').value.trim();
+        if (!keyword) { alert('請輸入名稱關鍵字！'); return; }
+      }
+
+      showLoading();
+
+      try {
+        const url = `${API_URL}?action=searchKeyword&keyword=${encodeURIComponent(keyword)}&type=${encodeURIComponent(type)}`;
+        const res = await fetch(url);
+        const result = await res.json();
+
+        if (result.status === 'success' && result.data && result.data.length > 0) {
+          renderResultList(result.data);
+          if (type === 'part_no') {
+            renderPartNoSuggestions(result.data, activePartNoSelection);
+          }
+        } else {
+          showNotFound();
+          if (type === 'part_no') {
+            hidePartNoSuggestions();
+          }
+        }
+      } catch (err) {
+        alert('連線失敗，請確認網路或 API 設定');
+        hideAllStatus();
+      }
+    }
+
+    // 2. 處理尺寸搜尋
+    async function handleSpecSearch() {
+      const length = document.getElementById('inputLength').value.trim();
+      const inner = document.getElementById('inputInner').value.trim();
+      const outer = document.getElementById('inputOuter').value.trim();
+
+      if (!length && !inner && !outer) {
+        alert('請至少輸入一項尺寸數據（長度、內徑或外徑）！');
+        return;
+      }
+
+      showLoading();
+
+      try {
+        const url = `${API_URL}?action=searchSpec&length=${encodeURIComponent(length)}&inner=${encodeURIComponent(inner)}&outer=${encodeURIComponent(outer)}`;
+        const res = await fetch(url);
+        const result = await res.json();
+
+        if (result.status === 'success' && result.data && result.data.length > 0) {
+          renderResultList(result.data);
+          renderSpecSuggestions(result.data, activeSpecPartNo);
+        } else {
+          showNotFound();
+          hideSpecSuggestions();
+        }
+      } catch (err) {
+        alert('連線失敗，請確認網路或 API 設定');
+        hideAllStatus();
+      }
+    }
+
+    // 清除所有輸入欄位
+    function clearInputs() {
+      document.getElementById('inputPartNo').value = '';
+      document.getElementById('inputName').value = '';
+      document.getElementById('inputLength').value = '';
+      document.getElementById('inputInner').value = '';
+      document.getElementById('inputOuter').value = '';
+      clearTimeout(partNoSearchDebounceTimer);
+      if (partNoSearchAbortController) partNoSearchAbortController.abort();
+      hidePartNoSuggestions();
+      clearTimeout(specSearchDebounceTimer);
+      if (specSearchAbortController) specSearchAbortController.abort();
+      hideSpecSuggestions();
+      hideAllStatus();
+    }
+
+    // ==================== 料號查詢相似項目邏輯 ====================
+    let partNoSearchDebounceTimer = null;
+    let partNoSearchAbortController = null;
+    let activePartNoSelection = '';
+
+    // 輸入料號時觸發防抖查詢相似項目
+    function handlePartNoInput() {
+      const keyword = document.getElementById('inputPartNo').value.trim();
+
+      clearTimeout(partNoSearchDebounceTimer);
+
+      // 輸入少於 4 個字元時隱藏相似項目
+      if (keyword.length < 4) {
+        if (partNoSearchAbortController) partNoSearchAbortController.abort();
+        hidePartNoSuggestions();
+        return;
+      }
+
+      showPartNoSuggestionsLoading();
+
+      // 防抖 350ms 後向 API 查詢相似料號
+      partNoSearchDebounceTimer = setTimeout(() => {
+        fetchPartNoSuggestions(keyword);
+      }, 350);
+    }
+
+    // 向 API 取得相符料號之相似項目
+    async function fetchPartNoSuggestions(keyword) {
+      if (partNoSearchAbortController) {
+        partNoSearchAbortController.abort();
+      }
+      partNoSearchAbortController = new AbortController();
+
+      try {
+        const url = `${API_URL}?action=searchKeyword&keyword=${encodeURIComponent(keyword)}&type=part_no`;
+        const res = await fetch(url, { signal: partNoSearchAbortController.signal });
+        const result = await res.json();
+
+        if (result.status === 'success' && result.data && result.data.length > 0) {
+          renderPartNoSuggestions(result.data, activePartNoSelection);
+        } else {
+          showPartNoSuggestionsEmpty();
+        }
+      } catch (err) {
+        if (err.name === 'AbortError') return;
+        console.error('料號相似項目查詢連線異常:', err);
+        hidePartNoSuggestions();
+      }
+    }
+
+    // 渲染料號相似項目按鈕清單
+    function renderPartNoSuggestions(dataList, activePartNo) {
+      const container = document.getElementById('partNoSuggestions');
+      if (!container) return;
+
+      if (!dataList || dataList.length === 0) {
+        hidePartNoSuggestions();
+        return;
+      }
+
+      container.innerHTML = `<span class="text-gray-400 text-xs self-center">搜尋結果 (${dataList.length})：</span>`;
+
+      // 最多展示前 8 筆相似按鈕供快速點選代入
+      const displayList = dataList.slice(0, 8);
+      displayList.forEach(item => {
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        const isActive = item.part_no === activePartNo;
+        btn.className = `px-2.5 py-1 rounded-lg text-xs transition border flex items-center gap-1.5 shadow-sm ${
+          isActive 
+            ? 'bg-blue-600 border-blue-500 text-white font-medium shadow-blue-600/30' 
+            : 'bg-gray-800 border-gray-700 text-gray-300 hover:bg-gray-700 hover:text-white'
+        }`;
+
+        // 格式化按鈕內容：料號 (品名)
+        const partNoText = (item.part_no || '').trim();
+        const nameText = (item.name || '').trim();
+
+        let labelHtml = '';
+        if (partNoText && nameText) {
+          labelHtml = `<span class="font-mono font-medium">${partNoText}</span><span class="text-[11px] opacity-80">(${nameText})</span>`;
+        } else if (partNoText) {
+          labelHtml = `<span class="font-mono font-medium">${partNoText}</span>`;
+        } else if (nameText) {
+          labelHtml = `<span class="font-medium">${nameText}</span>`;
+        } else {
+          labelHtml = `<span class="text-gray-400">未命名配件</span>`;
+        }
+
+        btn.innerHTML = labelHtml;
+
+        btn.onclick = () => {
+          document.getElementById('inputPartNo').value = item.part_no;
+          activePartNoSelection = item.part_no;
+          renderPartNoSuggestions(dataList, item.part_no);
+
+          // 直接在下方呈現該配件卡片
+          const matchedItems = dataList.filter(d => d.part_no === item.part_no);
+          renderResultList(matchedItems.length > 0 ? matchedItems : [item]);
+        };
+
+        container.appendChild(btn);
+      });
+
+      // 超過 8 筆時提示總數量
+      if (dataList.length > 8) {
+        const moreSpan = document.createElement('span');
+        moreSpan.className = 'text-gray-500 text-xs self-center ml-1';
+        moreSpan.innerText = `...等 ${dataList.length} 筆`;
+        container.appendChild(moreSpan);
+      }
+
+      container.classList.remove('hidden');
+    }
+
+    // 顯示料號相似項目查詢中動畫
+    function showPartNoSuggestionsLoading() {
+      const container = document.getElementById('partNoSuggestions');
+      if (!container) return;
+      container.innerHTML = `
+        <span class="text-xs text-blue-400 flex items-center gap-1.5 py-0.5">
+          <span class="inline-block animate-spin rounded-full h-3 w-3 border-2 border-blue-400 border-t-transparent"></span>
+          <span>正在搜尋相似料號...</span>
+        </span>
+      `;
+      container.classList.remove('hidden');
+    }
+
+    // 顯示查無相似料號提示
+    function showPartNoSuggestionsEmpty() {
+      const container = document.getElementById('partNoSuggestions');
+      if (!container) return;
+      container.innerHTML = `<span class="text-xs text-gray-500 py-0.5">⚠️ 無相符料號搜尋結果</span>`;
+      container.classList.remove('hidden');
+    }
+
+    // 隱藏料號相似項目清單
+    function hidePartNoSuggestions() {
+      const container = document.getElementById('partNoSuggestions');
+      if (container) {
+        container.classList.add('hidden');
+        container.innerHTML = '';
+      }
+      activePartNoSelection = '';
+    }
+
+    // ==================== 尺寸查詢備選項目邏輯 ====================
+    let specSearchDebounceTimer = null;
+    let specSearchAbortController = null;
+    let activeSpecPartNo = '';
+
+    // 輸入尺寸時觸發防抖查詢備選項目
+    function handleSpecInput() {
+      const length = document.getElementById('inputLength').value.trim();
+      const inner = document.getElementById('inputInner').value.trim();
+      const outer = document.getElementById('inputOuter').value.trim();
+
+      clearTimeout(specSearchDebounceTimer);
+
+      // 若長度、內徑、外徑皆為空，隱藏備選項目
+      if (!length && !inner && !outer) {
+        if (specSearchAbortController) specSearchAbortController.abort();
+        hideSpecSuggestions();
+        return;
+      }
+
+      showSpecSuggestionsLoading();
+
+      // 防抖 350ms 後向 API 查詢相符備選項
+      specSearchDebounceTimer = setTimeout(() => {
+        fetchSpecSuggestions(length, inner, outer);
+      }, 350);
+    }
+
+    // 向 API 取得相符尺寸之備選項目
+    async function fetchSpecSuggestions(length, inner, outer) {
+      if (specSearchAbortController) {
+        specSearchAbortController.abort();
+      }
+      specSearchAbortController = new AbortController();
+
+      try {
+        const url = `${API_URL}?action=searchSpec&length=${encodeURIComponent(length)}&inner=${encodeURIComponent(inner)}&outer=${encodeURIComponent(outer)}`;
+        const res = await fetch(url, { signal: specSearchAbortController.signal });
+        const result = await res.json();
+
+        if (result.status === 'success' && result.data && result.data.length > 0) {
+          renderSpecSuggestions(result.data, activeSpecPartNo);
+        } else {
+          showSpecSuggestionsEmpty();
+        }
+      } catch (err) {
+        if (err.name === 'AbortError') return;
+        console.error('尺寸備選項查詢連線異常:', err);
+        hideSpecSuggestions();
+      }
+    }
+
+    // 渲染尺寸備選項按鈕清單（如同新增資料中 existSuggestions 的呈現方式）
+    function renderSpecSuggestions(dataList, activePartNo) {
+      const container = document.getElementById('specSuggestions');
+      if (!container) return;
+
+      if (!dataList || dataList.length === 0) {
+        hideSpecSuggestions();
+        return;
+      }
+
+      container.innerHTML = `<span class="text-gray-400 text-xs self-center">搜尋結果 (${dataList.length})：</span>`;
+
+      // 最多展示前 8 筆備選按鈕供快速點選代入
+      const displayList = dataList.slice(0, 8);
+      displayList.forEach(item => {
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        const isActive = item.part_no === activePartNo;
+        btn.className = `px-2.5 py-1 rounded-lg text-xs transition border flex items-center gap-1.5 shadow-sm ${
+          isActive 
+            ? 'bg-blue-600 border-blue-500 text-white font-medium shadow-blue-600/30' 
+            : 'bg-gray-800 border-gray-700 text-gray-300 hover:bg-gray-700 hover:text-white'
+        }`;
+
+        // 僅顯示 name 與 spec_detail（移除 hover 提示）
+        const nameText = (item.name || '').trim();
+        const specDetailText = (item.spec_detail || item.spec || '').trim();
+
+        let labelHtml = '';
+        if (nameText && specDetailText) {
+          labelHtml = `<span class="font-medium">${nameText}</span><span class="text-[11px] opacity-80 font-mono">(${specDetailText})</span>`;
+        } else if (nameText) {
+          labelHtml = `<span class="font-medium">${nameText}</span>`;
+        } else if (specDetailText) {
+          labelHtml = `<span class="font-mono font-medium">${specDetailText}</span>`;
+        } else {
+          labelHtml = `<span class="text-gray-400">未命名配件</span>`;
+        }
+
+        btn.innerHTML = labelHtml;
+
+        btn.onclick = () => {
+          // 自動代入該配件的長度、內徑、外徑
+          if (item.length !== undefined && item.length !== '') document.getElementById('inputLength').value = item.length;
+          if (item.inner_dia !== undefined && item.inner_dia !== '') document.getElementById('inputInner').value = item.inner_dia;
+          if (item.outer_dia !== undefined && item.outer_dia !== '') document.getElementById('inputOuter').value = item.outer_dia;
+
+          activeSpecPartNo = item.part_no;
+          renderSpecSuggestions(dataList, item.part_no);
+
+          // 同步在下方查詢結果區呈現該配件詳細卡片
+          const matchedItems = dataList.filter(d => 
+            (d.spec && d.spec === item.spec) || 
+            (d.part_no === item.part_no)
+          );
+          renderResultList(matchedItems.length > 0 ? matchedItems : [item]);
+        };
+
+        container.appendChild(btn);
+      });
+
+      // 超過 8 筆時提示總數量
+      if (dataList.length > 8) {
+        const moreSpan = document.createElement('span');
+        moreSpan.className = 'text-gray-500 text-xs self-center ml-1';
+        moreSpan.innerText = `...等 ${dataList.length} 筆`;
+        container.appendChild(moreSpan);
+      }
+
+      container.classList.remove('hidden');
+    }
+
+    // 顯示備選項目查詢中動畫
+    function showSpecSuggestionsLoading() {
+      const container = document.getElementById('specSuggestions');
+      if (!container) return;
+      container.innerHTML = `
+        <span class="text-xs text-blue-400 flex items-center gap-1.5 py-0.5">
+          <span class="inline-block animate-spin rounded-full h-3 w-3 border-2 border-blue-400 border-t-transparent"></span>
+          <span>正在搜尋相符尺寸...</span>
+        </span>
+      `;
+      container.classList.remove('hidden');
+    }
+
+    // 顯示查無尺寸搜尋結果提示
+    function showSpecSuggestionsEmpty() {
+      const container = document.getElementById('specSuggestions');
+      if (!container) return;
+      container.innerHTML = `<span class="text-xs text-gray-500 py-0.5">⚠️ 無相符尺寸搜尋結果</span>`;
+      container.classList.remove('hidden');
+    }
+
+    // 隱藏備選項清單
+    function hideSpecSuggestions() {
+      const container = document.getElementById('specSuggestions');
+      if (container) {
+        container.classList.add('hidden');
+        container.innerHTML = '';
+      }
+      activeSpecPartNo = '';
+    }
+
+    // 渲染查詢結果列表
+    function renderResultList(dataList) {
+      hideAllStatus();
+      const container = document.getElementById('resultContainer');
+      container.innerHTML = '';
+
+      const countHeader = document.createElement('div');
+      countHeader.className = "text-sm text-gray-400 mb-2";
+      countHeader.innerText = `找到 ${dataList.length} 筆符合條件的配件資料：`;
+      container.appendChild(countHeader);
+
+      dataList.forEach((data, index) => {
+        const card = document.createElement('div');
+        card.className = "bg-gray-900 border border-gray-800 rounded-xl p-5 space-y-4 shadow-xl";
+
+        card.innerHTML = `
+          <div class="border-b border-gray-800 pb-3">
+            <span class="text-xl font-semibold px-2 py-0.5 bg-blue-900/60 text-blue-300 border border-blue-700/50 rounded-md">
+              ${data.category || '未分類'}
+            </span>
+            <h2 class="text-xl font-bold text-white mt-1">${index + 1}. ${data.name || '未命名配件'}</h2>
+          </div>
+
+          <div class="grid grid-cols-2 gap-3 text-xl">
+            <div class="bg-gray-950 p-2.5 rounded border border-gray-800">
+              <span class="text-gray-400">料號</span>
+              <p class="font-mono font-semibold text-blue-400 mt-0.5">${data.part_no || '-'}</p>
+            </div>
+
+            <div class="bg-gray-950 p-2.5 rounded border border-gray-800">
+              <span class="text-gray-400">當前儲位</span>
+              <p class="font-mono font-extrabold text-amber-400 mt-0.5">${data.location_in || '無'}</p>
+            </div>
+
+            <div class="bg-gray-950 p-2.5 rounded border border-gray-800">
+              <span class="text-gray-400">規格 (長*內*外)</span>
+              <p class="font-semibold text-gray-200 mt-0.5">${data.spec || '-'}</p>
+            </div>
+            <div class="bg-gray-950 p-2.5 rounded border border-gray-800">
+              <span class="text-gray-400">組裝位置</span>
+              <p class="font-semibold text-orange-400 mt-0.5">${data.location_out || '無'}</p>
+            </div>
+          </div>
+
+          <div class="bg-gray-950 p-3 rounded border border-gray-800 space-y-1 text-xl text-gray-400">
+            <p><strong>詳細規格：</strong><span class="text-gray-200">${data.spec_detail || '-'}</span></p>
+            <p><strong>備註說明：</strong><span class="text-gray-300">${data.notes || '無'}</span></p>
+          </div>
+        `;
+
+        container.appendChild(card);
+      });
+    }
+
+    function showLoading() {
+      hideAllStatus();
+      document.getElementById('loading').classList.remove('hidden');
+    }
+
+    function showNotFound() {
+      hideAllStatus();
+      document.getElementById('notFound').classList.remove('hidden');
+    }
+
+    function hideAllStatus() {
+      document.getElementById('loading').classList.add('hidden');
+      document.getElementById('notFound').classList.add('hidden');
+      document.getElementById('resultContainer').innerHTML = '';
+    }
+
+    // ==================== 彈窗控制功能 ====================
+    function openAddModal() {
+      document.getElementById('addModal').classList.remove('hidden');
+      setTimeout(() => {
+        const input = document.getElementById('existPartNoInput');
+        if (input) input.focus();
+      }, 100);
+    }
+
+    function closeAddModal() {
+      if (isEditMode) {
+        if (!confirm('您目前正在編輯資料且尚未儲存，確定要關閉嗎？未儲存的變更將會遺失。')) {
+          return;
+        }
+        cancelExistingDataEdit();
+      }
+      document.getElementById('addModal').classList.add('hidden');
+      clearExistingData();
+    }
+
+    // ==================== 右側「現有資料」自動代入與修改邏輯 ====================
+    let existSearchDebounceTimer = null;
+    let existCachedResults = [];
+
+    // 修改與驗證相關狀態
+    let isEditMode = false;
+    let editActionType = 'update'; // 'update' (修改現有) 或 'add' (新增資料)
+    let verifiedPassword = ''; // 驗證通過的管理密碼 (當前工作階段保留)
+    let originalPartNoBeforeEdit = ''; // 保存修改前的原始料號
+    let itemDataBackup = null; // 修改前的資料備份
+
+    // 各欄位在預設 (唯讀) 與編輯模式下的樣式設定
+    const EDITABLE_FIELD_CONFIGS = [
+      { id: 'existPartNo', defaultClass: 'w-full bg-gray-900 border border-gray-800 text-blue-400 font-mono font-medium rounded px-3 py-1.5 focus:outline-none cursor-default', editClass: 'w-full bg-gray-950 border border-amber-500/70 text-blue-400 font-mono font-semibold rounded px-3 py-1.5 focus:outline-none focus:ring-1 focus:ring-amber-500 cursor-text transition' },
+      { id: 'existName', defaultClass: 'w-full bg-gray-900 border border-gray-800 text-gray-200 rounded px-3 py-1.5 focus:outline-none cursor-default', editClass: 'w-full bg-gray-950 border border-amber-500/70 text-white rounded px-3 py-1.5 focus:outline-none focus:ring-1 focus:ring-amber-500 cursor-text transition' },
+      { id: 'existCategory', defaultClass: 'w-full bg-gray-900 border border-gray-800 text-gray-200 rounded px-3 py-1.5 focus:outline-none cursor-default', editClass: 'w-full bg-gray-950 border border-amber-500/70 text-white rounded px-3 py-1.5 focus:outline-none focus:ring-1 focus:ring-amber-500 cursor-text transition' },
+      { id: 'existSpec', defaultClass: 'w-full bg-gray-900 border border-gray-800 text-gray-200 rounded px-3 py-1.5 focus:outline-none cursor-default', editClass: 'w-full bg-gray-950 border border-amber-500/70 text-white rounded px-3 py-1.5 focus:outline-none focus:ring-1 focus:ring-amber-500 cursor-text transition' },
+      { id: 'existLength', defaultClass: 'w-full bg-gray-900 border border-gray-800 text-gray-200 rounded px-3 py-1.5 focus:outline-none cursor-default', editClass: 'w-full bg-gray-950 border border-amber-500/70 text-white rounded px-3 py-1.5 focus:outline-none focus:ring-1 focus:ring-amber-500 cursor-text transition' },
+      { id: 'existInner', defaultClass: 'w-full bg-gray-900 border border-gray-800 text-gray-200 rounded px-3 py-1.5 focus:outline-none cursor-default', editClass: 'w-full bg-gray-950 border border-amber-500/70 text-white rounded px-3 py-1.5 focus:outline-none focus:ring-1 focus:ring-amber-500 cursor-text transition' },
+      { id: 'existOuter', defaultClass: 'w-full bg-gray-900 border border-gray-800 text-gray-200 rounded px-3 py-1.5 focus:outline-none cursor-default', editClass: 'w-full bg-gray-950 border border-amber-500/70 text-white rounded px-3 py-1.5 focus:outline-none focus:ring-1 focus:ring-amber-500 cursor-text transition' },
+      { id: 'existLocIn', defaultClass: 'w-full bg-gray-900 border border-gray-800 text-amber-400 font-semibold rounded px-3 py-1.5 focus:outline-none cursor-default', editClass: 'w-full bg-gray-950 border border-amber-500/70 text-amber-300 font-semibold rounded px-3 py-1.5 focus:outline-none focus:ring-1 focus:ring-amber-500 cursor-text transition' },
+      { id: 'existLocOut', defaultClass: 'w-full bg-gray-900 border border-gray-800 text-orange-400 font-semibold rounded px-3 py-1.5 focus:outline-none cursor-default', editClass: 'w-full bg-gray-950 border border-amber-500/70 text-orange-300 font-semibold rounded px-3 py-1.5 focus:outline-none focus:ring-1 focus:ring-amber-500 cursor-text transition' },
+      { id: 'existSpecDetail', defaultClass: 'w-full bg-gray-900 border border-gray-800 text-gray-200 rounded px-3 py-1.5 focus:outline-none cursor-default', editClass: 'w-full bg-gray-950 border border-amber-500/70 text-white rounded px-3 py-1.5 focus:outline-none focus:ring-1 focus:ring-amber-500 cursor-text transition' },
+      { id: 'existNotes', defaultClass: 'w-full bg-gray-900 border border-gray-800 text-gray-200 rounded px-3 py-1.5 focus:outline-none cursor-default resize-none', editClass: 'w-full bg-gray-950 border border-amber-500/70 text-white rounded px-3 py-1.5 focus:outline-none focus:ring-1 focus:ring-amber-500 cursor-text resize-none transition' },
+    ];
+
+    // 切換欄位的唯讀與編輯樣式
+    function setEditingVisual(editing) {
+      EDITABLE_FIELD_CONFIGS.forEach(item => {
+        const el = document.getElementById(item.id);
+        if (!el) return;
+        el.readOnly = !editing;
+        el.className = editing ? item.editClass : item.defaultClass;
+      });
+    }
+
+    // 動態更新「修改/新增」按鈕的文字與樣式
+    function updateEditButtonText() {
+      const btn = document.getElementById('btnEditExist');
+      const textSpan = document.getElementById('btnEditText');
+      const icon = document.getElementById('btnEditIcon');
+      if (!btn || !textSpan) return;
+
+      const loadedPartNo = document.getElementById('existPartNo').value.trim();
+      const inputPartNo = document.getElementById('existPartNoInput').value.trim();
+
+      // 若目前欄位無資料，但上方有輸入料號，表示查無此料號，提供新增
+      if (!loadedPartNo && inputPartNo) {
+        textSpan.innerText = '新增';
+        btn.className = "bg-emerald-600 hover:bg-emerald-500 text-white text-sm font-semibold px-4 py-2 rounded-lg transition flex items-center space-x-1.5 shadow-md shadow-emerald-600/20";
+        if (icon) {
+          icon.innerHTML = `<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 4v16m8-8H4"></path>`;
+        }
+      } else {
+        textSpan.innerText = '修改';
+        btn.className = "bg-amber-600 hover:bg-amber-500 text-white text-sm font-semibold px-4 py-2 rounded-lg transition flex items-center space-x-1.5 shadow-md shadow-amber-600/20";
+        if (icon) {
+          icon.innerHTML = `<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path>`;
+        }
+      }
+    }
+
+    // 點擊「修改 / 新增」按鈕時的處理
+    function handleEditClick() {
+      const loadedPartNo = document.getElementById('existPartNo').value.trim();
+      const inputPartNo = document.getElementById('existPartNoInput').value.trim();
+
+      // 兩者皆空時提示
+      if (!loadedPartNo && !inputPartNo) {
+        alert('請先在輸入框輸入料號！若查無此料號，可直接點選此按鈕新增資料。');
+        const input = document.getElementById('existPartNoInput');
+        if (input) input.focus();
+        return;
+      }
+
+      // 判斷為修改現有或是新增資料
+      if (loadedPartNo) {
+        editActionType = 'update';
+      } else {
+        // 查無此料號，進入新增模式
+        editActionType = 'add';
+      }
+
+      // 若尚未在此次工作階段驗證密碼，先開啟密碼驗證視窗
+      if (!verifiedPassword) {
+        openPasswordModal();
+      } else {
+        enterEditMode();
+      }
+    }
+
+    // ==================== 密碼驗證彈窗控制 ====================
+    function openPasswordModal() {
+      const modal = document.getElementById('passwordModal');
+      const input = document.getElementById('adminPasswordInput');
+      const errMsg = document.getElementById('passwordErrorMsg');
+      
+      input.value = '';
+      errMsg.classList.add('hidden');
+      modal.classList.remove('hidden');
+      setTimeout(() => input.focus(), 100);
+    }
+
+    function closePasswordModal() {
+      const modal = document.getElementById('passwordModal');
+      const errMsg = document.getElementById('passwordErrorMsg');
+      if (errMsg) errMsg.classList.add('hidden');
+      if (modal) modal.classList.add('hidden');
+      invPasswordCallback = null; // 進銷存：關閉時清除盤點用的回呼
+    }
+
+    // 向 Apps Script 驗證管理密碼
+    async function verifyAdminPassword() {
+      const input = document.getElementById('adminPasswordInput');
+      const pwd = input.value.trim();
+      const errMsg = document.getElementById('passwordErrorMsg');
+      const submitBtn = document.getElementById('btnSubmitPassword');
+
+      if (!pwd) {
+        errMsg.innerText = '⚠️ 請輸入管理密碼！';
+        errMsg.classList.remove('hidden');
+        input.focus();
+        return;
+      }
+
+      submitBtn.disabled = true;
+      submitBtn.innerText = '驗證中...';
+      errMsg.classList.add('hidden');
+
+      try {
+        const url = `${API_URL}?action=verifyPassword&password=${encodeURIComponent(pwd)}`;
+        const res = await fetch(url);
+        const result = await res.json();
+
+        if (result.status === 'success') {
+          verifiedPassword = pwd;
+          const invCb = invPasswordCallback; // 進銷存：盤點調整借用此密碼彈窗
+          closePasswordModal();
+          if (invCb) { invCb(); } else { enterEditMode(); }
+        } else {
+          errMsg.innerText = result.message || '❌ 密碼錯誤，請重新輸入！';
+          errMsg.classList.remove('hidden');
+          input.select();
+        }
+      } catch (err) {
+        console.error(err);
+        errMsg.innerText = '❌ 連線驗證失敗，請檢查網路或 API 設定';
+        errMsg.classList.remove('hidden');
+      } finally {
+        submitBtn.disabled = false;
+        submitBtn.innerText = '確認解鎖';
+      }
+    }
+
+    // 進入資料編輯或新增模式
+    function enterEditMode() {
+      isEditMode = true;
+
+      if (editActionType === 'add') {
+        // 新增模式：自動代入剛剛搜尋但不存在的料號
+        const inputPartNo = document.getElementById('existPartNoInput').value.trim();
+        clearExistingFields();
+        document.getElementById('existPartNo').value = inputPartNo;
+        originalPartNoBeforeEdit = inputPartNo;
+        itemDataBackup = {
+          part_no: inputPartNo,
+          name: '',
+          category: '',
+          spec: '',
+          length: '',
+          inner_dia: '',
+          outer_dia: '',
+          location_in: '',
+          location_out: '',
+          spec_detail: '',
+          notes: ''
+        };
+        updateBadge('typing', '✨ 新增模式中 (請輸入配件資料後點選儲存)');
+      } else {
+        // 修改模式：備份當前資料
+        originalPartNoBeforeEdit = document.getElementById('existPartNo').value.trim();
+        itemDataBackup = {
+          part_no: document.getElementById('existPartNo').value,
+          name: document.getElementById('existName').value,
+          category: document.getElementById('existCategory').value,
+          spec: document.getElementById('existSpec').value,
+          length: document.getElementById('existLength').value,
+          inner_dia: document.getElementById('existInner').value,
+          outer_dia: document.getElementById('existOuter').value,
+          location_in: document.getElementById('existLocIn').value,
+          location_out: document.getElementById('existLocOut').value,
+          spec_detail: document.getElementById('existSpecDetail').value,
+          notes: document.getElementById('existNotes').value,
+        };
+        updateBadge('typing', '✏️ 編輯模式中 (修改完成後請點選儲存)');
+      }
+
+      // 2. 切換各欄位為可編輯狀態與樣式
+      setEditingVisual(true);
+
+      // 3. 停用上方料號搜尋輸入框，避免編輯中途被自動查詢覆蓋
+      const searchInput = document.getElementById('existPartNoInput');
+      searchInput.disabled = true;
+      searchInput.classList.add('opacity-50', 'cursor-not-allowed');
+      hideSuggestions();
+
+      // 4. 切換按鈕：隱藏「修改/新增」，顯示「儲存」與「取消」
+      document.getElementById('btnEditExist').classList.add('hidden');
+      const saveBtn = document.getElementById('btnSaveExist');
+      const saveBtnText = document.getElementById('saveBtnText');
+      if (saveBtnText) {
+        saveBtnText.innerText = editActionType === 'add' ? '儲存新增' : '儲存修改';
+      }
+      saveBtn.classList.remove('hidden');
+      document.getElementById('btnCancelExist').classList.remove('hidden');
+
+      // 5. 自動聚焦欄位
+      setTimeout(() => {
+        const targetFocus = editActionType === 'add' ? document.getElementById('existName') : document.getElementById('existPartNo');
+        if (targetFocus) targetFocus.focus();
+      }, 100);
+    }
+
+    // 取消編輯並還原原始資料
+    function cancelExistingDataEdit() {
+      if (!isEditMode) return;
+
+      if (editActionType === 'add') {
+        clearExistingFields();
+        updateBadge('waiting', '請輸入料號');
+      } else {
+        if (itemDataBackup) {
+          populateExistingFields(itemDataBackup);
+        }
+        updateBadge('success', '已取消編輯');
+      }
+
+      // 鎖定欄位並恢復唯讀樣式
+      setEditingVisual(false);
+
+      // 恢復料號搜尋輸入框
+      const searchInput = document.getElementById('existPartNoInput');
+      searchInput.disabled = false;
+      searchInput.classList.remove('opacity-50', 'cursor-not-allowed');
+
+      // 切換按鈕回「修改/新增」
+      document.getElementById('btnEditExist').classList.remove('hidden');
+      document.getElementById('btnSaveExist').classList.add('hidden');
+      document.getElementById('btnCancelExist').classList.add('hidden');
+
+      isEditMode = false;
+      editActionType = 'update';
+      updateEditButtonText();
+    }
+
+    // 儲存修改或新增的配件資料回 Google Apps Script
+    async function saveExistingDataChanges() {
+      if (!isEditMode) return;
+
+      const newPartNo = document.getElementById('existPartNo').value.trim();
+      const newName = document.getElementById('existName').value.trim();
+
+      if (!newPartNo) {
+        alert('料號為必填欄位，不能為空！');
+        document.getElementById('existPartNo').focus();
+        return;
+      }
+
+      const isAdding = editActionType === 'add';
+      const saveBtn = document.getElementById('btnSaveExist');
+      const cancelBtn = document.getElementById('btnCancelExist');
+
+      saveBtn.disabled = true;
+      cancelBtn.disabled = true;
+      const originalSaveHtml = saveBtn.innerHTML;
+      saveBtn.innerHTML = `
+        <div class="inline-block animate-spin rounded-full h-3.5 w-3.5 border-2 border-white border-t-transparent mr-1"></div>
+        <span>${isAdding ? '新增中...' : '儲存中...'}</span>
+      `;
+      updateBadge('loading', isAdding ? '新增配件資料中...' : '儲存修改中...');
+
+      const itemData = {
+        part_no: newPartNo,
+        name: newName,
+        category: document.getElementById('existCategory').value.trim(),
+        spec: document.getElementById('existSpec').value.trim(),
+        length: document.getElementById('existLength').value.trim(),
+        inner_dia: document.getElementById('existInner').value.trim(),
+        outer_dia: document.getElementById('existOuter').value.trim(),
+        location_in: document.getElementById('existLocIn').value.trim(),
+        location_out: document.getElementById('existLocOut').value.trim(),
+        spec_detail: document.getElementById('existSpecDetail').value.trim(),
+        notes: document.getElementById('existNotes').value.trim(),
+      };
+
+      const payload = {
+        action: isAdding ? 'addData' : 'updateData',
+        password: verifiedPassword,
+        original_part_no: originalPartNoBeforeEdit,
+        part_no: newPartNo,
+        itemData: itemData
+      };
+
+      try {
+        const res = await fetch(API_URL, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'text/plain;charset=utf-8'
+          },
+          body: JSON.stringify(payload)
+        });
+
+        const result = await res.json();
+
+        if (result.status === 'success') {
+          const successMsg = isAdding ? '配件資料新增成功！' : '配件資料修改成功！';
+          alert('🎉 ' + (result.message || successMsg));
+
+          // 更新備份並退出編輯模式
+          itemDataBackup = { ...itemData };
+          originalPartNoBeforeEdit = newPartNo;
+          document.getElementById('existPartNoInput').value = newPartNo;
+
+          setEditingVisual(false);
+
+          // 恢復搜尋輸入框
+          const searchInput = document.getElementById('existPartNoInput');
+          searchInput.disabled = false;
+          searchInput.classList.remove('opacity-50', 'cursor-not-allowed');
+
+          // 切換按鈕回「修改」
+          document.getElementById('btnEditExist').classList.remove('hidden');
+          document.getElementById('btnSaveExist').classList.add('hidden');
+          document.getElementById('btnCancelExist').classList.add('hidden');
+
+          isEditMode = false;
+          editActionType = 'update';
+          updateEditButtonText();
+          updateBadge('success', isAdding ? '✅ 新資料已成功建立' : '✅ 配件資料已成功儲存修改');
+        } else {
+          alert('❌ 操作失敗：' + (result.message || '未知錯誤'));
+          if (result.message && result.message.indexOf('密碼') !== -1) {
+            verifiedPassword = '';
+            openPasswordModal();
+          }
+          updateBadge('error', '❌ 操作失敗');
+        }
+      } catch (err) {
+        console.error(err);
+        alert('連線失敗，請檢查網路或 Google Apps Script 部署設定！');
+        updateBadge('error', '❌ 連線失敗');
+      } finally {
+        saveBtn.disabled = false;
+        cancelBtn.disabled = false;
+        saveBtn.innerHTML = originalSaveHtml;
+      }
+    }
+
+    // 輸入料號時的處理（即時防抖查詢）
+    function handleExistPartNoInput(val) {
+      const clearBtn = document.getElementById('existClearBtn');
+      if (val.trim()) {
+        clearBtn.classList.remove('hidden');
+      } else {
+        clearBtn.classList.add('hidden');
+        clearExistingFields();
+        updateBadge('waiting', '請輸入料號');
+        updateEditButtonText();
+        return;
+      }
+
+      clearTimeout(existSearchDebounceTimer);
+      // 輸入滿 2 個字元以上即開始防抖查詢
+      if (val.trim().length >= 2) {
+        updateBadge('typing', '輸入中...');
+        existSearchDebounceTimer = setTimeout(() => {
+          fetchExistingData(val.trim());
+        }, 400);
+      } else {
+        updateEditButtonText();
+      }
+    }
+
+    // 手動點選查詢按鈕或按 Enter 鍵
+    function triggerExistSearch() {
+      clearTimeout(existSearchDebounceTimer);
+      const val = document.getElementById('existPartNoInput').value.trim();
+      if (!val) {
+        alert('請先輸入要查詢的料號！');
+        return;
+      }
+      fetchExistingData(val);
+    }
+
+    // 向 API 查詢現有資料並自動代入
+    async function fetchExistingData(keyword) {
+      if (!keyword) return;
+      updateBadge('loading', '查詢中...');
+
+      try {
+        const url = `${API_URL}?action=searchKeyword&keyword=${encodeURIComponent(keyword)}&type=part_no`;
+        const res = await fetch(url);
+        const result = await res.json();
+
+        if (result.status === 'success' && result.data && result.data.length > 0) {
+          existCachedResults = result.data;
+
+          // 優先比對完全相同的料號 (忽略大小寫)
+          const exactMatch = result.data.find(item => 
+            item.part_no && item.part_no.trim().toLowerCase() === keyword.toLowerCase()
+          );
+
+          const targetItem = exactMatch || result.data[0];
+          populateExistingFields(targetItem);
+
+          if (exactMatch) {
+            updateBadge('success', '✅ 已自動代入資料');
+          } else {
+            updateBadge('success', `✅ 已代入 (找到 ${result.data.length} 筆相符)`);
+          }
+
+          updateEditButtonText();
+
+          // 若有多筆結果，渲染候選按鈕方便切換
+          renderSuggestions(result.data, targetItem.part_no);
+        } else {
+          clearExistingFields();
+          updateBadge('not_found', '⚠️ 查無此料號，點選「新增」可直接建立');
+          updateEditButtonText();
+          hideSuggestions();
+        }
+      } catch (err) {
+        console.error(err);
+        updateBadge('error', '❌ 查詢連線失敗');
+      }
+    }
+
+    // 將資料填入現有資料欄位
+    function populateExistingFields(item) {
+      document.getElementById('existPartNo').value = item.part_no || '';
+      document.getElementById('existName').value = item.name || '';
+      document.getElementById('existCategory').value = item.category || '';
+      document.getElementById('existLength').value = item.length || '';
+      document.getElementById('existInner').value = item.inner_dia || '';
+      document.getElementById('existOuter').value = item.outer_dia || '';
+      document.getElementById('existLocIn').value = item.location_in || '';
+      document.getElementById('existLocOut').value = item.location_out || '';
+      document.getElementById('existSpec').value = item.spec || '';
+      document.getElementById('existSpecDetail').value = item.spec_detail || '';
+      document.getElementById('existNotes').value = item.notes || '';
+      updateEditButtonText();
+    }
+
+    // 清空各欄位
+    function clearExistingFields() {
+      document.getElementById('existPartNo').value = '';
+      document.getElementById('existName').value = '';
+      document.getElementById('existCategory').value = '';
+      document.getElementById('existLength').value = '';
+      document.getElementById('existInner').value = '';
+      document.getElementById('existOuter').value = '';
+      document.getElementById('existLocIn').value = '';
+      document.getElementById('existLocOut').value = '';
+      document.getElementById('existSpec').value = '';
+      document.getElementById('existSpecDetail').value = '';
+      document.getElementById('existNotes').value = '';
+      updateEditButtonText();
+      hideSuggestions();
+    }
+
+    // 清除輸入框與已填欄位
+    function clearExistingData() {
+      if (isEditMode) {
+        cancelExistingDataEdit();
+      }
+      clearTimeout(existSearchDebounceTimer);
+      const input = document.getElementById('existPartNoInput');
+      if (input) input.value = '';
+      const clearBtn = document.getElementById('existClearBtn');
+      if (clearBtn) clearBtn.classList.add('hidden');
+      clearExistingFields();
+      updateBadge('waiting', '請輸入料號');
+      updateEditButtonText();
+    }
+
+    // 渲染候選清單按鈕
+    function renderSuggestions(dataList, activePartNo) {
+      const container = document.getElementById('existSuggestions');
+      if (!dataList || dataList.length <= 1) {
+        container.classList.add('hidden');
+        container.innerHTML = '';
+        return;
+      }
+
+      container.innerHTML = `<span class="text-gray-400 text-xs self-center">候選料號：</span>`;
+      // 最多列出前 6 筆供快速點選
+      dataList.slice(0, 6).forEach(item => {
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        const isActive = item.part_no === activePartNo;
+        btn.className = `px-2 py-0.5 rounded text-xs transition border ${
+          isActive 
+            ? 'bg-blue-600 border-blue-500 text-white font-medium' 
+            : 'bg-gray-800 border-gray-700 text-gray-300 hover:bg-gray-700 hover:text-white'
+        }`;
+        btn.innerText = item.part_no || '未命名';
+        btn.onclick = () => {
+          populateExistingFields(item);
+          document.getElementById('existPartNoInput').value = item.part_no;
+          renderSuggestions(dataList, item.part_no);
+          updateBadge('success', `✅ 已代入：${item.part_no}`);
+        };
+        container.appendChild(btn);
+      });
+
+      container.classList.remove('hidden');
+    }
+
+    function hideSuggestions() {
+      const container = document.getElementById('existSuggestions');
+      if (container) {
+        container.classList.add('hidden');
+        container.innerHTML = '';
+      }
+    }
+
+    // 更新狀態提示標籤樣式與文字
+    function updateBadge(type, text) {
+      const badge = document.getElementById('existStatusBadge');
+      if (!badge) return;
+      badge.innerText = text;
+      badge.className = "text-xs px-2.5 py-0.5 rounded-full transition-colors border ";
+      if (type === 'loading') {
+        badge.className += "bg-blue-950/80 text-blue-300 border-blue-700/60 animate-pulse";
+      } else if (type === 'success') {
+        badge.className += "bg-green-950/80 text-green-300 border-green-700/60";
+      } else if (type === 'not_found') {
+        badge.className += "bg-amber-950/80 text-amber-300 border-amber-700/60";
+      } else if (type === 'error') {
+        badge.className += "bg-red-950/80 text-red-300 border-red-700/60";
+      } else if (type === 'typing') {
+        badge.className += "bg-blue-900/40 text-blue-400 border-blue-800/40";
+      } else {
+        badge.className += "bg-gray-800 text-gray-400 border-gray-700";
+      }
+    }
+
+    // ======================================================================
+    // ==================== 進銷存（QR 掃碼）模組 ====================
+    // 後端對應 Apps Script 動作：getStock / getMovements / getLowStock (GET)、addMovement (POST)
+    // ======================================================================
+    const INV_TYPES = {
+      '進貨':   { color: 'green',  sign: '+', hint: '收到廠商貨品，庫存增加。', qtyLabel: '進貨數量' },
+      '出貨':   { color: 'red',    sign: '−', hint: '領料或出貨，庫存減少；超過現有庫存會被擋下。', qtyLabel: '出貨數量' },
+      '退貨':   { color: 'sky',    sign: '+', hint: '客戶或產線退回倉庫，庫存增加。', qtyLabel: '退回數量' },
+      '盤點調整': { color: 'amber', sign: '=', hint: '輸入「實際盤點數量」，系統自動算出差額。需要管理密碼。', qtyLabel: '實際盤點數量' }
+    };
+    const INV_SCAN_COOLDOWN_MS = 3000;     // 同一個 QR 碼 3 秒內重複讀取會被忽略
+    const INV_REPEAT_WARN_MS = 60000;      // 60 秒內送出完全相同的異動會再確認一次
+
+    let invScanner = null;
+    let invScannerRunning = false;
+    let invLastScan = { code: '', time: 0 };
+    let invCurrentPart = null;     // 目前確認中的配件 { part, stock, safety, movements }
+    let invType = '出貨';
+    let invSubmitting = false;
+    let invLastSubmitted = null;   // { key, time }
+    let invPasswordCallback = null; // 盤點調整借用既有的密碼彈窗
+
+    // HTML 跳脫，避免資料內容破壞畫面
+    function invEsc(v) {
+      return String(v === undefined || v === null ? '' : v)
+        .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+    }
+
+    function invFmtTime(t) {
+      if (!t) return '-';
+      const d = new Date(t);
+      if (isNaN(d.getTime())) return String(t);
+      const p = n => String(n).padStart(2, '0');
+      return `${d.getMonth() + 1}/${p(d.getDate())} ${p(d.getHours())}:${p(d.getMinutes())}`;
+    }
+
+    function invNewId() {
+      if (window.crypto && crypto.randomUUID) return crypto.randomUUID();
+      return 'id-' + Date.now() + '-' + Math.random().toString(36).slice(2, 10);
+    }
+
+    function showInvToast(msg, type) {
+      const el = document.getElementById('invToast');
+      el.innerText = msg;
+      el.className = 'fixed bottom-4 left-1/2 -translate-x-1/2 z-[70] px-4 py-2.5 rounded-lg text-sm font-semibold shadow-2xl ' +
+        (type === 'error' ? 'bg-red-600 text-white' : type === 'warn' ? 'bg-amber-600 text-white' : 'bg-green-600 text-white');
+      clearTimeout(showInvToast._t);
+      showInvToast._t = setTimeout(() => el.classList.add('hidden'), 2800);
+    }
+
+    // ---------- 主畫面切換（配件查詢 / 進銷存） ----------
+    function switchView(view) {
+      const navSpec = document.getElementById('nav-spec');
+      const navInv = document.getElementById('nav-inv');
+      const activeNav = 'flex items-center space-x-3 px-3 py-2.5 rounded-lg bg-blue-600 text-white font-medium transition cursor-default';
+      const idleNav = 'flex items-center space-x-3 px-3 py-2.5 rounded-lg text-gray-400 hover:bg-gray-800 hover:text-white font-medium transition cursor-pointer';
+      if (view === 'inventory') {
+        document.getElementById('viewSearch').classList.add('hidden');
+        document.getElementById('viewInventory').classList.remove('hidden');
+        navSpec.className = idleNav;
+        navInv.className = activeNav;
+        const h = document.getElementById('invHandler');
+        if (h && !h.value) h.value = localStorage.getItem('inv_handler') || '';
+      } else {
+        stopInvScanner();
+        document.getElementById('viewInventory').classList.add('hidden');
+        document.getElementById('viewSearch').classList.remove('hidden');
+        navInv.className = idleNav;
+        navSpec.className = activeNav;
+      }
+    }
+
+    function switchInvTab(tab) {
+      const map = { scan: ['invBoxScan', 'invTabBtnScan'], lookup: ['invBoxLookup', 'invTabBtnLookup'], low: ['invBoxLow', 'invTabBtnLow'] };
+      const defaultBtnClass = "px-3 py-1.5 rounded-md text-gray-400 hover:text-white transition";
+      const activeBtnClass = "px-3 py-1.5 rounded-md bg-blue-600 text-white transition";
+      Object.keys(map).forEach(k => {
+        document.getElementById(map[k][0]).classList.toggle('hidden', k !== tab);
+        document.getElementById(map[k][1]).className = k === tab ? activeBtnClass : defaultBtnClass;
+      });
+      if (tab !== 'scan') stopInvScanner();
+      if (tab === 'low') loadLowStock();
+    }
+
+    // ---------- API 呼叫 ----------
+    async function invApiGet(params) {
+      const qs = Object.keys(params).map(k => `${k}=${encodeURIComponent(params[k])}`).join('&');
+      const res = await fetch(`${API_URL}?${qs}`);
+      return await res.json();
+    }
+
+    async function invApiPost(payload) {
+      const res = await fetch(API_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+        body: JSON.stringify(payload)
+      });
+      return await res.json();
+    }
+
+    // ---------- 相機掃描 ----------
+    async function startInvScanner() {
+      if (typeof Html5Qrcode === 'undefined') {
+        alert('掃碼元件載入失敗，請確認網路連線後重新整理頁面，或改用手動輸入料號。');
+        return;
+      }
+      if (invScannerRunning) {
+        try { invScanner.resume(); setInvScanStatus('scanning'); } catch (e) { /* 已在掃描中 */ }
+        return;
+      }
+      const reader = document.getElementById('invReader');
+      reader.classList.remove('hidden');
+      if (!invScanner) invScanner = new Html5Qrcode('invReader');
+      setInvScanStatus('starting');
+      try {
+        await invScanner.start(
+          { facingMode: 'environment' },
+          { fps: 10, qrbox: (w, h) => { const s = Math.floor(Math.min(w, h) * 0.7); return { width: s, height: s }; } },
+          onInvScanSuccess,
+          () => {} // 每一幀沒讀到碼都會呼叫，忽略
+        );
+        invScannerRunning = true;
+        setInvScanStatus('scanning');
+        document.getElementById('invBtnStartScan').classList.add('hidden');
+        document.getElementById('invBtnStopScan').classList.remove('hidden');
+      } catch (err) {
+        console.error('相機啟動失敗:', err);
+        reader.classList.add('hidden');
+        setInvScanStatus('error');
+        alert('無法開啟相機：請允許瀏覽器使用相機，並確認網頁是以 https 開啟。也可以改用下方手動輸入料號。');
+      }
+    }
+
+    async function stopInvScanner() {
+      if (invScanner && invScannerRunning) {
+        try { await invScanner.stop(); } catch (e) { /* 忽略 */ }
+      }
+      invScannerRunning = false;
+      const reader = document.getElementById('invReader');
+      if (reader) reader.classList.add('hidden');
+      const b1 = document.getElementById('invBtnStartScan');
+      const b2 = document.getElementById('invBtnStopScan');
+      if (b1) { b1.classList.remove('hidden'); b1.innerText = '📷 開啟相機掃描'; }
+      if (b2) b2.classList.add('hidden');
+      setInvScanStatus('idle');
+    }
+
+    function setInvScanStatus(state) {
+      const el = document.getElementById('invScanStatus');
+      if (!el) return;
+      const base = 'text-xs px-2.5 py-0.5 rounded-full border ';
+      const m = {
+        idle:     ['相機未啟動', 'bg-gray-800 text-gray-400 border-gray-700'],
+        starting: ['相機啟動中...', 'bg-blue-950/80 text-blue-300 border-blue-700/60 animate-pulse'],
+        scanning: ['掃描中，請對準 QR 碼', 'bg-green-950/80 text-green-300 border-green-700/60'],
+        paused:   ['已讀取，暫停掃描', 'bg-amber-950/80 text-amber-300 border-amber-700/60'],
+        error:    ['相機無法使用', 'bg-red-950/80 text-red-300 border-red-700/60']
+      }[state] || ['', ''];
+      el.innerText = m[0];
+      el.className = base + m[1];
+    }
+
+    function onInvScanSuccess(decodedText) {
+      const code = String(decodedText || '').trim();
+      const now = Date.now();
+      // 防止同一張標籤被連續讀取
+      if (!code || (code === invLastScan.code && now - invLastScan.time < INV_SCAN_COOLDOWN_MS)) return;
+      // 正在確認上一筆時不接受新碼
+      if (invCurrentPart && !document.getElementById('invMoveCard').classList.contains('hidden')) return;
+      invLastScan = { code, time: now };
+      try { invScanner.pause(true); setInvScanStatus('paused'); } catch (e) { /* 舊版不支援 pause */ }
+      if (navigator.vibrate) navigator.vibrate(80);
+      loadInvPart(code);
+    }
+
+    function invManualLookup() {
+      const code = document.getElementById('invManualPartNo').value.trim();
+      if (!code) { alert('請輸入料號！'); return; }
+      loadInvPart(code);
+    }
+
+    // ---------- 讀取配件與庫存，顯示確認卡片 ----------
+    async function loadInvPart(partNo) {
+      document.getElementById('invNotFound').classList.add('hidden');
+      document.getElementById('invMoveCard').classList.add('hidden');
+      document.getElementById('invScanLoading').classList.remove('hidden');
+      invCurrentPart = null;
+      try {
+        const result = await invApiGet({ action: 'getStock', part_no: partNo, limit: 5 });
+        document.getElementById('invScanLoading').classList.add('hidden');
+        if (result.status === 'success' && result.data && result.data.part) {
+          invCurrentPart = result.data;
+          renderInvMoveCard();
+        } else {
+          const nf = document.getElementById('invNotFound');
+          nf.innerText = `❌ 查無料號「${partNo}」：${result.message || '請確認標籤或改用手動輸入。'}`;
+          nf.classList.remove('hidden');
+          resumeInvScannerSoon();
+        }
+      } catch (err) {
+        console.error(err);
+        document.getElementById('invScanLoading').classList.add('hidden');
+        alert('連線失敗，請確認網路或 API 設定');
+        resumeInvScannerSoon();
+      }
+    }
+
+    function renderInvMoveCard() {
+      const d = invCurrentPart;
+      const p = d.part;
+      document.getElementById('invPartCategory').innerText = p.category || '未分類';
+      document.getElementById('invPartName').innerText = p.name || '未命名配件';
+      document.getElementById('invPartNo').innerText = p.part_no || '-';
+      document.getElementById('invPartStock').innerText = d.stock;
+      document.getElementById('invPartSafety').innerText = (d.safety === null || d.safety === undefined || d.safety === '') ? '未設定' : d.safety;
+      document.getElementById('invPartSpec').innerText = p.spec_detail || p.spec || '-';
+      document.getElementById('invPartLoc').innerText = p.location_in || '無';
+      const isLow = d.safety !== null && d.safety !== undefined && d.safety !== '' && Number(d.stock) <= Number(d.safety);
+      document.getElementById('invLowWarn').classList.toggle('hidden', !isLow);
+      document.getElementById('invPartStock').className = 'font-mono font-extrabold text-2xl mt-0.5 ' + (isLow ? 'text-amber-400' : 'text-green-400');
+      document.getElementById('invPartRecent').innerHTML = renderInvMovementRows(d.movements || []);
+      document.getElementById('invNote').value = '';
+      setInvType(invType);
+      document.getElementById('invMoveCard').classList.remove('hidden');
+      const card = document.getElementById('invMoveCard');
+      if (card.scrollIntoView) card.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+
+    function renderInvMovementRows(list) {
+      if (!list || list.length === 0) return `<p class="text-gray-500 text-xs">尚無異動紀錄</p>`;
+      return list.map(m => {
+        const delta = Number(m.delta);
+        const deltaCls = delta > 0 ? 'text-green-400' : delta < 0 ? 'text-red-400' : 'text-gray-400';
+        return `
+          <div class="flex items-center justify-between bg-gray-950 border border-gray-800 rounded px-3 py-2 gap-2">
+            <div class="min-w-0">
+              <span class="text-xs text-gray-500 font-mono">${invEsc(invFmtTime(m.time))}</span>
+              <span class="ml-1.5 text-gray-200 font-semibold">${invEsc(m.type)}</span>
+              <span class="ml-1.5 text-xs text-gray-400">${invEsc(m.handler || '')}</span>
+              ${m.note ? `<p class="text-xs text-gray-500 truncate">${invEsc(m.note)}</p>` : ''}
+            </div>
+            <span class="font-mono font-bold ${deltaCls} whitespace-nowrap">${delta > 0 ? '+' : ''}${invEsc(m.delta)}</span>
+          </div>`;
+      }).join('');
+    }
+
+    function setInvType(type) {
+      invType = type;
+      const cfg = INV_TYPES[type];
+      const colorMap = {
+        green: 'bg-green-600 border-green-500 text-white shadow-md shadow-green-600/30',
+        red:   'bg-red-600 border-red-500 text-white shadow-md shadow-red-600/30',
+        sky:   'bg-sky-600 border-sky-500 text-white shadow-md shadow-sky-600/30',
+        amber: 'bg-amber-600 border-amber-500 text-white shadow-md shadow-amber-600/30'
+      };
+      document.querySelectorAll('#invTypeGroup button').forEach(btn => {
+        const t = btn.getAttribute('data-type');
+        btn.className = 'py-2.5 rounded-lg text-sm font-semibold border transition ' +
+          (t === type ? colorMap[INV_TYPES[t].color] : 'bg-gray-800 border-gray-700 text-gray-300 hover:bg-gray-700 hover:text-white');
+      });
+      document.getElementById('invTypeHint').innerText = cfg.hint;
+      document.getElementById('invQtyLabel').innerText = cfg.qtyLabel;
+      const qty = document.getElementById('invQty');
+      if (type === '盤點調整' && invCurrentPart) qty.value = invCurrentPart.stock;
+      else if (type !== '盤點調整' && (!qty.value || Number(qty.value) <= 0)) qty.value = 1;
+    }
+
+    function bumpInvQty(n) {
+      const qty = document.getElementById('invQty');
+      const v = Math.max(0, (parseInt(qty.value, 10) || 0) + n);
+      qty.value = v;
+    }
+
+    function resetInvMoveCard() {
+      invCurrentPart = null;
+      document.getElementById('invMoveCard').classList.add('hidden');
+      document.getElementById('invManualPartNo').value = '';
+      resumeInvScannerSoon();
+    }
+
+    function resumeInvScannerSoon() {
+      if (!invScannerRunning || !invScanner) return;
+      setTimeout(() => {
+        try { invScanner.resume(); setInvScanStatus('scanning'); } catch (e) { /* 忽略 */ }
+      }, 600);
+    }
+
+    // ---------- 確認與送出 ----------
+    function readInvForm() {
+      const qtyRaw = document.getElementById('invQty').value.trim();
+      const qty = Number(qtyRaw);
+      const handler = document.getElementById('invHandler').value.trim();
+      const note = document.getElementById('invNote').value.trim();
+      return { qtyRaw, qty, handler, note };
+    }
+
+    function openInvConfirm() {
+      if (!invCurrentPart) return;
+      const f = readInvForm();
+      if (f.qtyRaw === '' || !Number.isInteger(f.qty) || f.qty < 0) { alert('數量請輸入 0 以上的整數！'); return; }
+      if (invType !== '盤點調整' && f.qty === 0) { alert('數量不能是 0！'); return; }
+      if (!f.handler) { alert('請填寫經手人！'); document.getElementById('invHandler').focus(); return; }
+      if (invType === '出貨' && f.qty > Number(invCurrentPart.stock)) {
+        alert(`出貨數量 ${f.qty} 超過目前庫存 ${invCurrentPart.stock}，請確認！`);
+        return;
+      }
+      if (invType === '盤點調整' && f.qty === Number(invCurrentPart.stock)) {
+        alert('實際盤點數量與系統庫存相同，不需要調整。');
+        return;
+      }
+      localStorage.setItem('inv_handler', f.handler);
+
+      const p = invCurrentPart.part;
+      const stockNow = Number(invCurrentPart.stock);
+      let delta = 0;
+      if (invType === '進貨' || invType === '退貨') delta = f.qty;
+      else if (invType === '出貨') delta = -f.qty;
+      else delta = f.qty - stockNow;
+      const after = stockNow + delta;
+
+      document.getElementById('invConfirmBody').innerHTML = `
+        <p><span class="text-gray-500">料號：</span><span class="font-mono text-blue-400 font-semibold">${invEsc(p.part_no)}</span></p>
+        <p><span class="text-gray-500">名稱：</span><span class="text-white font-semibold">${invEsc(p.name || '-')}</span></p>
+        <p><span class="text-gray-500">規格：</span>${invEsc(p.spec_detail || p.spec || '-')}</p>
+        <p><span class="text-gray-500">類型：</span><span class="font-semibold">${invEsc(invType)}</span></p>
+        <p><span class="text-gray-500">${invType === '盤點調整' ? '實盤數量' : '數量'}：</span><span class="font-mono font-bold text-white">${f.qty}</span></p>
+        <p><span class="text-gray-500">庫存變化：</span><span class="font-mono">${stockNow} → <span class="font-bold ${delta >= 0 ? 'text-green-400' : 'text-red-400'}">${after}</span>（${delta > 0 ? '+' : ''}${delta}）</span></p>
+        <p><span class="text-gray-500">經手人：</span>${invEsc(f.handler)}</p>
+        ${f.note ? `<p><span class="text-gray-500">備註：</span>${invEsc(f.note)}</p>` : ''}
+      `;
+      document.getElementById('invConfirmModal').classList.remove('hidden');
+    }
+
+    function closeInvConfirm() {
+      document.getElementById('invConfirmModal').classList.add('hidden');
+    }
+
+    async function submitInvMovement(passwordOverride) {
+      if (invSubmitting || !invCurrentPart) return;
+      const f = readInvForm();
+      const partNo = invCurrentPart.part.part_no;
+
+      // 盤點調整需要管理密碼（沿用既有的密碼彈窗與 verifyPassword）
+      const pwd = passwordOverride || verifiedPassword;
+      if (invType === '盤點調整' && !pwd) {
+        closeInvConfirm();
+        invPasswordCallback = () => { openInvConfirm(); };
+        openPasswordModal();
+        return;
+      }
+
+      // 60 秒內送出完全相同的內容，多確認一次
+      const key = [partNo, invType, f.qty, f.handler, f.note].join('|');
+      if (invLastSubmitted && invLastSubmitted.key === key && Date.now() - invLastSubmitted.time < INV_REPEAT_WARN_MS) {
+        if (!confirm('你剛剛才送出一筆一模一樣的異動，確定要再記一次嗎？')) return;
+      }
+
+      invSubmitting = true;
+      const btn = document.getElementById('invBtnConfirmSend');
+      const originalHtml = btn.innerHTML;
+      btn.disabled = true;
+      btn.innerHTML = `<div class="inline-block animate-spin rounded-full h-3.5 w-3.5 border-2 border-white border-t-transparent mr-1"></div><span>送出中...</span>`;
+
+      const payload = {
+        action: 'addMovement',
+        request_id: invNewId(),       // 後端用來擋重複送出
+        part_no: partNo,
+        type: invType,
+        qty: f.qty,
+        handler: f.handler,
+        note: f.note,
+        expected_stock: invCurrentPart.stock
+      };
+      if (invType === '盤點調整') payload.password = pwd;
+
+      try {
+        const result = await invApiPost(payload);
+        if (result.status === 'success') {
+          invLastSubmitted = { key, time: Date.now() };
+          closeInvConfirm();
+          const d = result.data || {};
+          showInvToast(`✅ ${invType} ${partNo}：庫存 ${d.stock_before} → ${d.stock_after}`, d.low_stock ? 'warn' : 'success');
+          addInvSessionLog(partNo, invCurrentPart.part.name, invType, d.delta, d.stock_after, d.low_stock);
+          if (d.low_stock) setTimeout(() => showInvToast(`⚠️ ${partNo} 已低於安全庫存（${d.stock_after} ≤ ${d.safety}）`, 'warn'), 3000);
+          resetInvMoveCard();
+        } else {
+          alert('❌ 送出失敗：' + (result.message || '未知錯誤'));
+          if (result.message && result.message.indexOf('密碼') !== -1) verifiedPassword = '';
+          // 庫存已被其他人變動時，重新讀取最新數字
+          if (result.code === 'STOCK_CHANGED' || result.code === 'INSUFFICIENT') {
+            closeInvConfirm();
+            loadInvPart(partNo);
+          }
+        }
+      } catch (err) {
+        console.error(err);
+        alert('連線失敗，這筆可能沒有送出。請到「庫存查詢」確認後再重試。');
+      } finally {
+        invSubmitting = false;
+        btn.disabled = false;
+        btn.innerHTML = originalHtml;
+      }
+    }
+
+    function addInvSessionLog(partNo, name, type, delta, after, low) {
+      const wrap = document.getElementById('invSessionLogWrap');
+      const box = document.getElementById('invSessionLog');
+      const row = document.createElement('div');
+      row.className = 'flex items-center justify-between bg-gray-950 border border-gray-800 rounded px-3 py-2 gap-2';
+      const n = Number(delta);
+      row.innerHTML = `
+        <div class="min-w-0">
+          <span class="text-xs text-gray-500 font-mono">${invEsc(invFmtTime(Date.now()))}</span>
+          <span class="ml-1.5 font-mono text-blue-400">${invEsc(partNo)}</span>
+          <span class="ml-1.5 text-gray-300 text-xs">${invEsc(name || '')}</span>
+        </div>
+        <span class="whitespace-nowrap text-xs"><span class="text-gray-300">${invEsc(type)}</span>
+          <span class="font-mono font-bold ${n >= 0 ? 'text-green-400' : 'text-red-400'}">${n > 0 ? '+' : ''}${invEsc(delta)}</span>
+          <span class="text-gray-500">→ ${invEsc(after)}</span>${low ? ' <span class="text-amber-400">⚠️</span>' : ''}</span>`;
+      box.prepend(row);
+      while (box.children.length > 20) box.removeChild(box.lastChild);
+      wrap.classList.remove('hidden');
+    }
+
+    // ---------- 庫存查詢 ----------
+    async function invLookup() {
+      const partNo = document.getElementById('invLookupPartNo').value.trim();
+      const box = document.getElementById('invLookupResult');
+      if (!partNo) { alert('請輸入料號！'); return; }
+      box.innerHTML = `<div class="text-center text-gray-400 py-6"><div class="inline-block animate-spin rounded-full h-8 w-8 border-4 border-gray-700 border-t-blue-500 mb-2"></div><p>查詢中...</p></div>`;
+      try {
+        const result = await invApiGet({ action: 'getStock', part_no: partNo, limit: 30 });
+        if (result.status !== 'success' || !result.data || !result.data.part) {
+          box.innerHTML = `<div class="bg-red-950/40 border border-red-800/50 rounded-xl p-6 text-center text-red-400">❌ ${invEsc(result.message || '查無此料號')}</div>`;
+          return;
+        }
+        const d = result.data, p = d.part;
+        const hasSafety = d.safety !== null && d.safety !== undefined && d.safety !== '';
+        const isLow = hasSafety && Number(d.stock) <= Number(d.safety);
+        box.innerHTML = `
+          <div class="bg-gray-900 border border-gray-800 rounded-xl p-5 space-y-4 shadow-xl">
+            <div class="border-b border-gray-800 pb-3">
+              <span class="text-sm font-semibold px-2 py-0.5 bg-blue-900/60 text-blue-300 border border-blue-700/50 rounded-md">${invEsc(p.category || '未分類')}</span>
+              <h2 class="text-xl font-bold text-white mt-1">${invEsc(p.name || '未命名配件')}</h2>
+              <p class="font-mono font-semibold text-blue-400">${invEsc(p.part_no)}</p>
+            </div>
+            <div class="grid grid-cols-2 gap-3">
+              <div class="bg-gray-950 p-2.5 rounded border border-gray-800"><span class="text-gray-400 text-sm">目前庫存</span>
+                <p class="font-mono font-extrabold text-2xl ${isLow ? 'text-amber-400' : 'text-green-400'}">${invEsc(d.stock)}</p></div>
+              <div class="bg-gray-950 p-2.5 rounded border border-gray-800"><span class="text-gray-400 text-sm">安全庫存</span>
+                <p class="font-mono font-semibold text-2xl text-gray-300">${hasSafety ? invEsc(d.safety) : '未設定'}</p></div>
+              <div class="bg-gray-950 p-2.5 rounded border border-gray-800"><span class="text-gray-400 text-sm">規格</span>
+                <p class="font-semibold text-gray-200">${invEsc(p.spec_detail || p.spec || '-')}</p></div>
+              <div class="bg-gray-950 p-2.5 rounded border border-gray-800"><span class="text-gray-400 text-sm">當前儲位</span>
+                <p class="font-mono font-extrabold text-amber-400">${invEsc(p.location_in || '無')}</p></div>
+            </div>
+            ${isLow ? '<div class="bg-amber-950/40 border border-amber-800/50 rounded-lg p-3 text-sm text-amber-300">⚠️ 目前庫存已低於安全庫存</div>' : ''}
+            <div>
+              <h4 class="text-xs font-semibold text-gray-400 mb-2">異動紀錄（最近 ${(d.movements || []).length} 筆）</h4>
+              <div class="space-y-1.5 text-sm">${renderInvMovementRows(d.movements || [])}</div>
+            </div>
+          </div>`;
+      } catch (err) {
+        console.error(err);
+        box.innerHTML = '';
+        alert('連線失敗，請確認網路或 API 設定');
+      }
+    }
+
+    // ---------- 低庫存清單 ----------
+    async function loadLowStock() {
+      const box = document.getElementById('invLowResult');
+      box.innerHTML = `<div class="text-center text-gray-400 py-6"><div class="inline-block animate-spin rounded-full h-8 w-8 border-4 border-gray-700 border-t-blue-500 mb-2"></div><p>計算中...</p></div>`;
+      try {
+        const result = await invApiGet({ action: 'getLowStock' });
+        if (result.status !== 'success') {
+          box.innerHTML = `<div class="bg-red-950/40 border border-red-800/50 rounded-xl p-6 text-center text-red-400">❌ ${invEsc(result.message || '讀取失敗')}</div>`;
+          return;
+        }
+        const list = result.data || [];
+        if (list.length === 0) {
+          box.innerHTML = `<div class="bg-green-950/40 border border-green-800/50 rounded-xl p-6 text-center text-green-400">✅ 目前沒有低於安全庫存的配件</div>`;
+          return;
+        }
+        box.innerHTML = `<div class="text-sm text-gray-400 mb-2">共 ${list.length} 項低於安全庫存：</div>` + list.map(it => `
+          <button type="button" data-part="${invEsc(it.part_no)}" onclick="invOpenLookup(this.dataset.part)"
+                  class="w-full text-left flex items-center justify-between bg-gray-900 border border-gray-800 hover:border-amber-600/60 rounded-xl px-4 py-3 gap-3 transition">
+            <div class="min-w-0">
+              <p class="font-mono font-semibold text-blue-400">${invEsc(it.part_no)}</p>
+              <p class="text-sm text-gray-300 truncate">${invEsc(it.name || '')}</p>
+            </div>
+            <div class="text-right whitespace-nowrap">
+              <p class="font-mono font-extrabold text-xl ${Number(it.stock) <= 0 ? 'text-red-400' : 'text-amber-400'}">${invEsc(it.stock)}</p>
+              <p class="text-xs text-gray-500">安全 ${invEsc(it.safety)}</p>
+            </div>
+          </button>`).join('');
+      } catch (err) {
+        console.error(err);
+        box.innerHTML = '';
+        alert('連線失敗，請確認網路或 API 設定');
+      }
+    }
+
+    function invOpenLookup(partNo) {
+      document.getElementById('invLookupPartNo').value = partNo;
+      switchInvTab('lookup');
+      invLookup();
+    }
+  </script>
+</body>
+</html>
