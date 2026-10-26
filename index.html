@@ -30,28 +30,40 @@
   <!-- ==================== 左側側邊欄選單 ==================== -->
   <aside class="w-full md:w-64 bg-gray-900 border-b md:border-b-0 md:border-r border-gray-800 flex-shrink-0 p-4 flex flex-col justify-between">
     <div>
-      <!-- 系統 Title -->
-      <div class="flex items-center space-x-3 mb-8 px-2">
-        <span class="text-lg font-bold tracking-wide text-white">配件管理系統</span>
+      <!-- 系統 Title（點一下：未登入→開啟登入視窗；已登入→身分選單） -->
+      <div class="relative mb-8 px-2">
+        <button id="btnTitle" type="button" onclick="handleTitleClick(event)"
+                class="flex flex-col items-start text-left select-none focus:outline-none">
+          <span class="text-lg font-bold tracking-wide text-gray-100">配件管理系統</span>
+          <span id="roleNameLabel" class="hidden text-xs text-gray-500"></span>
+        </button>
+        <div id="roleMenu" class="hidden absolute left-2 top-full mt-2 z-50 w-48 bg-gray-900 border border-gray-700 rounded-lg shadow-2xl p-2 space-y-1">
+          <p class="px-2 pt-1 text-xs text-gray-500">目前身分</p>
+          <p id="roleMenuName" class="px-2 pb-1 text-sm font-semibold text-gray-100"></p>
+          <button type="button" onclick="closeRoleMenu(); openLoginModal();"
+                  class="w-full text-left px-2 py-1.5 rounded-md text-sm text-gray-300 hover:bg-gray-800 hover:text-gray-100 transition">切換身分</button>
+          <button type="button" onclick="closeRoleMenu(); logout();"
+                  class="w-full text-left px-2 py-1.5 rounded-md text-sm text-gray-300 hover:bg-gray-800 hover:text-gray-100 transition">登出</button>
+        </div>
       </div>
 
       <!-- 選單列表 -->
       <nav class="space-y-1">
         <a href="#" id="nav-spec" onclick="event.preventDefault(); switchView('search')"
-           class="flex items-center space-x-3 px-3 py-2.5 rounded-lg bg-blue-600 text-white font-medium transition cursor-default">
+           class="flex items-center space-x-3 px-3 py-2.5 rounded-lg bg-blue-600 text-gray-100 font-medium transition cursor-default">
           <span>配件查詢</span>
         </a>
         <a href="#" id="nav-inv" onclick="event.preventDefault(); switchView('inventory')"
-           class="flex items-center space-x-3 px-3 py-2.5 rounded-lg text-gray-400 hover:bg-gray-800 hover:text-white font-medium transition">
+           class="hidden flex items-center space-x-3 px-3 py-2.5 rounded-lg text-gray-400 hover:bg-gray-800 hover:text-gray-100 font-medium transition">
           <span>出入庫管理</span>
         </a>
       </nav>
     </div>
 
-    <!-- 左下角：新增資料按鈕 (+ 圖示) -->
-    <div class="mt-8 pt-4 border-t border-gray-800 px-1">
-      <button onclick="openAddModal()" 
-              class="w-full flex items-center justify-center space-x-2 bg-gray-800 hover:bg-green-600 text-gray-300 hover:text-white font-medium py-2.5 px-4 rounded-lg transition duration-200 border border-gray-700 hover:border-green-500 shadow-md">
+    <!-- 左下角：新增資料按鈕（只有管理員看得到） -->
+    <div id="addBtnWrap" class="hidden mt-8 pt-4 border-t border-gray-800 px-1">
+      <button id="btnOpenAdd" onclick="openAddModal()" 
+              class="w-full flex items-center justify-center space-x-2 bg-gray-800 hover:bg-green-600 text-gray-300 hover:text-gray-100 font-medium py-2.5 px-4 rounded-lg transition duration-200 border border-gray-700 hover:border-green-500 shadow-md">
         <!-- SVG + 圖示 -->
         <svg class="w-5 h-5 stroke-current" fill="none" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 4v16m8-8H4"></path>
@@ -67,17 +79,17 @@
 
       <!-- 頁面標題與三個獨立搜尋按鈕 -->
       <div class="border-b border-gray-800 pb-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <h1 class="text-2xl font-bold text-white">配件資料查詢</h1>
+        <h1 class="text-2xl font-bold text-gray-100">配件資料查詢</h1>
         
         <!-- 🌟 三個選擇方塊  -->
         <div class="flex bg-gray-900 p-1 rounded-lg border border-gray-800 text-xs font-semibold gap-1">
-          <button id="tabBtnPartNo" onclick="switchSearchTab('partNo')" class="px-3 py-1.5 rounded-md text-gray-400 hover:text-white transition">
+          <button id="tabBtnPartNo" onclick="switchSearchTab('partNo')" class="px-3 py-1.5 rounded-md text-gray-400 hover:text-gray-100 transition">
             料號查詢
           </button>
-          <button id="tabBtnName" onclick="switchSearchTab('name')" class="px-3 py-1.5 rounded-md text-gray-400 hover:text-white transition">
+          <button id="tabBtnName" onclick="switchSearchTab('name')" class="px-3 py-1.5 rounded-md text-gray-400 hover:text-gray-100 transition">
             名稱查詢
           </button>
-          <button id="tabBtnSpec" onclick="switchSearchTab('spec')" class="px-3 py-1.5 rounded-md bg-blue-600 text-white transition">
+          <button id="tabBtnSpec" onclick="switchSearchTab('spec')" class="px-3 py-1.5 rounded-md bg-blue-600 text-gray-100 transition">
             尺寸查詢
           </button>
         </div>
@@ -90,14 +102,14 @@
           <input type="text" id="inputPartNo" placeholder="完整或部分料號" 
                  oninput="handlePartNoInput()"
                  onkeydown="if(event.key === 'Enter'){ event.preventDefault(); handleSearch('part_no'); }"
-                 class="w-full bg-gray-950 border border-gray-700 text-white placeholder-gray-500 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-blue-500">
+                 class="w-full bg-gray-950 border border-gray-700 text-gray-100 placeholder-gray-500 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-blue-500">
         </div>
 
         <!-- 料號查詢相似項目清單 -->
         <div id="partNoSuggestions" class="hidden flex flex-wrap items-center gap-1.5 pt-1"></div>
 
         <div class="flex flex-col sm:flex-row gap-2 pt-2">
-          <button onclick="handleSearch('part_no')" class="flex-1 bg-blue-600 hover:bg-blue-500 text-white font-semibold py-2.5 rounded-lg transition shadow-lg shadow-blue-600/30">
+          <button onclick="handleSearch('part_no')" class="flex-1 bg-blue-600 hover:bg-blue-500 text-gray-100 font-semibold py-2.5 rounded-lg transition shadow-lg shadow-blue-600/30">
             查詢料號
           </button>
           <button onclick="clearInputs()" class="bg-gray-800 hover:bg-gray-700 text-gray-300 font-semibold px-4 py-2.5 rounded-lg transition">
@@ -112,11 +124,11 @@
           <label class="block text-xs font-medium text-gray-400 mb-1">名稱</label>
           <input type="text" id="inputName" placeholder="輸入名稱" 
                  onkeydown="if(event.key === 'Enter'){ event.preventDefault(); handleSearch('name'); }"
-                 class="w-full bg-gray-950 border border-gray-700 text-white placeholder-gray-500 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-blue-500">
+                 class="w-full bg-gray-950 border border-gray-700 text-gray-100 placeholder-gray-500 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-blue-500">
         </div>
 
         <div class="flex flex-col sm:flex-row gap-2 pt-2">
-          <button onclick="handleSearch('name')" class="flex-1 bg-blue-600 hover:bg-blue-500 text-white font-semibold py-2.5 rounded-lg transition shadow-lg shadow-blue-600/30">
+          <button onclick="handleSearch('name')" class="flex-1 bg-blue-600 hover:bg-blue-500 text-gray-100 font-semibold py-2.5 rounded-lg transition shadow-lg shadow-blue-600/30">
             查詢名稱
           </button>
           <button onclick="clearInputs()" class="bg-gray-800 hover:bg-gray-700 text-gray-300 font-semibold px-4 py-2.5 rounded-lg transition">
@@ -133,21 +145,21 @@
             <input type="number" step="any" id="inputLength" placeholder="" 
                    oninput="handleSpecInput()"
                    onkeydown="if(event.key === 'Enter'){ event.preventDefault(); handleSpecSearch(); }"
-                   class="w-full bg-gray-950 border border-gray-700 text-white placeholder-gray-500 rounded-lg px-3 py-2 focus:outline-none focus:border-blue-500">
+                   class="w-full bg-gray-950 border border-gray-700 text-gray-100 placeholder-gray-500 rounded-lg px-3 py-2 focus:outline-none focus:border-blue-500">
           </div>
           <div>
             <label class="block text-xs font-medium text-gray-400 mb-1">內徑</label>
             <input type="number" step="any" id="inputInner" placeholder="" 
                    oninput="handleSpecInput()"
                    onkeydown="if(event.key === 'Enter'){ event.preventDefault(); handleSpecSearch(); }"
-                   class="w-full bg-gray-950 border border-gray-700 text-white placeholder-gray-500 rounded-lg px-3 py-2 focus:outline-none focus:border-blue-500">
+                   class="w-full bg-gray-950 border border-gray-700 text-gray-100 placeholder-gray-500 rounded-lg px-3 py-2 focus:outline-none focus:border-blue-500">
           </div>
           <div>
             <label class="block text-xs font-medium text-gray-400 mb-1">外徑</label>
             <input type="number" step="any" id="inputOuter" placeholder="" 
                    oninput="handleSpecInput()"
                    onkeydown="if(event.key === 'Enter'){ event.preventDefault(); handleSpecSearch(); }"
-                   class="w-full bg-gray-950 border border-gray-700 text-white placeholder-gray-500 rounded-lg px-3 py-2 focus:outline-none focus:border-blue-500">
+                   class="w-full bg-gray-950 border border-gray-700 text-gray-100 placeholder-gray-500 rounded-lg px-3 py-2 focus:outline-none focus:border-blue-500">
           </div>
         </div>
 
@@ -155,7 +167,7 @@
         <div id="specSuggestions" class="hidden flex flex-wrap items-center gap-1.5 pt-1"></div>
 
         <div class="flex flex-col sm:flex-row gap-2 pt-2">
-          <button onclick="handleSpecSearch()" class="flex-1 bg-blue-600 hover:bg-blue-500 text-white font-semibold py-2.5 rounded-lg transition shadow-lg shadow-blue-600/30">
+          <button onclick="handleSpecSearch()" class="flex-1 bg-blue-600 hover:bg-blue-500 text-gray-100 font-semibold py-2.5 rounded-lg transition shadow-lg shadow-blue-600/30">
             查詢尺寸
           </button>
           <button onclick="clearInputs()" class="bg-gray-800 hover:bg-gray-700 text-gray-300 font-semibold px-4 py-2.5 rounded-lg transition">
@@ -185,11 +197,11 @@
 
       <!-- 頁面標題與三個子頁籤 -->
       <div class="border-b border-gray-800 pb-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <h1 class="text-2xl font-bold text-white">出入庫管理</h1>
+        <h1 class="text-2xl font-bold text-gray-100">出入庫管理</h1>
         <div class="flex bg-gray-900 p-1 rounded-lg border border-gray-800 text-xs font-semibold gap-1">
-          <button id="invTabBtnScan" onclick="switchInvTab('scan')" class="px-3 py-1.5 rounded-md bg-blue-600 text-white transition">掃碼異動</button>
-          <button id="invTabBtnLookup" onclick="switchInvTab('lookup')" class="px-3 py-1.5 rounded-md text-gray-400 hover:text-white transition">庫存查詢</button>
-          <button id="invTabBtnLow" onclick="switchInvTab('low')" class="px-3 py-1.5 rounded-md text-gray-400 hover:text-white transition">低庫存清單</button>
+          <button id="invTabBtnScan" onclick="switchInvTab('scan')" class="px-3 py-1.5 rounded-md bg-blue-600 text-gray-100 transition">掃碼異動</button>
+          <button id="invTabBtnLookup" onclick="switchInvTab('lookup')" class="px-3 py-1.5 rounded-md text-gray-400 hover:text-gray-100 transition">庫存查詢</button>
+          <button id="invTabBtnLow" onclick="switchInvTab('low')" class="px-3 py-1.5 rounded-md text-gray-400 hover:text-gray-100 transition">低庫存清單</button>
         </div>
       </div>
 
@@ -203,7 +215,7 @@
           </div>
           <div id="invReader" class="hidden w-full overflow-hidden rounded-lg border border-gray-700 bg-black"></div>
           <div class="flex flex-col sm:flex-row gap-2">
-            <button id="invBtnStartScan" onclick="startInvScanner()" class="flex-1 bg-blue-600 hover:bg-blue-500 text-white font-semibold py-3 rounded-lg transition shadow-lg shadow-blue-600/30">
+            <button id="invBtnStartScan" onclick="startInvScanner()" class="flex-1 bg-blue-600 hover:bg-blue-500 text-gray-100 font-semibold py-3 rounded-lg transition shadow-lg shadow-blue-600/30">
               掃描 QR CODE
             </button>
             <button id="invBtnStopScan" onclick="stopInvScanner()" class="hidden bg-gray-800 hover:bg-gray-700 text-gray-300 font-semibold px-4 py-3 rounded-lg transition">
@@ -217,8 +229,8 @@
             <div class="flex gap-2">
               <input type="text" id="invManualPartNo" placeholder="例: SA07-2211" autocapitalize="characters"
                      onkeydown="if(event.key === 'Enter'){ event.preventDefault(); invManualLookup(); }"
-                     class="flex-1 bg-gray-950 border border-gray-700 text-white placeholder-gray-500 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-blue-500">
-              <button onclick="invManualLookup()" class="bg-gray-800 hover:bg-gray-700 text-gray-200 font-semibold px-4 py-2 rounded-lg transition text-sm">輸入</button>
+                     class="flex-1 bg-gray-950 border border-gray-700 text-gray-100 placeholder-gray-500 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-blue-500">
+              <button onclick="invManualLookup()" class="bg-gray-800 hover:bg-gray-700 text-gray-100 font-semibold px-4 py-2 rounded-lg transition text-sm">輸入</button>
             </div>
           </div>
         </div>
@@ -234,10 +246,10 @@
           <div class="border-b border-gray-800 pb-3 flex items-start justify-between gap-3">
             <div>
               <span id="invPartCategory" class="text-sm font-semibold px-2 py-0.5 bg-blue-900/60 text-blue-300 border border-blue-700/50 rounded-md">未分類</span>
-              <h2 id="invPartName" class="text-xl font-bold text-white mt-1">-</h2>
-              <p id="invPartNo" class="font-mono font-semibold text-blue-400 mt-0.5">-</p>
+              <h2 id="invPartName" class="text-xl font-bold text-gray-100 mt-1">-</h2>
+              <p id="invPartNo" class="font-mono font-semibold text-gray-100 mt-0.5">-</p>
             </div>
-            <button onclick="resetInvMoveCard()" class="text-gray-400 hover:text-white text-2xl font-bold leading-none p-1 rounded-lg hover:bg-gray-800 transition" title="取消">&times;</button>
+            <button onclick="resetInvMoveCard()" class="text-gray-400 hover:text-gray-100 text-2xl font-bold leading-none p-1 rounded-lg hover:bg-gray-800 transition" title="取消">&times;</button>
           </div>
 
           <div class="grid grid-cols-2 gap-3">
@@ -251,11 +263,11 @@
             </div>
             <div class="bg-gray-950 p-2.5 rounded border border-gray-800">
               <span class="text-gray-400 text-sm">規格 (長*內*外)</span>
-              <p id="invPartSpec" class="font-semibold text-gray-200 mt-0.5">-</p>
+              <p id="invPartSpec" class="font-semibold text-gray-100 mt-0.5">-</p>
             </div>
             <div class="bg-gray-950 p-2.5 rounded border border-gray-800">
               <span class="text-gray-400 text-sm">當前儲位</span>
-              <p id="invPartLoc" class="font-mono font-extrabold text-amber-400 mt-0.5">-</p>
+              <p id="invPartLoc" class="font-mono font-extrabold text-gray-100 mt-0.5">-</p>
             </div>
           </div>
           <div id="invLowWarn" class="hidden bg-amber-950/40 border border-amber-800/50 rounded-lg p-3 text-sm text-amber-300">⚠️ 目前庫存已低於安全庫存</div>
@@ -276,10 +288,10 @@
           <div>
             <label id="invQtyLabel" class="block text-xs font-medium text-gray-400 mb-1">數量</label>
             <div class="flex gap-2">
-              <button type="button" onclick="bumpInvQty(-1)" class="bg-gray-800 hover:bg-gray-700 text-white text-xl font-bold w-14 rounded-lg transition">−</button>
+              <button type="button" onclick="bumpInvQty(-1)" class="bg-gray-800 hover:bg-gray-700 text-gray-100 text-xl font-bold w-14 rounded-lg transition">−</button>
               <input type="number" id="invQty" inputmode="numeric" min="0" step="1" value="1"
-                     class="flex-1 text-center text-2xl font-mono bg-gray-950 border border-gray-700 text-white rounded-lg px-3 py-2 focus:outline-none focus:border-blue-500">
-              <button type="button" onclick="bumpInvQty(1)" class="bg-gray-800 hover:bg-gray-700 text-white text-xl font-bold w-14 rounded-lg transition">＋</button>
+                     class="flex-1 text-center text-2xl font-mono bg-gray-950 border border-gray-700 text-gray-100 rounded-lg px-3 py-2 focus:outline-none focus:border-blue-500">
+              <button type="button" onclick="bumpInvQty(1)" class="bg-gray-800 hover:bg-gray-700 text-gray-100 text-xl font-bold w-14 rounded-lg transition">＋</button>
             </div>
           </div>
 
@@ -288,16 +300,16 @@
             <div>
               <label class="block text-xs font-medium text-gray-400 mb-1">經手人 <span class="text-blue-400">（會記住）</span></label>
               <input type="text" id="invHandler" placeholder="你的名字"
-                     class="w-full bg-gray-950 border border-gray-700 text-white placeholder-gray-500 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-blue-500">
+                     class="w-full bg-gray-950 border border-gray-700 text-gray-100 placeholder-gray-500 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-blue-500">
             </div>
             <div>
               <label class="block text-xs font-medium text-gray-400 mb-1">備註</label>
               <input type="text" id="invNote" placeholder="單號、客戶、原因…（選填）"
-                     class="w-full bg-gray-950 border border-gray-700 text-white placeholder-gray-500 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-blue-500">
+                     class="w-full bg-gray-950 border border-gray-700 text-gray-100 placeholder-gray-500 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-blue-500">
             </div>
           </div>
 
-          <button id="invBtnSubmit" onclick="openInvConfirm()" class="w-full bg-green-600 hover:bg-green-500 text-white font-semibold py-3 rounded-lg transition shadow-lg shadow-green-600/30">
+          <button id="invBtnSubmit" onclick="openInvConfirm()" class="w-full bg-green-600 hover:bg-green-500 text-gray-100 font-semibold py-3 rounded-lg transition shadow-lg shadow-green-600/30">
             下一步：確認異動
           </button>
 
@@ -325,9 +337,9 @@
             <label class="block text-xs font-medium text-gray-400 mb-1">料號</label>
             <input type="text" id="invLookupPartNo" placeholder="完整料號"
                    onkeydown="if(event.key === 'Enter'){ event.preventDefault(); invLookup(); }"
-                   class="w-full bg-gray-950 border border-gray-700 text-white placeholder-gray-500 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-blue-500">
+                   class="w-full bg-gray-950 border border-gray-700 text-gray-100 placeholder-gray-500 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-blue-500">
           </div>
-          <button onclick="invLookup()" class="w-full bg-blue-600 hover:bg-blue-500 text-white font-semibold py-2.5 rounded-lg transition shadow-lg shadow-blue-600/30">查詢庫存與異動</button>
+          <button onclick="invLookup()" class="w-full bg-blue-600 hover:bg-blue-500 text-gray-100 font-semibold py-2.5 rounded-lg transition shadow-lg shadow-blue-600/30">查詢庫存與異動</button>
         </div>
         <div id="invLookupResult" class="space-y-4"></div>
       </div>
@@ -336,7 +348,7 @@
       <div id="invBoxLow" class="hidden space-y-4">
         <div class="bg-gray-900 border border-gray-800 rounded-xl p-5 space-y-3 shadow-xl">
           <p class="text-sm text-gray-400">列出「目前庫存 ≤ 安全庫存」的配件（只計算有設定安全庫存的料號）。</p>
-          <button onclick="loadLowStock()" class="w-full bg-amber-600 hover:bg-amber-500 text-white font-semibold py-2.5 rounded-lg transition shadow-md shadow-amber-600/30">重新整理低庫存清單</button>
+          <button onclick="loadLowStock()" class="w-full bg-blue-600 hover:bg-blue-500 text-gray-100 font-semibold py-2.5 rounded-lg transition shadow-md shadow-blue-600/30">重新整理低庫存清單</button>
         </div>
         <div id="invLowResult" class="space-y-2"></div>
       </div>
@@ -351,9 +363,9 @@
       <div class="flex justify-between items-center border-b border-gray-800 pb-4">
         <div class="flex items-center space-x-2.5">
           <span class="text-xl">➕</span>
-          <h3 class="text-lg font-bold text-white tracking-wide">新增配件資料</h3>
+          <h3 class="text-lg font-bold text-gray-100 tracking-wide">新增配件資料</h3>
         </div>
-        <button onclick="closeAddModal()" class="text-gray-400 hover:text-white text-2xl font-bold leading-none p-1 rounded-lg hover:bg-gray-800 transition">&times;</button>
+        <button onclick="closeAddModal()" class="text-gray-400 hover:text-gray-100 text-2xl font-bold leading-none p-1 rounded-lg hover:bg-gray-800 transition">&times;</button>
       </div>
 
       <!-- 彈窗內容：現有資料（右側「新增資料區」已移除） -->
@@ -383,16 +395,16 @@
                 <input type="text" id="existPartNoInput" placeholder="輸入料號，例: SA07-2211"
                        oninput="handleExistPartNoInput(this.value)"
                        onkeydown="if(event.key === 'Enter'){ event.preventDefault(); triggerExistSearch(); }"
-                       class="w-full bg-gray-900 border border-blue-500/50 focus:border-blue-500 text-white placeholder-gray-500 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500">
+                       class="w-full bg-gray-900 border border-blue-500/50 focus:border-blue-500 text-gray-100 placeholder-gray-500 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500">
                 <button id="existClearBtn" type="button" onclick="clearExistingData()" title="清除"
-                        class="hidden absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-white text-base">
+                        class="hidden absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-100 text-base">
                   &times;
                 </button>
               </div>
               <!-- 修改 / 新增 / 儲存 / 取消 按鈕群 (取代原本的查詢按鈕) -->
               <div id="existActionArea" class="flex items-center gap-1.5">
                 <button id="btnEditExist" type="button" onclick="handleEditClick()" 
-                        class="bg-amber-600 hover:bg-amber-500 text-white text-sm font-semibold px-4 py-2 rounded-lg transition flex items-center space-x-1.5 shadow-md shadow-amber-600/20">
+                        class="bg-amber-600 hover:bg-amber-500 text-gray-100 text-sm font-semibold px-4 py-2 rounded-lg transition flex items-center space-x-1.5 shadow-md shadow-amber-600/20">
                   <svg id="btnEditIcon" class="w-4 h-4 stroke-current" fill="none" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path>
                   </svg>
@@ -400,7 +412,7 @@
                 </button>
 
                 <button id="btnSaveExist" type="button" onclick="saveExistingDataChanges()" 
-                        class="hidden bg-green-600 hover:bg-green-500 text-white text-sm font-semibold px-3.5 py-2 rounded-lg transition flex items-center space-x-1 shadow-md shadow-green-600/20">
+                        class="hidden bg-green-600 hover:bg-green-500 text-gray-100 text-sm font-semibold px-3.5 py-2 rounded-lg transition flex items-center space-x-1 shadow-md shadow-green-600/20">
                   <svg class="w-4 h-4 stroke-current" fill="none" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
                   </svg>
@@ -425,12 +437,12 @@
               <div>
                 <label class="block font-medium text-gray-400 mb-1">料號 (part_no)</label>
                 <input type="text" id="existPartNo" readonly placeholder="-" 
-                       class="w-full bg-gray-900 border border-gray-800 text-gray-200 font-mono font-medium rounded px-3 py-1.5 focus:outline-none cursor-default">
+                       class="w-full bg-gray-900 border border-gray-800 text-gray-100 font-mono font-medium rounded px-3 py-1.5 focus:outline-none cursor-default">
               </div>
               <div>
                 <label class="block font-medium text-gray-400 mb-1">名稱 (name)</label>
                 <input type="text" id="existName" readonly placeholder="-" 
-                       class="w-full bg-gray-900 border border-gray-800 text-gray-200 rounded px-3 py-1.5 focus:outline-none cursor-default">
+                       class="w-full bg-gray-900 border border-gray-800 text-gray-100 rounded px-3 py-1.5 focus:outline-none cursor-default">
               </div>
             </div>
 
@@ -439,12 +451,12 @@
               <div>
                 <label class="block font-medium text-gray-400 mb-1">種類 (category)</label>
                 <input type="text" id="existCategory" readonly placeholder="-" 
-                       class="w-full bg-gray-900 border border-gray-800 text-gray-200 rounded px-3 py-1.5 focus:outline-none cursor-default">
+                       class="w-full bg-gray-900 border border-gray-800 text-gray-100 rounded px-3 py-1.5 focus:outline-none cursor-default">
               </div>
               <div>
                 <label class="block font-medium text-gray-400 mb-1">規格簡述 (spec)</label>
                 <input type="text" id="existSpec" readonly placeholder="-" 
-                       class="w-full bg-gray-900 border border-gray-800 text-gray-200 rounded px-3 py-1.5 focus:outline-none cursor-default">
+                       class="w-full bg-gray-900 border border-gray-800 text-gray-100 rounded px-3 py-1.5 focus:outline-none cursor-default">
               </div>
             </div>
 
@@ -453,17 +465,17 @@
               <div>
                 <label class="block font-medium text-gray-400 mb-1">長度 (length)</label>
                 <input type="text" id="existLength" readonly placeholder="-" 
-                       class="w-full bg-gray-900 border border-gray-800 text-gray-200 rounded px-3 py-1.5 focus:outline-none cursor-default">
+                       class="w-full bg-gray-900 border border-gray-800 text-gray-100 rounded px-3 py-1.5 focus:outline-none cursor-default">
               </div>
               <div>
                 <label class="block font-medium text-gray-400 mb-1">內徑 (inner_dia)</label>
                 <input type="text" id="existInner" readonly placeholder="-" 
-                       class="w-full bg-gray-900 border border-gray-800 text-gray-200 rounded px-3 py-1.5 focus:outline-none cursor-default">
+                       class="w-full bg-gray-900 border border-gray-800 text-gray-100 rounded px-3 py-1.5 focus:outline-none cursor-default">
               </div>
               <div>
                 <label class="block font-medium text-gray-400 mb-1">外徑 (outer_dia)</label>
                 <input type="text" id="existOuter" readonly placeholder="-" 
-                       class="w-full bg-gray-900 border border-gray-800 text-gray-200 rounded px-3 py-1.5 focus:outline-none cursor-default">
+                       class="w-full bg-gray-900 border border-gray-800 text-gray-100 rounded px-3 py-1.5 focus:outline-none cursor-default">
               </div>
             </div>
 
@@ -472,12 +484,12 @@
               <div>
                 <label class="block font-medium text-gray-400 mb-1">當前儲位 (location_in)</label>
                 <input type="text" id="existLocIn" readonly placeholder="-" 
-                       class="w-full bg-gray-900 border border-gray-800 text-gray-200 font-semibold rounded px-3 py-1.5 focus:outline-none cursor-default">
+                       class="w-full bg-gray-900 border border-gray-800 text-gray-100 font-semibold rounded px-3 py-1.5 focus:outline-none cursor-default">
               </div>
               <div>
                 <label class="block font-medium text-gray-400 mb-1">組裝位置 (location_out)</label>
                 <input type="text" id="existLocOut" readonly placeholder="-" 
-                       class="w-full bg-gray-900 border border-gray-800 text-gray-200 font-semibold rounded px-3 py-1.5 focus:outline-none cursor-default">
+                       class="w-full bg-gray-900 border border-gray-800 text-gray-100 font-semibold rounded px-3 py-1.5 focus:outline-none cursor-default">
               </div>
             </div>
 
@@ -485,14 +497,14 @@
             <div>
               <label class="block font-medium text-gray-400 mb-1">詳細規格 (spec_detail)</label>
               <input type="text" id="existSpecDetail" readonly placeholder="-" 
-                     class="w-full bg-gray-900 border border-gray-800 text-gray-200 rounded px-3 py-1.5 focus:outline-none cursor-default">
+                     class="w-full bg-gray-900 border border-gray-800 text-gray-100 rounded px-3 py-1.5 focus:outline-none cursor-default">
             </div>
 
             <!-- 備註說明 -->
             <div>
               <label class="block font-medium text-gray-400 mb-1">備註說明 (notes)</label>
               <textarea id="existNotes" rows="2" readonly placeholder="-" 
-                        class="w-full bg-gray-900 border border-gray-800 text-gray-200 rounded px-3 py-1.5 focus:outline-none cursor-default resize-none"></textarea>
+                        class="w-full bg-gray-900 border border-gray-800 text-gray-100 rounded px-3 py-1.5 focus:outline-none cursor-default resize-none"></textarea>
             </div>
 
           </div>
@@ -510,7 +522,7 @@
     </div>
   </div>
 
-  <!-- ==================== 密碼驗證彈窗 (Modal) ==================== -->
+  <!-- ==================== 登入／切換身分彈窗 (Modal) ==================== -->
   <div id="passwordModal" class="hidden fixed inset-0 bg-black/80 backdrop-blur-sm z-[60] flex items-center justify-center p-4">
     <div class="bg-gray-900 border border-gray-800 rounded-2xl w-full max-w-sm p-6 space-y-4 shadow-2xl">
       <div class="flex items-center space-x-3 text-amber-400">
@@ -520,17 +532,18 @@
           </svg>
         </div>
         <div>
-          <h3 class="text-base font-bold text-white">管理權限驗證</h3>
-          <p class="text-xs text-gray-400">修改配件資料需輸入管理密碼</p>
+          <h3 class="text-base font-bold text-gray-100">登入／切換身分</h3>
+          <p id="loginModalHint" class="text-xs text-gray-400">請輸入密碼</p>
         </div>
       </div>
 
       <div class="space-y-1.5">
-        <label class="block text-xs font-semibold text-gray-300">管理密碼</label>
+        <label class="block text-xs font-semibold text-gray-300">密碼</label>
         <input type="password" id="adminPasswordInput" placeholder="請輸入密碼"
                onkeydown="if(event.key === 'Enter'){ event.preventDefault(); verifyAdminPassword(); }"
-               class="w-full bg-gray-950 border border-gray-700 focus:border-amber-500 text-white placeholder-gray-500 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-amber-500">
+               class="w-full bg-gray-950 border border-gray-700 focus:border-amber-500 text-gray-100 placeholder-gray-500 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-amber-500">
         <p id="passwordErrorMsg" class="hidden text-xs text-red-400 pt-1">❌ 密碼錯誤，請重新輸入！</p>
+        <p class="text-xs text-gray-500 pt-1">密碼會記在這台裝置上，不用再輸入；按「登出」即可清除。</p>
       </div>
 
       <div class="flex gap-2 pt-2">
@@ -539,8 +552,8 @@
           取消
         </button>
         <button id="btnSubmitPassword" type="button" onclick="verifyAdminPassword()" 
-                class="flex-1 bg-amber-600 hover:bg-amber-500 text-white text-sm font-semibold py-2 rounded-lg transition shadow-md shadow-amber-600/30 flex items-center justify-center space-x-1">
-          <span>確認解鎖</span>
+                class="flex-1 bg-amber-600 hover:bg-amber-500 text-gray-100 text-sm font-semibold py-2 rounded-lg transition shadow-md shadow-amber-600/30 flex items-center justify-center space-x-1">
+          <span>登入</span>
         </button>
       </div>
     </div>
@@ -549,11 +562,11 @@
   <!-- ==================== 進銷存：送出前確認彈窗 ==================== -->
   <div id="invConfirmModal" class="hidden fixed inset-0 bg-black/80 backdrop-blur-sm z-[60] flex items-center justify-center p-4">
     <div class="bg-gray-900 border border-gray-800 rounded-2xl w-full max-w-sm p-6 space-y-4 shadow-2xl">
-      <h3 class="text-base font-bold text-white">請確認這筆異動</h3>
+      <h3 class="text-base font-bold text-gray-100">請確認這筆異動</h3>
       <div id="invConfirmBody" class="bg-gray-950 border border-gray-800 rounded-lg p-4 space-y-1.5 text-sm text-gray-300"></div>
       <div class="flex gap-2 pt-2">
         <button type="button" onclick="closeInvConfirm()" class="flex-1 bg-gray-800 hover:bg-gray-700 text-gray-300 text-sm font-semibold py-2.5 rounded-lg transition">返回修改</button>
-        <button id="invBtnConfirmSend" type="button" onclick="submitInvMovement()" class="flex-1 bg-green-600 hover:bg-green-500 text-white text-sm font-semibold py-2.5 rounded-lg transition shadow-md shadow-green-600/30">確認送出</button>
+        <button id="invBtnConfirmSend" type="button" onclick="submitInvMovement()" class="flex-1 bg-green-600 hover:bg-green-500 text-gray-100 text-sm font-semibold py-2.5 rounded-lg transition shadow-md shadow-green-600/30">確認送出</button>
       </div>
     </div>
   </div>
@@ -581,8 +594,8 @@
       boxSpec.classList.add('hidden');
 
       // 重設按鈕樣式
-      const defaultBtnClass = "px-3 py-1.5 rounded-md text-gray-400 hover:text-white transition";
-      const activeBtnClass = "px-3 py-1.5 rounded-md bg-blue-600 text-white transition";
+      const defaultBtnClass = "px-3 py-1.5 rounded-md text-gray-400 hover:text-gray-100 transition";
+      const activeBtnClass = "px-3 py-1.5 rounded-md bg-blue-600 text-gray-100 transition";
 
       btnPartNo.className = defaultBtnClass;
       btnName.className = defaultBtnClass;
@@ -760,8 +773,8 @@
         const isActive = item.part_no === activePartNo;
         btn.className = `px-2.5 py-1 rounded-lg text-xs transition border flex items-center gap-1.5 shadow-sm ${
           isActive 
-            ? 'bg-blue-600 border-blue-500 text-white font-medium shadow-blue-600/30' 
-            : 'bg-gray-800 border-gray-700 text-gray-300 hover:bg-gray-700 hover:text-white'
+            ? 'bg-blue-600 border-blue-500 text-gray-100 font-medium shadow-blue-600/30' 
+            : 'bg-gray-800 border-gray-700 text-gray-300 hover:bg-gray-700 hover:text-gray-100'
         }`;
 
         // 格式化按鈕內容：料號 (品名)
@@ -908,8 +921,8 @@
         const isActive = item.part_no === activePartNo;
         btn.className = `px-2.5 py-1 rounded-lg text-xs transition border flex items-center gap-1.5 shadow-sm ${
           isActive 
-            ? 'bg-blue-600 border-blue-500 text-white font-medium shadow-blue-600/30' 
-            : 'bg-gray-800 border-gray-700 text-gray-300 hover:bg-gray-700 hover:text-white'
+            ? 'bg-blue-600 border-blue-500 text-gray-100 font-medium shadow-blue-600/30' 
+            : 'bg-gray-800 border-gray-700 text-gray-300 hover:bg-gray-700 hover:text-gray-100'
         }`;
 
         // 僅顯示 name 與 spec_detail（移除 hover 提示）
@@ -1011,32 +1024,32 @@
             <span class="text-xl font-semibold px-2 py-0.5 bg-blue-900/60 text-blue-300 border border-blue-700/50 rounded-md">
               ${data.category || '未分類'}
             </span>
-            <h2 class="text-xl font-bold text-white mt-1">${index + 1}. ${data.name || '未命名配件'}</h2>
+            <h2 class="text-xl font-bold text-gray-100 mt-1">${index + 1}. ${data.name || '未命名配件'}</h2>
           </div>
 
           <div class="grid grid-cols-2 gap-3 text-xl">
             <div class="bg-gray-950 p-2.5 rounded border border-gray-800">
               <span class="text-gray-400">料號</span>
-              <p class="font-mono font-semibold text-gray-200 mt-0.5">${data.part_no || '-'}</p>
+              <p class="font-mono font-semibold text-gray-100 mt-0.5">${data.part_no || '-'}</p>
             </div>
 
             <div class="bg-gray-950 p-2.5 rounded border border-gray-800">
               <span class="text-gray-400">當前儲位</span>
-              <p class="font-mono font-extrabold text-gray-200 mt-0.5">${data.location_in || '無'}</p>
+              <p class="font-mono font-extrabold text-gray-100 mt-0.5">${data.location_in || '無'}</p>
             </div>
 
             <div class="bg-gray-950 p-2.5 rounded border border-gray-800">
               <span class="text-gray-400">規格 (長*內*外)</span>
-              <p class="font-semibold text-gray-200 mt-0.5">${data.spec || '-'}</p>
+              <p class="font-semibold text-gray-100 mt-0.5">${data.spec || '-'}</p>
             </div>
             <div class="bg-gray-950 p-2.5 rounded border border-gray-800">
               <span class="text-gray-400">組裝位置</span>
-              <p class="font-semibold text-gray-200 mt-0.5">${data.location_out || '無'}</p>
+              <p class="font-semibold text-gray-100 mt-0.5">${data.location_out || '無'}</p>
             </div>
           </div>
 
           <div class="bg-gray-950 p-3 rounded border border-gray-800 space-y-1 text-xl text-gray-400">
-            <p><strong>詳細規格：</strong><span class="text-gray-200">${data.spec_detail || '-'}</span></p>
+            <p><strong>詳細規格：</strong><span class="text-gray-100">${data.spec_detail || '-'}</span></p>
             <p><strong>備註說明：</strong><span class="text-gray-300">${data.notes || '無'}</span></p>
           </div>
         `;
@@ -1088,23 +1101,22 @@
     // 修改與驗證相關狀態
     let isEditMode = false;
     let editActionType = 'update'; // 'update' (修改現有) 或 'add' (新增資料)
-    let verifiedPassword = ''; // 驗證通過的管理密碼 (當前工作階段保留)
     let originalPartNoBeforeEdit = ''; // 保存修改前的原始料號
     let itemDataBackup = null; // 修改前的資料備份
 
     // 各欄位在預設 (唯讀) 與編輯模式下的樣式設定
     const EDITABLE_FIELD_CONFIGS = [
-      { id: 'existPartNo', defaultClass: 'w-full bg-gray-900 border border-gray-800 text-gray-200 font-mono font-medium rounded px-3 py-1.5 focus:outline-none cursor-default', editClass: 'w-full bg-gray-950 border border-amber-500/70 text-white font-mono font-semibold rounded px-3 py-1.5 focus:outline-none focus:ring-1 focus:ring-amber-500 cursor-text transition' },
-      { id: 'existName', defaultClass: 'w-full bg-gray-900 border border-gray-800 text-gray-200 rounded px-3 py-1.5 focus:outline-none cursor-default', editClass: 'w-full bg-gray-950 border border-amber-500/70 text-white rounded px-3 py-1.5 focus:outline-none focus:ring-1 focus:ring-amber-500 cursor-text transition' },
-      { id: 'existCategory', defaultClass: 'w-full bg-gray-900 border border-gray-800 text-gray-200 rounded px-3 py-1.5 focus:outline-none cursor-default', editClass: 'w-full bg-gray-950 border border-amber-500/70 text-white rounded px-3 py-1.5 focus:outline-none focus:ring-1 focus:ring-amber-500 cursor-text transition' },
-      { id: 'existSpec', defaultClass: 'w-full bg-gray-900 border border-gray-800 text-gray-200 rounded px-3 py-1.5 focus:outline-none cursor-default', editClass: 'w-full bg-gray-950 border border-amber-500/70 text-white rounded px-3 py-1.5 focus:outline-none focus:ring-1 focus:ring-amber-500 cursor-text transition' },
-      { id: 'existLength', defaultClass: 'w-full bg-gray-900 border border-gray-800 text-gray-200 rounded px-3 py-1.5 focus:outline-none cursor-default', editClass: 'w-full bg-gray-950 border border-amber-500/70 text-white rounded px-3 py-1.5 focus:outline-none focus:ring-1 focus:ring-amber-500 cursor-text transition' },
-      { id: 'existInner', defaultClass: 'w-full bg-gray-900 border border-gray-800 text-gray-200 rounded px-3 py-1.5 focus:outline-none cursor-default', editClass: 'w-full bg-gray-950 border border-amber-500/70 text-white rounded px-3 py-1.5 focus:outline-none focus:ring-1 focus:ring-amber-500 cursor-text transition' },
-      { id: 'existOuter', defaultClass: 'w-full bg-gray-900 border border-gray-800 text-gray-200 rounded px-3 py-1.5 focus:outline-none cursor-default', editClass: 'w-full bg-gray-950 border border-amber-500/70 text-white rounded px-3 py-1.5 focus:outline-none focus:ring-1 focus:ring-amber-500 cursor-text transition' },
-      { id: 'existLocIn', defaultClass: 'w-full bg-gray-900 border border-gray-800 text-gray-200 font-semibold rounded px-3 py-1.5 focus:outline-none cursor-default', editClass: 'w-full bg-gray-950 border border-amber-500/70 text-white font-semibold rounded px-3 py-1.5 focus:outline-none focus:ring-1 focus:ring-amber-500 cursor-text transition' },
-      { id: 'existLocOut', defaultClass: 'w-full bg-gray-900 border border-gray-800 text-gray-200 font-semibold rounded px-3 py-1.5 focus:outline-none cursor-default', editClass: 'w-full bg-gray-950 border border-amber-500/70 text-white font-semibold rounded px-3 py-1.5 focus:outline-none focus:ring-1 focus:ring-amber-500 cursor-text transition' },
-      { id: 'existSpecDetail', defaultClass: 'w-full bg-gray-900 border border-gray-800 text-gray-200 rounded px-3 py-1.5 focus:outline-none cursor-default', editClass: 'w-full bg-gray-950 border border-amber-500/70 text-white rounded px-3 py-1.5 focus:outline-none focus:ring-1 focus:ring-amber-500 cursor-text transition' },
-      { id: 'existNotes', defaultClass: 'w-full bg-gray-900 border border-gray-800 text-gray-200 rounded px-3 py-1.5 focus:outline-none cursor-default resize-none', editClass: 'w-full bg-gray-950 border border-amber-500/70 text-white rounded px-3 py-1.5 focus:outline-none focus:ring-1 focus:ring-amber-500 cursor-text resize-none transition' },
+      { id: 'existPartNo', defaultClass: 'w-full bg-gray-900 border border-gray-800 text-gray-100 font-mono font-medium rounded px-3 py-1.5 focus:outline-none cursor-default', editClass: 'w-full bg-gray-950 border border-amber-500/70 text-gray-100 font-mono font-semibold rounded px-3 py-1.5 focus:outline-none focus:ring-1 focus:ring-amber-500 cursor-text transition' },
+      { id: 'existName', defaultClass: 'w-full bg-gray-900 border border-gray-800 text-gray-100 rounded px-3 py-1.5 focus:outline-none cursor-default', editClass: 'w-full bg-gray-950 border border-amber-500/70 text-gray-100 rounded px-3 py-1.5 focus:outline-none focus:ring-1 focus:ring-amber-500 cursor-text transition' },
+      { id: 'existCategory', defaultClass: 'w-full bg-gray-900 border border-gray-800 text-gray-100 rounded px-3 py-1.5 focus:outline-none cursor-default', editClass: 'w-full bg-gray-950 border border-amber-500/70 text-gray-100 rounded px-3 py-1.5 focus:outline-none focus:ring-1 focus:ring-amber-500 cursor-text transition' },
+      { id: 'existSpec', defaultClass: 'w-full bg-gray-900 border border-gray-800 text-gray-100 rounded px-3 py-1.5 focus:outline-none cursor-default', editClass: 'w-full bg-gray-950 border border-amber-500/70 text-gray-100 rounded px-3 py-1.5 focus:outline-none focus:ring-1 focus:ring-amber-500 cursor-text transition' },
+      { id: 'existLength', defaultClass: 'w-full bg-gray-900 border border-gray-800 text-gray-100 rounded px-3 py-1.5 focus:outline-none cursor-default', editClass: 'w-full bg-gray-950 border border-amber-500/70 text-gray-100 rounded px-3 py-1.5 focus:outline-none focus:ring-1 focus:ring-amber-500 cursor-text transition' },
+      { id: 'existInner', defaultClass: 'w-full bg-gray-900 border border-gray-800 text-gray-100 rounded px-3 py-1.5 focus:outline-none cursor-default', editClass: 'w-full bg-gray-950 border border-amber-500/70 text-gray-100 rounded px-3 py-1.5 focus:outline-none focus:ring-1 focus:ring-amber-500 cursor-text transition' },
+      { id: 'existOuter', defaultClass: 'w-full bg-gray-900 border border-gray-800 text-gray-100 rounded px-3 py-1.5 focus:outline-none cursor-default', editClass: 'w-full bg-gray-950 border border-amber-500/70 text-gray-100 rounded px-3 py-1.5 focus:outline-none focus:ring-1 focus:ring-amber-500 cursor-text transition' },
+      { id: 'existLocIn', defaultClass: 'w-full bg-gray-900 border border-gray-800 text-gray-100 font-semibold rounded px-3 py-1.5 focus:outline-none cursor-default', editClass: 'w-full bg-gray-950 border border-amber-500/70 text-gray-100 font-semibold rounded px-3 py-1.5 focus:outline-none focus:ring-1 focus:ring-amber-500 cursor-text transition' },
+      { id: 'existLocOut', defaultClass: 'w-full bg-gray-900 border border-gray-800 text-gray-100 font-semibold rounded px-3 py-1.5 focus:outline-none cursor-default', editClass: 'w-full bg-gray-950 border border-amber-500/70 text-gray-100 font-semibold rounded px-3 py-1.5 focus:outline-none focus:ring-1 focus:ring-amber-500 cursor-text transition' },
+      { id: 'existSpecDetail', defaultClass: 'w-full bg-gray-900 border border-gray-800 text-gray-100 rounded px-3 py-1.5 focus:outline-none cursor-default', editClass: 'w-full bg-gray-950 border border-amber-500/70 text-gray-100 rounded px-3 py-1.5 focus:outline-none focus:ring-1 focus:ring-amber-500 cursor-text transition' },
+      { id: 'existNotes', defaultClass: 'w-full bg-gray-900 border border-gray-800 text-gray-100 rounded px-3 py-1.5 focus:outline-none cursor-default resize-none', editClass: 'w-full bg-gray-950 border border-amber-500/70 text-gray-100 rounded px-3 py-1.5 focus:outline-none focus:ring-1 focus:ring-amber-500 cursor-text resize-none transition' },
     ];
 
     // 切換欄位的唯讀與編輯樣式
@@ -1130,13 +1142,13 @@
       // 若目前欄位無資料，但上方有輸入料號，表示查無此料號，提供新增
       if (!loadedPartNo && inputPartNo) {
         textSpan.innerText = '新增';
-        btn.className = "bg-emerald-600 hover:bg-emerald-500 text-white text-sm font-semibold px-4 py-2 rounded-lg transition flex items-center space-x-1.5 shadow-md shadow-emerald-600/20";
+        btn.className = "bg-green-600 hover:bg-green-500 text-gray-100 text-sm font-semibold px-4 py-2 rounded-lg transition flex items-center space-x-1.5 shadow-md shadow-green-600/20";
         if (icon) {
           icon.innerHTML = `<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 4v16m8-8H4"></path>`;
         }
       } else {
         textSpan.innerText = '修改';
-        btn.className = "bg-amber-600 hover:bg-amber-500 text-white text-sm font-semibold px-4 py-2 rounded-lg transition flex items-center space-x-1.5 shadow-md shadow-amber-600/20";
+        btn.className = "bg-amber-600 hover:bg-amber-500 text-gray-100 text-sm font-semibold px-4 py-2 rounded-lg transition flex items-center space-x-1.5 shadow-md shadow-amber-600/20";
         if (icon) {
           icon.innerHTML = `<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path>`;
         }
@@ -1164,20 +1176,120 @@
         editActionType = 'add';
       }
 
-      // 若尚未在此次工作階段驗證密碼，先開啟密碼驗證視窗
-      if (!verifiedPassword) {
-        openPasswordModal();
+      // 新增／修改配件資料只有 A 管理員可以（後端也會再檢查一次）
+      if (authRole !== 'A') {
+        loginCallback = () => {
+          if (authRole === 'A') enterEditMode();
+          else alert('目前身分沒有新增或修改配件資料的權限，需要管理員密碼。');
+        };
+        openLoginModal('新增或修改配件資料需要管理員密碼');
       } else {
         enterEditMode();
       }
     }
 
-    // ==================== 密碼驗證彈窗控制 ====================
-    function openPasswordModal() {
+    // ==================== 身分（角色）與登入 ====================
+    // A 管理員：全部功能；B 倉庫人員：查詢＋出入庫；C 現場人員（未登入）：只能查詢
+    // 真正的權限檢查在後端；這裡只負責顯示／隱藏功能。
+    const ROLE_LABELS = { A: '管理員', B: '倉庫人員', C: '現場人員（僅查詢）' };
+    const AUTH_STORE_ROLE = 'parts_auth_role';
+    const AUTH_STORE_PWD = 'parts_auth_pwd';
+    let authRole = 'C';
+    let authPassword = '';
+    let loginCallback = null; // 登入成功後要接著做的事（例如進入編輯、盤點送出）
+
+    function loadAuth() {
+      const r = localStorage.getItem(AUTH_STORE_ROLE);
+      const p = localStorage.getItem(AUTH_STORE_PWD);
+      if ((r === 'A' || r === 'B') && p) { authRole = r; authPassword = p; }
+      else { authRole = 'C'; authPassword = ''; }
+    }
+
+    function saveAuth(role, pwd) {
+      authRole = role; authPassword = pwd;
+      localStorage.setItem(AUTH_STORE_ROLE, role);
+      localStorage.setItem(AUTH_STORE_PWD, pwd);
+    }
+
+    function clearAuth() {
+      authRole = 'C'; authPassword = '';
+      localStorage.removeItem(AUTH_STORE_ROLE);
+      localStorage.removeItem(AUTH_STORE_PWD);
+    }
+
+    // 依照身分顯示／隱藏功能
+    function applyRoleUI() {
+      const canMove = authRole === 'A' || authRole === 'B';
+      const isAdmin = authRole === 'A';
+      if (!canMove && !document.getElementById('viewInventory').classList.contains('hidden')) switchView('search');
+      const roleLabel = document.getElementById('roleNameLabel');
+      roleLabel.textContent = canMove ? ROLE_LABELS[authRole] : '';
+      roleLabel.classList.toggle('hidden', !canMove);          // 未登入時標題下方不顯示任何字
+      document.getElementById('roleMenuName').textContent = ROLE_LABELS[authRole];
+      if (!canMove) closeRoleMenu();
+      document.getElementById('nav-inv').classList.toggle('hidden', !canMove);
+      document.getElementById('addBtnWrap').classList.toggle('hidden', !isAdmin);
+      const editBtn = document.getElementById('btnEditExist');
+      if (editBtn && !isEditMode) editBtn.classList.toggle('hidden', !isAdmin);
+      const stockBtn = document.querySelector('#invTypeGroup button[data-type="盤點調整"]');
+      if (stockBtn) stockBtn.classList.toggle('hidden', !isAdmin);
+      const group = document.getElementById('invTypeGroup');
+      if (group) {
+        group.classList.toggle('grid-cols-4', isAdmin);
+        group.classList.toggle('grid-cols-3', !isAdmin);
+      }
+      if (!isAdmin && typeof invType !== 'undefined' && invType === '盤點調整') setInvType('出貨');
+      if (!isAdmin) {
+        const addModal = document.getElementById('addModal');
+        if (addModal && !addModal.classList.contains('hidden')) {
+          if (isEditMode) cancelExistingDataEdit();
+          addModal.classList.add('hidden');
+          clearExistingData();
+        }
+      }
+    }
+
+    // 點標題：未登入→直接開登入視窗；已登入→開關身分選單
+    function handleTitleClick(ev) {
+      if (ev) ev.stopPropagation();
+      if (authRole === 'C') { openLoginModal(); return; }
+      document.getElementById('roleMenu').classList.toggle('hidden');
+    }
+
+    function closeRoleMenu() {
+      const m = document.getElementById('roleMenu');
+      if (m) m.classList.add('hidden');
+    }
+
+    // 點選單以外的地方就關閉選單
+    document.addEventListener('click', (ev) => {
+      const m = document.getElementById('roleMenu');
+      if (m && !m.classList.contains('hidden') && !m.contains(ev.target)) closeRoleMenu();
+    });
+
+    function logout() {
+      clearAuth();
+      applyRoleUI();
+      showInvToast('已登出，目前為現場人員（僅查詢）', 'success');
+    }
+
+    // 後端回覆密碼失效時：清掉記住的密碼，回到僅查詢並請使用者重新登入
+    function handleAuthError(result) {
+      if (!result) return false;
+      if (result.code === 'UNAUTHORIZED') {
+        clearAuth();
+        applyRoleUI();
+        openLoginModal('密碼已失效，請重新登入');
+        return true;
+      }
+      return false;
+    }
+
+    function openLoginModal(hint) {
       const modal = document.getElementById('passwordModal');
       const input = document.getElementById('adminPasswordInput');
       const errMsg = document.getElementById('passwordErrorMsg');
-      
+      document.getElementById('loginModalHint').innerText = hint || '請輸入密碼';
       input.value = '';
       errMsg.classList.add('hidden');
       modal.classList.remove('hidden');
@@ -1189,10 +1301,10 @@
       const errMsg = document.getElementById('passwordErrorMsg');
       if (errMsg) errMsg.classList.add('hidden');
       if (modal) modal.classList.add('hidden');
-      invPasswordCallback = null; // 進銷存：關閉時清除盤點用的回呼
+      loginCallback = null;
     }
 
-    // 向 Apps Script 驗證管理密碼
+    // 向 Apps Script 登入（POST，密碼不放在網址上），後端回傳角色 A / B
     async function verifyAdminPassword() {
       const input = document.getElementById('adminPasswordInput');
       const pwd = input.value.trim();
@@ -1200,39 +1312,52 @@
       const submitBtn = document.getElementById('btnSubmitPassword');
 
       if (!pwd) {
-        errMsg.innerText = '⚠️ 請輸入管理密碼！';
+        errMsg.innerText = '⚠️ 請輸入密碼！';
         errMsg.classList.remove('hidden');
         input.focus();
         return;
       }
 
       submitBtn.disabled = true;
-      submitBtn.innerText = '驗證中...';
+      submitBtn.innerText = '登入中...';
       errMsg.classList.add('hidden');
 
       try {
-        const url = `${API_URL}?action=verifyPassword&password=${encodeURIComponent(pwd)}`;
-        const res = await fetch(url);
-        const result = await res.json();
-
-        if (result.status === 'success') {
-          verifiedPassword = pwd;
-          const invCb = invPasswordCallback; // 進銷存：盤點調整借用此密碼彈窗
+        const result = await invApiPost({ action: 'login', password: pwd });
+        if (result.status === 'success' && (result.role === 'A' || result.role === 'B')) {
+          saveAuth(result.role, pwd);
+          applyRoleUI();
+          const cb = loginCallback;
           closePasswordModal();
-          if (invCb) { invCb(); } else { enterEditMode(); }
+          showInvToast('✅ 已登入：' + ROLE_LABELS[result.role], 'success');
+          if (cb) cb();
         } else {
-          errMsg.innerText = result.message || '❌ 密碼錯誤，請重新輸入！';
+          errMsg.innerText = '❌ ' + (result.message || '密碼錯誤，請重新輸入！');
           errMsg.classList.remove('hidden');
           input.select();
         }
       } catch (err) {
         console.error(err);
-        errMsg.innerText = '❌ 連線驗證失敗，請檢查網路或 API 設定';
+        errMsg.innerText = '❌ 連線失敗，請檢查網路或 API 設定';
         errMsg.classList.remove('hidden');
       } finally {
         submitBtn.disabled = false;
-        submitBtn.innerText = '確認解鎖';
+        submitBtn.innerText = '登入';
       }
+    }
+
+    // 開啟頁面時，背景確認記住的密碼是否還有效（密碼被改掉就自動回到僅查詢）
+    async function revalidateAuth() {
+      if (authRole === 'C' || !authPassword) return;
+      try {
+        const result = await invApiPost({ action: 'login', password: authPassword });
+        if (result.status === 'success' && (result.role === 'A' || result.role === 'B')) {
+          if (result.role !== authRole) { saveAuth(result.role, authPassword); applyRoleUI(); }
+        } else if (result.code === 'UNAUTHORIZED') {
+          clearAuth(); applyRoleUI();
+          showInvToast('登入已失效，目前為現場人員（僅查詢）', 'warn');
+        }
+      } catch (err) { /* 網路問題時先維持原狀，送出時後端仍會檢查 */ }
     }
 
     // 進入資料編輯或新增模式
@@ -1378,7 +1503,7 @@
 
       const payload = {
         action: isAdding ? 'addData' : 'updateData',
-        password: verifiedPassword,
+        password: authPassword,
         original_part_no: originalPartNoBeforeEdit,
         part_no: newPartNo,
         itemData: itemData
@@ -1422,11 +1547,10 @@
           updateBadge('success', isAdding ? '✅ 新資料已成功建立' : '✅ 配件資料已成功儲存修改');
         } else {
           alert('❌ 操作失敗：' + (result.message || '未知錯誤'));
-          if (result.message && result.message.indexOf('密碼') !== -1) {
-            verifiedPassword = '';
-            openPasswordModal();
-          }
           updateBadge('error', '❌ 操作失敗');
+          if (handleAuthError(result)) {
+            cancelExistingDataEdit();
+          }
         }
       } catch (err) {
         console.error(err);
@@ -1583,8 +1707,8 @@
         const isActive = item.part_no === activePartNo;
         btn.className = `px-2 py-0.5 rounded text-xs transition border ${
           isActive 
-            ? 'bg-blue-600 border-blue-500 text-white font-medium' 
-            : 'bg-gray-800 border-gray-700 text-gray-300 hover:bg-gray-700 hover:text-white'
+            ? 'bg-blue-600 border-blue-500 text-gray-100 font-medium' 
+            : 'bg-gray-800 border-gray-700 text-gray-300 hover:bg-gray-700 hover:text-gray-100'
         }`;
         btn.innerText = item.part_no || '未命名';
         btn.onclick = () => {
@@ -1636,7 +1760,7 @@
       '進貨':   { color: 'green',  sign: '+', hint: '收到廠商貨品，庫存增加。', qtyLabel: '進貨數量' },
       '出貨':   { color: 'red',    sign: '−', hint: '領料或出貨，庫存減少；超過現有庫存會被擋下。', qtyLabel: '出貨數量' },
       '退貨':   { color: 'sky',    sign: '+', hint: '客戶或產線退回倉庫，庫存增加。', qtyLabel: '退回數量' },
-      '盤點調整': { color: 'amber', sign: '=', hint: '輸入「實際盤點數量」，系統自動算出差額。需要管理密碼。', qtyLabel: '實際盤點數量' }
+      '盤點調整': { color: 'violet', sign: '=', hint: '輸入「實際盤點數量」，系統自動算出差額。只有管理員可以使用。', qtyLabel: '實際盤點數量' }
     };
     const INV_SCAN_COOLDOWN_MS = 3000;     // 同一個 QR 碼 3 秒內重複讀取會被忽略
     const INV_REPEAT_WARN_MS = 60000;      // 60 秒內送出完全相同的異動會再確認一次
@@ -1648,7 +1772,6 @@
     let invType = '出貨';
     let invSubmitting = false;
     let invLastSubmitted = null;   // { key, time }
-    let invPasswordCallback = null; // 盤點調整借用既有的密碼彈窗
 
     // HTML 跳脫，避免資料內容破壞畫面
     function invEsc(v) {
@@ -1674,17 +1797,18 @@
       const el = document.getElementById('invToast');
       el.innerText = msg;
       el.className = 'fixed bottom-4 left-1/2 -translate-x-1/2 z-[70] px-4 py-2.5 rounded-lg text-sm font-semibold shadow-2xl ' +
-        (type === 'error' ? 'bg-red-600 text-white' : type === 'warn' ? 'bg-amber-600 text-white' : 'bg-green-600 text-white');
+        (type === 'error' ? 'bg-red-600 text-gray-100' : type === 'warn' ? 'bg-amber-600 text-gray-100' : 'bg-green-600 text-gray-100');
       clearTimeout(showInvToast._t);
       showInvToast._t = setTimeout(() => el.classList.add('hidden'), 2800);
     }
 
     // ---------- 主畫面切換（配件查詢 / 進銷存） ----------
     function switchView(view) {
+      if (view === 'inventory' && authRole === 'C') view = 'search'; // 現場人員不能進出入庫
       const navSpec = document.getElementById('nav-spec');
       const navInv = document.getElementById('nav-inv');
-      const activeNav = 'flex items-center space-x-3 px-3 py-2.5 rounded-lg bg-blue-600 text-white font-medium transition cursor-default';
-      const idleNav = 'flex items-center space-x-3 px-3 py-2.5 rounded-lg text-gray-400 hover:bg-gray-800 hover:text-white font-medium transition cursor-pointer';
+      const activeNav = 'flex items-center space-x-3 px-3 py-2.5 rounded-lg bg-blue-600 text-gray-100 font-medium transition cursor-default';
+      const idleNav = 'flex items-center space-x-3 px-3 py-2.5 rounded-lg text-gray-400 hover:bg-gray-800 hover:text-gray-100 font-medium transition cursor-pointer';
       if (view === 'inventory') {
         document.getElementById('viewSearch').classList.add('hidden');
         document.getElementById('viewInventory').classList.remove('hidden');
@@ -1699,12 +1823,13 @@
         navInv.className = idleNav;
         navSpec.className = activeNav;
       }
+      navInv.classList.toggle('hidden', authRole === 'C'); // 依身分決定是否顯示「出入庫管理」
     }
 
     function switchInvTab(tab) {
       const map = { scan: ['invBoxScan', 'invTabBtnScan'], lookup: ['invBoxLookup', 'invTabBtnLookup'], low: ['invBoxLow', 'invTabBtnLow'] };
-      const defaultBtnClass = "px-3 py-1.5 rounded-md text-gray-400 hover:text-white transition";
-      const activeBtnClass = "px-3 py-1.5 rounded-md bg-blue-600 text-white transition";
+      const defaultBtnClass = "px-3 py-1.5 rounded-md text-gray-400 hover:text-gray-100 transition";
+      const activeBtnClass = "px-3 py-1.5 rounded-md bg-blue-600 text-gray-100 transition";
       Object.keys(map).forEach(k => {
         document.getElementById(map[k][0]).classList.toggle('hidden', k !== tab);
         document.getElementById(map[k][1]).className = k === tab ? activeBtnClass : defaultBtnClass;
@@ -1866,7 +1991,7 @@
           <div class="flex items-center justify-between bg-gray-950 border border-gray-800 rounded px-3 py-2 gap-2">
             <div class="min-w-0">
               <span class="text-xs text-gray-500 font-mono">${invEsc(invFmtTime(m.time))}</span>
-              <span class="ml-1.5 text-gray-200 font-semibold">${invEsc(m.type)}</span>
+              <span class="ml-1.5 text-gray-100 font-semibold">${invEsc(m.type)}</span>
               <span class="ml-1.5 text-xs text-gray-400">${invEsc(m.handler || '')}</span>
               ${m.note ? `<p class="text-xs text-gray-500 truncate">${invEsc(m.note)}</p>` : ''}
             </div>
@@ -1879,15 +2004,15 @@
       invType = type;
       const cfg = INV_TYPES[type];
       const colorMap = {
-        green: 'bg-green-600 border-green-500 text-white shadow-md shadow-green-600/30',
-        red:   'bg-red-600 border-red-500 text-white shadow-md shadow-red-600/30',
-        sky:   'bg-sky-600 border-sky-500 text-white shadow-md shadow-sky-600/30',
-        amber: 'bg-amber-600 border-amber-500 text-white shadow-md shadow-amber-600/30'
+        green: 'bg-green-600 border-green-500 text-gray-100 shadow-md shadow-green-600/30',
+        red:   'bg-red-600 border-red-500 text-gray-100 shadow-md shadow-red-600/30',
+        sky:   'bg-sky-600 border-sky-500 text-gray-100 shadow-md shadow-sky-600/30',
+        violet: 'bg-violet-600 border-violet-500 text-gray-100 shadow-md shadow-violet-600/30'
       };
       document.querySelectorAll('#invTypeGroup button').forEach(btn => {
         const t = btn.getAttribute('data-type');
         btn.className = 'py-2.5 rounded-lg text-sm font-semibold border transition ' +
-          (t === type ? colorMap[INV_TYPES[t].color] : 'bg-gray-800 border-gray-700 text-gray-300 hover:bg-gray-700 hover:text-white');
+          (t === type ? colorMap[INV_TYPES[t].color] : 'bg-gray-800 border-gray-700 text-gray-300 hover:bg-gray-700 hover:text-gray-100');
       });
       document.getElementById('invTypeHint').innerText = cfg.hint;
       document.getElementById('invQtyLabel').innerText = cfg.qtyLabel;
@@ -1950,11 +2075,11 @@
       const after = stockNow + delta;
 
       document.getElementById('invConfirmBody').innerHTML = `
-        <p><span class="text-gray-500">料號：</span><span class="font-mono text-blue-400 font-semibold">${invEsc(p.part_no)}</span></p>
-        <p><span class="text-gray-500">名稱：</span><span class="text-white font-semibold">${invEsc(p.name || '-')}</span></p>
+        <p><span class="text-gray-500">料號：</span><span class="font-mono text-gray-100 font-semibold">${invEsc(p.part_no)}</span></p>
+        <p><span class="text-gray-500">名稱：</span><span class="text-gray-100 font-semibold">${invEsc(p.name || '-')}</span></p>
         <p><span class="text-gray-500">規格：</span>${invEsc(p.spec_detail || p.spec || '-')}</p>
         <p><span class="text-gray-500">類型：</span><span class="font-semibold">${invEsc(invType)}</span></p>
-        <p><span class="text-gray-500">${invType === '盤點調整' ? '實盤數量' : '數量'}：</span><span class="font-mono font-bold text-white">${f.qty}</span></p>
+        <p><span class="text-gray-500">${invType === '盤點調整' ? '實盤數量' : '數量'}：</span><span class="font-mono font-bold text-gray-100">${f.qty}</span></p>
         <p><span class="text-gray-500">庫存變化：</span><span class="font-mono">${stockNow} → <span class="font-bold ${delta >= 0 ? 'text-green-400' : 'text-red-400'}">${after}</span>（${delta > 0 ? '+' : ''}${delta}）</span></p>
         <p><span class="text-gray-500">經手人：</span>${invEsc(f.handler)}</p>
         ${f.note ? `<p><span class="text-gray-500">備註：</span>${invEsc(f.note)}</p>` : ''}
@@ -1966,17 +2091,20 @@
       document.getElementById('invConfirmModal').classList.add('hidden');
     }
 
-    async function submitInvMovement(passwordOverride) {
+    async function submitInvMovement() {
       if (invSubmitting || !invCurrentPart) return;
       const f = readInvForm();
       const partNo = invCurrentPart.part.part_no;
 
-      // 盤點調整需要管理密碼（沿用既有的密碼彈窗與 verifyPassword）
-      const pwd = passwordOverride || verifiedPassword;
-      if (invType === '盤點調整' && !pwd) {
+      // 出入庫需要登入（A 或 B）；盤點調整只有 A（後端也會再檢查一次）
+      if (authRole === 'C' || !authPassword) {
         closeInvConfirm();
-        invPasswordCallback = () => { openInvConfirm(); };
-        openPasswordModal();
+        loginCallback = () => { openInvConfirm(); };
+        openLoginModal('出入庫需要倉庫人員或管理員密碼');
+        return;
+      }
+      if (invType === '盤點調整' && authRole !== 'A') {
+        alert('盤點調整只有管理員可以使用。');
         return;
       }
 
@@ -2000,9 +2128,9 @@
         qty: f.qty,
         handler: f.handler,
         note: f.note,
-        expected_stock: invCurrentPart.stock
+        expected_stock: invCurrentPart.stock,
+        password: authPassword
       };
-      if (invType === '盤點調整') payload.password = pwd;
 
       try {
         const result = await invApiPost(payload);
@@ -2016,7 +2144,7 @@
           resetInvMoveCard();
         } else {
           alert('❌ 送出失敗：' + (result.message || '未知錯誤'));
-          if (result.message && result.message.indexOf('密碼') !== -1) verifiedPassword = '';
+          if (handleAuthError(result)) closeInvConfirm();
           // 庫存已被其他人變動時，重新讀取最新數字
           if (result.code === 'STOCK_CHANGED' || result.code === 'INSUFFICIENT') {
             closeInvConfirm();
@@ -2042,7 +2170,7 @@
       row.innerHTML = `
         <div class="min-w-0">
           <span class="text-xs text-gray-500 font-mono">${invEsc(invFmtTime(Date.now()))}</span>
-          <span class="ml-1.5 font-mono text-blue-400">${invEsc(partNo)}</span>
+          <span class="ml-1.5 font-mono text-gray-100">${invEsc(partNo)}</span>
           <span class="ml-1.5 text-gray-300 text-xs">${invEsc(name || '')}</span>
         </div>
         <span class="whitespace-nowrap text-xs"><span class="text-gray-300">${invEsc(type)}</span>
@@ -2072,8 +2200,8 @@
           <div class="bg-gray-900 border border-gray-800 rounded-xl p-5 space-y-4 shadow-xl">
             <div class="border-b border-gray-800 pb-3">
               <span class="text-sm font-semibold px-2 py-0.5 bg-blue-900/60 text-blue-300 border border-blue-700/50 rounded-md">${invEsc(p.category || '未分類')}</span>
-              <h2 class="text-xl font-bold text-white mt-1">${invEsc(p.name || '未命名配件')}</h2>
-              <p class="font-mono font-semibold text-blue-400">${invEsc(p.part_no)}</p>
+              <h2 class="text-xl font-bold text-gray-100 mt-1">${invEsc(p.name || '未命名配件')}</h2>
+              <p class="font-mono font-semibold text-gray-100">${invEsc(p.part_no)}</p>
             </div>
             <div class="grid grid-cols-2 gap-3">
               <div class="bg-gray-950 p-2.5 rounded border border-gray-800"><span class="text-gray-400 text-sm">目前庫存</span>
@@ -2081,9 +2209,9 @@
               <div class="bg-gray-950 p-2.5 rounded border border-gray-800"><span class="text-gray-400 text-sm">安全庫存</span>
                 <p class="font-mono font-semibold text-2xl text-gray-300">${hasSafety ? invEsc(d.safety) : '未設定'}</p></div>
               <div class="bg-gray-950 p-2.5 rounded border border-gray-800"><span class="text-gray-400 text-sm">規格</span>
-                <p class="font-semibold text-gray-200">${invEsc(p.spec_detail || p.spec || '-')}</p></div>
+                <p class="font-semibold text-gray-100">${invEsc(p.spec_detail || p.spec || '-')}</p></div>
               <div class="bg-gray-950 p-2.5 rounded border border-gray-800"><span class="text-gray-400 text-sm">當前儲位</span>
-                <p class="font-mono font-extrabold text-amber-400">${invEsc(p.location_in || '無')}</p></div>
+                <p class="font-mono font-extrabold text-gray-100">${invEsc(p.location_in || '無')}</p></div>
             </div>
             ${isLow ? '<div class="bg-amber-950/40 border border-amber-800/50 rounded-lg p-3 text-sm text-amber-300">⚠️ 目前庫存已低於安全庫存</div>' : ''}
             <div>
@@ -2117,7 +2245,7 @@
           <button type="button" data-part="${invEsc(it.part_no)}" onclick="invOpenLookup(this.dataset.part)"
                   class="w-full text-left flex items-center justify-between bg-gray-900 border border-gray-800 hover:border-amber-600/60 rounded-xl px-4 py-3 gap-3 transition">
             <div class="min-w-0">
-              <p class="font-mono font-semibold text-blue-400">${invEsc(it.part_no)}</p>
+              <p class="font-mono font-semibold text-gray-100">${invEsc(it.part_no)}</p>
               <p class="text-sm text-gray-300 truncate">${invEsc(it.name || '')}</p>
             </div>
             <div class="text-right whitespace-nowrap">
@@ -2137,6 +2265,11 @@
       switchInvTab('lookup');
       invLookup();
     }
+
+    // ---------- 啟動：讀取這台裝置記住的身分 ----------
+    loadAuth();
+    applyRoleUI();
+    revalidateAuth();
   </script>
 </body>
 </html>
