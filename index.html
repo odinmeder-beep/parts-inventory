@@ -199,13 +199,13 @@
       <div class="border-b border-gray-800 pb-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <h1 class="text-2xl font-bold text-gray-100">出入庫管理</h1>
         <div class="flex bg-gray-900 p-1 rounded-lg border border-gray-800 text-xs font-semibold gap-1">
-          <button id="invTabBtnScan" onclick="switchInvTab('scan')" class="px-3 py-1.5 rounded-md bg-blue-600 text-gray-100 transition">掃碼異動</button>
-          <button id="invTabBtnLookup" onclick="switchInvTab('lookup')" class="px-3 py-1.5 rounded-md text-gray-400 hover:text-gray-100 transition">庫存查詢</button>
+          <button id="invTabBtnScan" onclick="switchInvTab('scan')" class="px-3 py-1.5 rounded-md bg-blue-600 text-gray-100 transition">出入庫</button>
+          <button id="invTabBtnLookup" onclick="switchInvTab('lookup')" class="px-3 py-1.5 rounded-md text-gray-400 hover:text-gray-100 transition">庫存異動查詢</button>
           <button id="invTabBtnLow" onclick="switchInvTab('low')" class="px-3 py-1.5 rounded-md text-gray-400 hover:text-gray-100 transition">低庫存清單</button>
         </div>
       </div>
 
-      <!-- 🌟 子頁 1：掃碼異動 -->
+      <!-- 🌟 子頁 1：出入庫 -->
       <div id="invBoxScan" class="space-y-4">
 
         <!-- 掃描器卡片 -->
@@ -287,12 +287,9 @@
           <!-- 數量 -->
           <div>
             <label id="invQtyLabel" class="block text-xs font-medium text-gray-400 mb-1">數量</label>
-            <div class="flex gap-2">
-              <button type="button" onclick="bumpInvQty(-1)" class="bg-gray-800 hover:bg-gray-700 text-gray-100 text-xl font-bold w-14 rounded-lg transition">−</button>
-              <input type="number" id="invQty" inputmode="numeric" min="0" step="1" value="1"
-                     class="flex-1 text-center text-2xl font-mono bg-gray-950 border border-gray-700 text-gray-100 rounded-lg px-3 py-2 focus:outline-none focus:border-blue-500">
-              <button type="button" onclick="bumpInvQty(1)" class="bg-gray-800 hover:bg-gray-700 text-gray-100 text-xl font-bold w-14 rounded-lg transition">＋</button>
-            </div>
+            <input type="text" id="invQty" inputmode="numeric" pattern="[0-9]*" autocomplete="off" value="1"
+                   onfocus="this.select()" oninput="this.value = this.value.replace(/[^0-9]/g, '')"
+                   class="w-full text-center text-2xl font-mono bg-gray-950 border border-gray-700 text-gray-100 rounded-lg px-3 py-2 focus:outline-none focus:border-blue-500">
           </div>
 
           <!-- 經手人與備註 -->
@@ -310,7 +307,7 @@
           </div>
 
           <button id="invBtnSubmit" onclick="openInvConfirm()" class="w-full bg-green-600 hover:bg-green-500 text-gray-100 font-semibold py-3 rounded-lg transition shadow-lg shadow-green-600/30">
-            下一步：確認異動
+            確認
           </button>
 
           <!-- 最近異動 -->
@@ -330,7 +327,7 @@
         </div>
       </div>
 
-      <!-- 🌟 子頁 2：庫存查詢 -->
+      <!-- 🌟 子頁 2：庫存異動查詢 -->
       <div id="invBoxLookup" class="hidden space-y-4">
         <div class="bg-gray-900 border border-gray-800 rounded-xl p-5 space-y-4 shadow-xl">
           <div>
@@ -1757,8 +1754,8 @@
     // 後端對應 Apps Script 動作：getStock / getMovements / getLowStock (GET)、addMovement (POST)
     // ======================================================================
     const INV_TYPES = {
-      '進貨':   { color: 'green',  sign: '+', hint: '收到廠商貨品，庫存增加。', qtyLabel: '進貨數量' },
-      '出貨':   { color: 'red',    sign: '−', hint: '領料或出貨，庫存減少；超過現有庫存會被擋下。', qtyLabel: '出貨數量' },
+      '進貨':   { color: 'green',  sign: '+', hint: '', qtyLabel: '進貨數量' },
+      '出貨':   { color: 'red',    sign: '−', hint: '', qtyLabel: '出貨數量' },
       '退貨':   { color: 'sky',    sign: '+', hint: '客戶或產線退回倉庫，庫存增加。', qtyLabel: '退回數量' },
       '盤點調整': { color: 'violet', sign: '=', hint: '輸入「實際盤點數量」，系統自動算出差額。只有管理員可以使用。', qtyLabel: '實際盤點數量' }
     };
@@ -2014,17 +2011,13 @@
         btn.className = 'py-2.5 rounded-lg text-sm font-semibold border transition ' +
           (t === type ? colorMap[INV_TYPES[t].color] : 'bg-gray-800 border-gray-700 text-gray-300 hover:bg-gray-700 hover:text-gray-100');
       });
-      document.getElementById('invTypeHint').innerText = cfg.hint;
+      const hintEl = document.getElementById('invTypeHint');
+      hintEl.innerText = cfg.hint;
+      hintEl.classList.toggle('hidden', !cfg.hint);
       document.getElementById('invQtyLabel').innerText = cfg.qtyLabel;
       const qty = document.getElementById('invQty');
       if (type === '盤點調整' && invCurrentPart) qty.value = invCurrentPart.stock;
       else if (type !== '盤點調整' && (!qty.value || Number(qty.value) <= 0)) qty.value = 1;
-    }
-
-    function bumpInvQty(n) {
-      const qty = document.getElementById('invQty');
-      const v = Math.max(0, (parseInt(qty.value, 10) || 0) + n);
-      qty.value = v;
     }
 
     function resetInvMoveCard() {
@@ -2153,7 +2146,7 @@
         }
       } catch (err) {
         console.error(err);
-        alert('連線失敗，這筆可能沒有送出。請到「庫存查詢」確認後再重試。');
+        alert('連線失敗，這筆可能沒有送出。請到「庫存異動查詢」確認後再重試。');
       } finally {
         invSubmitting = false;
         btn.disabled = false;
@@ -2181,7 +2174,7 @@
       wrap.classList.remove('hidden');
     }
 
-    // ---------- 庫存查詢 ----------
+    // ---------- 庫存異動查詢 ----------
     async function invLookup() {
       const partNo = document.getElementById('invLookupPartNo').value.trim();
       const box = document.getElementById('invLookupResult');
