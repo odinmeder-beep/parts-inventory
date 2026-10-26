@@ -295,9 +295,15 @@
           <!-- 經手人與備註 -->
           <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
-              <label class="block text-xs font-medium text-gray-400 mb-1">經手人 <span class="text-blue-400">（會記住）</span></label>
-              <input type="text" id="invHandler" placeholder="你的名字"
+              <div class="flex items-center justify-between mb-1">
+                <label for="invHandler" class="block text-xs font-medium text-gray-400">經手人 <span class="text-blue-400">（會記住）</span></label>
+                <button type="button" onclick="openHandlerModal()"
+                        class="bg-gray-800 hover:bg-gray-700 text-gray-300 hover:text-gray-100 border border-gray-700 text-xs font-semibold px-2 py-0.5 rounded-md transition">編輯名單</button>
+              </div>
+              <!-- 經手人：可從名單下拉選擇，也可直接輸入新名字（新名字送出後會自動加入名單） -->
+              <input type="text" id="invHandler" list="invHandlerList" maxlength="20" autocomplete="off" placeholder="選擇或輸入名字"
                      class="w-full bg-gray-950 border border-gray-700 text-gray-100 placeholder-gray-500 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-blue-500">
+              <datalist id="invHandlerList"></datalist>
             </div>
             <div>
               <label class="block text-xs font-medium text-gray-400 mb-1">備註</label>
@@ -565,6 +571,28 @@
         <button type="button" onclick="closeInvConfirm()" class="flex-1 bg-gray-800 hover:bg-gray-700 text-gray-300 text-sm font-semibold py-2.5 rounded-lg transition">返回修改</button>
         <button id="invBtnConfirmSend" type="button" onclick="submitInvMovement()" class="flex-1 bg-green-600 hover:bg-green-500 text-gray-100 text-sm font-semibold py-2.5 rounded-lg transition shadow-md shadow-green-600/30">確認送出</button>
       </div>
+    </div>
+  </div>
+
+  <!-- ==================== 經手人名單彈窗 ==================== -->
+  <div id="handlerModal" onclick="if (event.target === this) closeHandlerModal()"
+       class="hidden fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+    <div class="bg-gray-900 border border-gray-800 rounded-2xl w-full max-w-sm p-6 space-y-4 shadow-2xl flex flex-col max-h-[92vh]">
+      <div class="flex justify-between items-center">
+        <h3 class="text-base font-bold text-gray-100">經手人名單</h3>
+        <button type="button" onclick="closeHandlerModal()" class="text-gray-400 hover:text-gray-100 text-2xl font-bold leading-none p-1 rounded-lg hover:bg-gray-800 transition">&times;</button>
+      </div>
+      <p class="text-xs text-gray-500">所有手機共用同一份名單。點名字就會帶入「經手人」。</p>
+      <div id="handlerAddRow" class="flex gap-2">
+        <input type="text" id="handlerNewName" maxlength="20" autocomplete="off" placeholder="輸入新名字（最多 20 字）"
+               onkeydown="if(event.key === 'Enter'){ event.preventDefault(); addHandlerName(); }"
+               class="flex-1 min-w-0 bg-gray-950 border border-gray-700 text-gray-100 placeholder-gray-500 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-blue-500">
+        <button id="handlerBtnAdd" type="button" onclick="addHandlerName()"
+                class="bg-green-600 hover:bg-green-500 text-gray-100 text-sm font-semibold px-4 py-2 rounded-lg transition shadow-md shadow-green-600/30 whitespace-nowrap">新增</button>
+      </div>
+      <p id="handlerStatus" class="hidden text-xs text-amber-400"></p>
+      <div id="handlerListBox" class="space-y-1.5 overflow-y-auto min-h-[3rem]"></div>
+      <button type="button" onclick="closeHandlerModal()" class="w-full bg-gray-800 hover:bg-gray-700 text-gray-300 text-sm font-semibold py-2.5 rounded-lg transition">關閉</button>
     </div>
   </div>
 
@@ -1236,6 +1264,8 @@
         group.classList.toggle('grid-cols-3', !isAdmin);
       }
       if (!isAdmin && typeof invType !== 'undefined' && invType === '盤點調整') setInvType('出貨');
+      if (!canMove) closeHandlerModal();
+      renderHandlerModalList(); // 身分改變時更新名單彈窗（刪除鈕只給管理員）
       if (!isAdmin) {
         const addModal = document.getElementById('addModal');
         if (addModal && !addModal.classList.contains('hidden')) {
@@ -1813,6 +1843,7 @@
         navInv.className = activeNav;
         const h = document.getElementById('invHandler');
         if (h && !h.value) h.value = localStorage.getItem('inv_handler') || '';
+        refreshHandlers(); // 進入出入庫頁時更新經手人名單（失敗就用這台裝置上次存的）
       } else {
         stopInvScanner();
         document.getElementById('viewInventory').classList.add('hidden');
@@ -2135,6 +2166,7 @@
           addInvSessionLog(partNo, invCurrentPart.part.name, invType, d.delta, d.stock_after, d.low_stock);
           if (d.low_stock) setTimeout(() => showInvToast(`⚠️ ${partNo} 已低於安全庫存（${d.stock_after} ≤ ${d.safety}）`, 'warn'), 3000);
           resetInvMoveCard();
+          if (d.handler_added) refreshHandlers(); // 新的經手人已由後端加入名單，重新讀取
         } else {
           alert('❌ 送出失敗：' + (result.message || '未知錯誤'));
           if (handleAuthError(result)) closeInvConfirm();
@@ -2259,7 +2291,170 @@
       invLookup();
     }
 
+    // ---------- 經手人名單（所有手機共用，存在試算表「經手人」分頁） ----------
+    const HANDLER_CACHE_KEY = 'inv_handler_list';   // 這台裝置上次讀到的名單（離線時使用）
+    const HANDLER_MAX_LEN = 20;
+    let invHandlers = [];
+
+    function cleanHandlerList(list) {
+      const seen = new Set(), out = [];
+      (Array.isArray(list) ? list : []).forEach(n => {
+        const name = String(n == null ? '' : n).trim();
+        const k = name.toUpperCase();
+        if (name && !seen.has(k)) { seen.add(k); out.push(name); }
+      });
+      return out;
+    }
+
+    function loadHandlerCache() {
+      try { invHandlers = cleanHandlerList(JSON.parse(localStorage.getItem(HANDLER_CACHE_KEY) || '[]')); }
+      catch (e) { invHandlers = []; }
+      renderHandlerOptions();
+    }
+
+    function setHandlers(list) {
+      invHandlers = cleanHandlerList(list);
+      try { localStorage.setItem(HANDLER_CACHE_KEY, JSON.stringify(invHandlers)); } catch (e) { /* 忽略 */ }
+      renderHandlerOptions();
+      renderHandlerModalList();
+    }
+
+    // 下拉選單（datalist）
+    function renderHandlerOptions() {
+      const dl = document.getElementById('invHandlerList');
+      if (!dl) return;
+      dl.innerHTML = '';
+      invHandlers.forEach(n => {
+        const o = document.createElement('option');
+        o.value = n;
+        dl.appendChild(o);
+      });
+    }
+
+    function setHandlerStatus(msg) {
+      const el = document.getElementById('handlerStatus');
+      if (!el) return;
+      el.textContent = msg || '';
+      el.classList.toggle('hidden', !msg);
+    }
+
+    // 從後端讀名單（公開，不需要密碼）
+    async function refreshHandlers() {
+      try {
+        const r = await invApiGet({ action: 'getHandlers' });
+        if (r.status === 'success' && Array.isArray(r.data)) { setHandlers(r.data); setHandlerStatus(''); return true; }
+      } catch (e) { /* 網路問題：繼續用這台裝置上次存的名單 */ }
+      setHandlerStatus('⚠️ 無法連線，目前顯示的是這台裝置上次存的名單');
+      return false;
+    }
+
+    function openHandlerModal() {
+      document.getElementById('handlerNewName').value = '';
+      setHandlerStatus('');
+      renderHandlerModalList();
+      document.getElementById('handlerModal').classList.remove('hidden');
+      refreshHandlers();
+    }
+
+    function closeHandlerModal() {
+      const m = document.getElementById('handlerModal');
+      if (m) m.classList.add('hidden');
+    }
+
+    // 名單彈窗內容：點名字帶入經手人；管理員才看得到「刪除」
+    function renderHandlerModalList() {
+      const box = document.getElementById('handlerListBox');
+      if (!box) return;
+      const canAdd = authRole === 'A' || authRole === 'B';
+      const isAdmin = authRole === 'A';
+      document.getElementById('handlerAddRow').classList.toggle('hidden', !canAdd);
+      box.innerHTML = '';
+      if (!invHandlers.length) {
+        box.innerHTML = '<p class="text-sm text-gray-500 text-center py-3">名單還是空的，可以在上面新增</p>';
+        return;
+      }
+      invHandlers.forEach(name => {
+        const row = document.createElement('div');
+        row.className = 'flex items-center justify-between gap-2 bg-gray-950 border border-gray-800 rounded-lg px-3 py-2';
+        const pick = document.createElement('button');
+        pick.type = 'button';
+        pick.className = 'flex-1 min-w-0 text-left text-sm text-gray-100 truncate hover:text-blue-400 transition';
+        pick.textContent = name;
+        pick.title = '帶入經手人';
+        pick.addEventListener('click', () => {
+          document.getElementById('invHandler').value = name;
+          closeHandlerModal();
+        });
+        row.appendChild(pick);
+        if (isAdmin) {
+          const del = document.createElement('button');
+          del.type = 'button';
+          del.className = 'text-xs font-semibold text-red-400 hover:text-red-300 border border-red-800/50 hover:bg-red-950/40 px-2 py-1 rounded-md transition whitespace-nowrap';
+          del.textContent = '刪除';
+          del.addEventListener('click', () => removeHandlerName(name, del));
+          row.appendChild(del);
+        }
+        box.appendChild(row);
+      });
+    }
+
+    // 新增名字：倉庫人員或管理員（後端會再檢查密碼）
+    async function addHandlerName() {
+      const input = document.getElementById('handlerNewName');
+      const name = input.value.trim();
+      if (!name) { alert('請輸入名字！'); input.focus(); return; }
+      if (name.length > HANDLER_MAX_LEN) { alert('名字最多 ' + HANDLER_MAX_LEN + ' 個字！'); input.focus(); return; }
+      if (authRole === 'C' || !authPassword) {
+        loginCallback = () => { openHandlerModal(); };
+        openLoginModal('新增經手人需要倉庫人員或管理員密碼');
+        return;
+      }
+      const btn = document.getElementById('handlerBtnAdd');
+      btn.disabled = true;
+      btn.innerText = '新增中...';
+      try {
+        const r = await invApiPost({ action: 'addHandler', name, password: authPassword });
+        if (r.status === 'success') {
+          if (Array.isArray(r.data)) setHandlers(r.data);
+          input.value = '';
+          showInvToast((r.added ? '✅ ' : '') + (r.message || '已新增'), r.added ? 'success' : 'warn');
+        } else {
+          alert('❌ 新增失敗：' + (r.message || '未知錯誤'));
+          handleAuthError(r);
+        }
+      } catch (err) {
+        console.error(err);
+        alert('連線失敗，請檢查網路後再試一次。');
+      } finally {
+        btn.disabled = false;
+        btn.innerText = '新增';
+      }
+    }
+
+    // 刪除名字：只有管理員（後端會再檢查密碼）
+    async function removeHandlerName(name, btn) {
+      if (authRole !== 'A' || !authPassword) { alert('只有管理員可以刪除名單裡的名字。'); return; }
+      if (!confirm(`確定要把「${name}」從經手人名單刪除嗎？\n（已經記錄的異動不會受影響）`)) return;
+      if (btn) { btn.disabled = true; btn.innerText = '刪除中...'; }
+      try {
+        const r = await invApiPost({ action: 'removeHandler', name, password: authPassword });
+        if (r.status === 'success') {
+          if (Array.isArray(r.data)) setHandlers(r.data);
+          showInvToast(r.removed ? '已刪除：' + name : (r.message || '名單裡沒有這個名字'), r.removed ? 'success' : 'warn');
+        } else {
+          alert('❌ 刪除失敗：' + (r.message || '未知錯誤'));
+          handleAuthError(r);
+          renderHandlerModalList();
+        }
+      } catch (err) {
+        console.error(err);
+        alert('連線失敗，請檢查網路後再試一次。');
+        renderHandlerModalList();
+      }
+    }
+
     // ---------- 啟動：讀取這台裝置記住的身分 ----------
+    loadHandlerCache();
     loadAuth();
     applyRoleUI();
     revalidateAuth();
