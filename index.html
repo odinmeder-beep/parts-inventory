@@ -296,7 +296,7 @@
           <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
               <div class="flex items-center justify-between mb-1">
-                <label for="invHandler" class="block text-xs font-medium text-gray-400">經手人 <span class="text-blue-400">（會記住）</span></label>
+                <label for="invHandler" class="block text-xs font-medium text-gray-400">經手人</label>
                 <button type="button" onclick="openHandlerModal()"
                         class="bg-gray-800 hover:bg-gray-700 text-gray-300 hover:text-gray-100 border border-gray-700 text-xs font-semibold px-2 py-0.5 rounded-md transition">編輯名單</button>
               </div>
@@ -582,7 +582,6 @@
         <h3 class="text-base font-bold text-gray-100">經手人名單</h3>
         <button type="button" onclick="closeHandlerModal()" class="text-gray-400 hover:text-gray-100 text-2xl font-bold leading-none p-1 rounded-lg hover:bg-gray-800 transition">&times;</button>
       </div>
-      <p class="text-xs text-gray-500">所有手機共用同一份名單。點名字就會帶入「經手人」。</p>
       <div id="handlerAddRow" class="flex gap-2">
         <input type="text" id="handlerNewName" maxlength="20" autocomplete="off" placeholder="輸入新名字（最多 20 字）"
                onkeydown="if(event.key === 'Enter'){ event.preventDefault(); addHandlerName(); }"
