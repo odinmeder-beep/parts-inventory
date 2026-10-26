@@ -43,7 +43,7 @@
         </a>
         <a href="#" id="nav-inv" onclick="event.preventDefault(); switchView('inventory')"
            class="flex items-center space-x-3 px-3 py-2.5 rounded-lg text-gray-400 hover:bg-gray-800 hover:text-white font-medium transition">
-          <span>進銷存（掃碼）</span>
+          <span>出入庫管理</span>
         </a>
       </nav>
     </div>
@@ -185,7 +185,7 @@
 
       <!-- 頁面標題與三個子頁籤 -->
       <div class="border-b border-gray-800 pb-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <h1 class="text-2xl font-bold text-white">進銷存管理</h1>
+        <h1 class="text-2xl font-bold text-white">出入庫管理</h1>
         <div class="flex bg-gray-900 p-1 rounded-lg border border-gray-800 text-xs font-semibold gap-1">
           <button id="invTabBtnScan" onclick="switchInvTab('scan')" class="px-3 py-1.5 rounded-md bg-blue-600 text-white transition">掃碼異動</button>
           <button id="invTabBtnLookup" onclick="switchInvTab('lookup')" class="px-3 py-1.5 rounded-md text-gray-400 hover:text-white transition">庫存查詢</button>
@@ -198,14 +198,13 @@
 
         <!-- 掃描器卡片 -->
         <div class="bg-gray-900 border border-gray-800 rounded-xl p-5 space-y-4 shadow-xl">
-          <div class="flex items-center justify-between">
-            <label class="block text-xs font-medium text-gray-400">相機掃描 QR 碼</label>
-            <span id="invScanStatus" class="text-xs px-2.5 py-0.5 rounded-full bg-gray-800 text-gray-400 border border-gray-700">相機未啟動</span>
+          <div class="flex items-center justify-end">
+            <span id="invScanStatus" class="hidden"></span>
           </div>
           <div id="invReader" class="hidden w-full overflow-hidden rounded-lg border border-gray-700 bg-black"></div>
           <div class="flex flex-col sm:flex-row gap-2">
             <button id="invBtnStartScan" onclick="startInvScanner()" class="flex-1 bg-blue-600 hover:bg-blue-500 text-white font-semibold py-3 rounded-lg transition shadow-lg shadow-blue-600/30">
-              📷 開啟相機掃描
+              掃描 QR CODE
             </button>
             <button id="invBtnStopScan" onclick="stopInvScanner()" class="hidden bg-gray-800 hover:bg-gray-700 text-gray-300 font-semibold px-4 py-3 rounded-lg transition">
               關閉相機
@@ -214,12 +213,12 @@
 
           <!-- 手動輸入料號（掃不到時使用） -->
           <div class="pt-2 border-t border-gray-800">
-            <label class="block text-xs font-medium text-gray-400 mb-1 mt-3">或手動輸入料號</label>
+            <label class="block text-sm font-medium text-gray-400 mb-1 mt-3">或手動輸入料號</label>
             <div class="flex gap-2">
               <input type="text" id="invManualPartNo" placeholder="例: SA07-2211" autocapitalize="characters"
                      onkeydown="if(event.key === 'Enter'){ event.preventDefault(); invManualLookup(); }"
                      class="flex-1 bg-gray-950 border border-gray-700 text-white placeholder-gray-500 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-blue-500">
-              <button onclick="invManualLookup()" class="bg-gray-800 hover:bg-gray-700 text-gray-200 font-semibold px-4 py-2 rounded-lg transition text-sm">帶入</button>
+              <button onclick="invManualLookup()" class="bg-gray-800 hover:bg-gray-700 text-gray-200 font-semibold px-4 py-2 rounded-lg transition text-sm">輸入</button>
             </div>
           </div>
         </div>
@@ -346,7 +345,7 @@
 
   <!-- ==================== 新增資料彈窗 (Modal) ==================== -->
   <div id="addModal" class="hidden fixed inset-0 bg-black/75 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-    <div class="bg-gray-900 border border-gray-800 rounded-2xl w-full max-w-5xl p-6 space-y-5 shadow-2xl overflow-y-auto max-h-[92vh]">
+    <div class="bg-gray-900 border border-gray-800 rounded-2xl w-full max-w-2xl p-6 space-y-5 shadow-2xl overflow-y-auto max-h-[92vh]">
       
       <!-- 彈窗頂部標題 -->
       <div class="flex justify-between items-center border-b border-gray-800 pb-4">
@@ -357,8 +356,8 @@
         <button onclick="closeAddModal()" class="text-gray-400 hover:text-white text-2xl font-bold leading-none p-1 rounded-lg hover:bg-gray-800 transition">&times;</button>
       </div>
 
-      <!-- 彈窗內容：分為左右兩部分 (左右對調：現有資料在左，暫時空著在右) -->
-      <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 items-stretch">
+      <!-- 彈窗內容：現有資料（右側「新增資料區」已移除） -->
+      <div class="grid grid-cols-1 gap-6 items-stretch">
         
         <!-- 左側：現有資料 (輸入料號後自動代入與修改) -->
         <div class="flex flex-col bg-gray-950/60 border border-gray-800 rounded-xl p-5 space-y-4">
@@ -426,7 +425,7 @@
               <div>
                 <label class="block font-medium text-gray-400 mb-1">料號 (part_no)</label>
                 <input type="text" id="existPartNo" readonly placeholder="-" 
-                       class="w-full bg-gray-900 border border-gray-800 text-blue-400 font-mono font-medium rounded px-3 py-1.5 focus:outline-none cursor-default">
+                       class="w-full bg-gray-900 border border-gray-800 text-gray-200 font-mono font-medium rounded px-3 py-1.5 focus:outline-none cursor-default">
               </div>
               <div>
                 <label class="block font-medium text-gray-400 mb-1">名稱 (name)</label>
@@ -473,12 +472,12 @@
               <div>
                 <label class="block font-medium text-gray-400 mb-1">當前儲位 (location_in)</label>
                 <input type="text" id="existLocIn" readonly placeholder="-" 
-                       class="w-full bg-gray-900 border border-gray-800 text-amber-400 font-semibold rounded px-3 py-1.5 focus:outline-none cursor-default">
+                       class="w-full bg-gray-900 border border-gray-800 text-gray-200 font-semibold rounded px-3 py-1.5 focus:outline-none cursor-default">
               </div>
               <div>
                 <label class="block font-medium text-gray-400 mb-1">組裝位置 (location_out)</label>
                 <input type="text" id="existLocOut" readonly placeholder="-" 
-                       class="w-full bg-gray-900 border border-gray-800 text-orange-400 font-semibold rounded px-3 py-1.5 focus:outline-none cursor-default">
+                       class="w-full bg-gray-900 border border-gray-800 text-gray-200 font-semibold rounded px-3 py-1.5 focus:outline-none cursor-default">
               </div>
             </div>
 
@@ -496,25 +495,6 @@
                         class="w-full bg-gray-900 border border-gray-800 text-gray-200 rounded px-3 py-1.5 focus:outline-none cursor-default resize-none"></textarea>
             </div>
 
-          </div>
-        </div>
-
-        <!-- 右側：暫時空著 -->
-        <div class="flex flex-col bg-gray-950/40 border border-dashed border-gray-800 rounded-xl p-5 min-h-[460px]">
-          <div class="flex items-center justify-between border-b border-gray-800/80 pb-3 mb-4">
-            <div class="flex items-center space-x-2">
-              <span class="w-2.5 h-2.5 rounded-full bg-gray-600"></span>
-              <h4 class="text-sm font-semibold text-gray-400">新增資料區</h4>
-            </div>
-            <span class="text-xs bg-gray-800 text-gray-400 px-2.5 py-0.5 rounded-full">暫時空著</span>
-          </div>
-          <div class="flex-1 flex flex-col items-center justify-center text-gray-500 py-12">
-            <div class="w-14 h-14 rounded-2xl bg-gray-900 border border-gray-800 flex items-center justify-center mb-3 text-gray-600">
-              <svg class="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 4v16m8-8H4"></path>
-              </svg>
-            </div>
-            <p class="text-sm font-medium text-gray-500">（右側欄位暫時空著，保留供後續使用）</p>
           </div>
         </div>
 
@@ -1037,12 +1017,12 @@
           <div class="grid grid-cols-2 gap-3 text-xl">
             <div class="bg-gray-950 p-2.5 rounded border border-gray-800">
               <span class="text-gray-400">料號</span>
-              <p class="font-mono font-semibold text-blue-400 mt-0.5">${data.part_no || '-'}</p>
+              <p class="font-mono font-semibold text-gray-200 mt-0.5">${data.part_no || '-'}</p>
             </div>
 
             <div class="bg-gray-950 p-2.5 rounded border border-gray-800">
               <span class="text-gray-400">當前儲位</span>
-              <p class="font-mono font-extrabold text-amber-400 mt-0.5">${data.location_in || '無'}</p>
+              <p class="font-mono font-extrabold text-gray-200 mt-0.5">${data.location_in || '無'}</p>
             </div>
 
             <div class="bg-gray-950 p-2.5 rounded border border-gray-800">
@@ -1051,7 +1031,7 @@
             </div>
             <div class="bg-gray-950 p-2.5 rounded border border-gray-800">
               <span class="text-gray-400">組裝位置</span>
-              <p class="font-semibold text-orange-400 mt-0.5">${data.location_out || '無'}</p>
+              <p class="font-semibold text-gray-200 mt-0.5">${data.location_out || '無'}</p>
             </div>
           </div>
 
@@ -1114,15 +1094,15 @@
 
     // 各欄位在預設 (唯讀) 與編輯模式下的樣式設定
     const EDITABLE_FIELD_CONFIGS = [
-      { id: 'existPartNo', defaultClass: 'w-full bg-gray-900 border border-gray-800 text-blue-400 font-mono font-medium rounded px-3 py-1.5 focus:outline-none cursor-default', editClass: 'w-full bg-gray-950 border border-amber-500/70 text-blue-400 font-mono font-semibold rounded px-3 py-1.5 focus:outline-none focus:ring-1 focus:ring-amber-500 cursor-text transition' },
+      { id: 'existPartNo', defaultClass: 'w-full bg-gray-900 border border-gray-800 text-gray-200 font-mono font-medium rounded px-3 py-1.5 focus:outline-none cursor-default', editClass: 'w-full bg-gray-950 border border-amber-500/70 text-white font-mono font-semibold rounded px-3 py-1.5 focus:outline-none focus:ring-1 focus:ring-amber-500 cursor-text transition' },
       { id: 'existName', defaultClass: 'w-full bg-gray-900 border border-gray-800 text-gray-200 rounded px-3 py-1.5 focus:outline-none cursor-default', editClass: 'w-full bg-gray-950 border border-amber-500/70 text-white rounded px-3 py-1.5 focus:outline-none focus:ring-1 focus:ring-amber-500 cursor-text transition' },
       { id: 'existCategory', defaultClass: 'w-full bg-gray-900 border border-gray-800 text-gray-200 rounded px-3 py-1.5 focus:outline-none cursor-default', editClass: 'w-full bg-gray-950 border border-amber-500/70 text-white rounded px-3 py-1.5 focus:outline-none focus:ring-1 focus:ring-amber-500 cursor-text transition' },
       { id: 'existSpec', defaultClass: 'w-full bg-gray-900 border border-gray-800 text-gray-200 rounded px-3 py-1.5 focus:outline-none cursor-default', editClass: 'w-full bg-gray-950 border border-amber-500/70 text-white rounded px-3 py-1.5 focus:outline-none focus:ring-1 focus:ring-amber-500 cursor-text transition' },
       { id: 'existLength', defaultClass: 'w-full bg-gray-900 border border-gray-800 text-gray-200 rounded px-3 py-1.5 focus:outline-none cursor-default', editClass: 'w-full bg-gray-950 border border-amber-500/70 text-white rounded px-3 py-1.5 focus:outline-none focus:ring-1 focus:ring-amber-500 cursor-text transition' },
       { id: 'existInner', defaultClass: 'w-full bg-gray-900 border border-gray-800 text-gray-200 rounded px-3 py-1.5 focus:outline-none cursor-default', editClass: 'w-full bg-gray-950 border border-amber-500/70 text-white rounded px-3 py-1.5 focus:outline-none focus:ring-1 focus:ring-amber-500 cursor-text transition' },
       { id: 'existOuter', defaultClass: 'w-full bg-gray-900 border border-gray-800 text-gray-200 rounded px-3 py-1.5 focus:outline-none cursor-default', editClass: 'w-full bg-gray-950 border border-amber-500/70 text-white rounded px-3 py-1.5 focus:outline-none focus:ring-1 focus:ring-amber-500 cursor-text transition' },
-      { id: 'existLocIn', defaultClass: 'w-full bg-gray-900 border border-gray-800 text-amber-400 font-semibold rounded px-3 py-1.5 focus:outline-none cursor-default', editClass: 'w-full bg-gray-950 border border-amber-500/70 text-amber-300 font-semibold rounded px-3 py-1.5 focus:outline-none focus:ring-1 focus:ring-amber-500 cursor-text transition' },
-      { id: 'existLocOut', defaultClass: 'w-full bg-gray-900 border border-gray-800 text-orange-400 font-semibold rounded px-3 py-1.5 focus:outline-none cursor-default', editClass: 'w-full bg-gray-950 border border-amber-500/70 text-orange-300 font-semibold rounded px-3 py-1.5 focus:outline-none focus:ring-1 focus:ring-amber-500 cursor-text transition' },
+      { id: 'existLocIn', defaultClass: 'w-full bg-gray-900 border border-gray-800 text-gray-200 font-semibold rounded px-3 py-1.5 focus:outline-none cursor-default', editClass: 'w-full bg-gray-950 border border-amber-500/70 text-white font-semibold rounded px-3 py-1.5 focus:outline-none focus:ring-1 focus:ring-amber-500 cursor-text transition' },
+      { id: 'existLocOut', defaultClass: 'w-full bg-gray-900 border border-gray-800 text-gray-200 font-semibold rounded px-3 py-1.5 focus:outline-none cursor-default', editClass: 'w-full bg-gray-950 border border-amber-500/70 text-white font-semibold rounded px-3 py-1.5 focus:outline-none focus:ring-1 focus:ring-amber-500 cursor-text transition' },
       { id: 'existSpecDetail', defaultClass: 'w-full bg-gray-900 border border-gray-800 text-gray-200 rounded px-3 py-1.5 focus:outline-none cursor-default', editClass: 'w-full bg-gray-950 border border-amber-500/70 text-white rounded px-3 py-1.5 focus:outline-none focus:ring-1 focus:ring-amber-500 cursor-text transition' },
       { id: 'existNotes', defaultClass: 'w-full bg-gray-900 border border-gray-800 text-gray-200 rounded px-3 py-1.5 focus:outline-none cursor-default resize-none', editClass: 'w-full bg-gray-950 border border-amber-500/70 text-white rounded px-3 py-1.5 focus:outline-none focus:ring-1 focus:ring-amber-500 cursor-text resize-none transition' },
     ];
@@ -1791,7 +1771,7 @@
       if (reader) reader.classList.add('hidden');
       const b1 = document.getElementById('invBtnStartScan');
       const b2 = document.getElementById('invBtnStopScan');
-      if (b1) { b1.classList.remove('hidden'); b1.innerText = '📷 開啟相機掃描'; }
+      if (b1) { b1.classList.remove('hidden'); b1.innerText = '掃描 QR CODE'; }
       if (b2) b2.classList.add('hidden');
       setInvScanStatus('idle');
     }
@@ -1801,7 +1781,7 @@
       if (!el) return;
       const base = 'text-xs px-2.5 py-0.5 rounded-full border ';
       const m = {
-        idle:     ['相機未啟動', 'bg-gray-800 text-gray-400 border-gray-700'],
+        idle:     ['', 'hidden'],
         starting: ['相機啟動中...', 'bg-blue-950/80 text-blue-300 border-blue-700/60 animate-pulse'],
         scanning: ['掃描中，請對準 QR 碼', 'bg-green-950/80 text-green-300 border-green-700/60'],
         paused:   ['已讀取，暫停掃描', 'bg-amber-950/80 text-amber-300 border-amber-700/60'],
