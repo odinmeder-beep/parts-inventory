@@ -462,7 +462,7 @@
                        class="w-full bg-gray-900 border border-gray-800 text-gray-100 rounded px-3 py-1.5 focus:outline-none cursor-default">
               </div>
               <div>
-                <label class="block font-medium text-gray-400 mb-1">規格簡述 (spec)</label>
+                <label class="block font-medium text-gray-400 mb-1">規格 (長*內*外，自動帶出)</label>
                 <input type="text" id="existSpec" readonly placeholder="-" 
                        class="w-full bg-gray-900 border border-gray-800 text-gray-100 rounded px-3 py-1.5 focus:outline-none cursor-default">
               </div>
@@ -485,6 +485,21 @@
                 <input type="text" id="existOuter" readonly placeholder="-" 
                        class="w-full bg-gray-900 border border-gray-800 text-gray-100 rounded px-3 py-1.5 focus:outline-none cursor-default">
               </div>
+              <div>
+                <label class="block font-medium text-gray-400 mb-1">長度2 (length2)</label>
+                <input type="text" id="existLength2" readonly placeholder="-" 
+                       class="w-full bg-gray-900 border border-gray-800 text-gray-100 rounded px-3 py-1.5 focus:outline-none cursor-default">
+              </div>
+              <div>
+                <label class="block font-medium text-gray-400 mb-1">內徑2 (inner_dia2)</label>
+                <input type="text" id="existInner2" readonly placeholder="-" 
+                       class="w-full bg-gray-900 border border-gray-800 text-gray-100 rounded px-3 py-1.5 focus:outline-none cursor-default">
+              </div>
+              <div>
+                <label class="block font-medium text-gray-400 mb-1">外徑2 (outer_dia2)</label>
+                <input type="text" id="existOuter2" readonly placeholder="-" 
+                       class="w-full bg-gray-900 border border-gray-800 text-gray-100 rounded px-3 py-1.5 focus:outline-none cursor-default">
+              </div>
             </div>
 
             <!-- 儲位資訊 -->
@@ -503,7 +518,7 @@
 
             <!-- 詳細規格 -->
             <div>
-              <label class="block font-medium text-gray-400 mb-1">詳細規格 (spec_detail)</label>
+              <label class="block font-medium text-gray-400 mb-1">詳細規格 (自動帶出)</label>
               <input type="text" id="existSpecDetail" readonly placeholder="-" 
                      class="w-full bg-gray-900 border border-gray-800 text-gray-100 rounded px-3 py-1.5 focus:outline-none cursor-default">
             </div>
@@ -1151,13 +1166,14 @@
       { id: 'existPartNo', defaultClass: 'w-full bg-gray-900 border border-gray-800 text-gray-100 font-mono font-medium rounded px-3 py-1.5 focus:outline-none cursor-default', editClass: 'w-full bg-gray-950 border border-amber-500/70 text-gray-100 font-mono font-semibold rounded px-3 py-1.5 focus:outline-none focus:ring-1 focus:ring-amber-500 cursor-text transition' },
       { id: 'existName', defaultClass: 'w-full bg-gray-900 border border-gray-800 text-gray-100 rounded px-3 py-1.5 focus:outline-none cursor-default', editClass: 'w-full bg-gray-950 border border-amber-500/70 text-gray-100 rounded px-3 py-1.5 focus:outline-none focus:ring-1 focus:ring-amber-500 cursor-text transition' },
       { id: 'existCategory', defaultClass: 'w-full bg-gray-900 border border-gray-800 text-gray-100 rounded px-3 py-1.5 focus:outline-none cursor-default', editClass: 'w-full bg-gray-950 border border-amber-500/70 text-gray-100 rounded px-3 py-1.5 focus:outline-none focus:ring-1 focus:ring-amber-500 cursor-text transition' },
-      { id: 'existSpec', defaultClass: 'w-full bg-gray-900 border border-gray-800 text-gray-100 rounded px-3 py-1.5 focus:outline-none cursor-default', editClass: 'w-full bg-gray-950 border border-amber-500/70 text-gray-100 rounded px-3 py-1.5 focus:outline-none focus:ring-1 focus:ring-amber-500 cursor-text transition' },
       { id: 'existLength', defaultClass: 'w-full bg-gray-900 border border-gray-800 text-gray-100 rounded px-3 py-1.5 focus:outline-none cursor-default', editClass: 'w-full bg-gray-950 border border-amber-500/70 text-gray-100 rounded px-3 py-1.5 focus:outline-none focus:ring-1 focus:ring-amber-500 cursor-text transition' },
       { id: 'existInner', defaultClass: 'w-full bg-gray-900 border border-gray-800 text-gray-100 rounded px-3 py-1.5 focus:outline-none cursor-default', editClass: 'w-full bg-gray-950 border border-amber-500/70 text-gray-100 rounded px-3 py-1.5 focus:outline-none focus:ring-1 focus:ring-amber-500 cursor-text transition' },
       { id: 'existOuter', defaultClass: 'w-full bg-gray-900 border border-gray-800 text-gray-100 rounded px-3 py-1.5 focus:outline-none cursor-default', editClass: 'w-full bg-gray-950 border border-amber-500/70 text-gray-100 rounded px-3 py-1.5 focus:outline-none focus:ring-1 focus:ring-amber-500 cursor-text transition' },
+      { id: 'existLength2', defaultClass: 'w-full bg-gray-900 border border-gray-800 text-gray-100 rounded px-3 py-1.5 focus:outline-none cursor-default', editClass: 'w-full bg-gray-950 border border-amber-500/70 text-gray-100 rounded px-3 py-1.5 focus:outline-none focus:ring-1 focus:ring-amber-500 cursor-text transition' },
+      { id: 'existInner2', defaultClass: 'w-full bg-gray-900 border border-gray-800 text-gray-100 rounded px-3 py-1.5 focus:outline-none cursor-default', editClass: 'w-full bg-gray-950 border border-amber-500/70 text-gray-100 rounded px-3 py-1.5 focus:outline-none focus:ring-1 focus:ring-amber-500 cursor-text transition' },
+      { id: 'existOuter2', defaultClass: 'w-full bg-gray-900 border border-gray-800 text-gray-100 rounded px-3 py-1.5 focus:outline-none cursor-default', editClass: 'w-full bg-gray-950 border border-amber-500/70 text-gray-100 rounded px-3 py-1.5 focus:outline-none focus:ring-1 focus:ring-amber-500 cursor-text transition' },
       { id: 'existLocIn', defaultClass: 'w-full bg-gray-900 border border-gray-800 text-gray-100 font-semibold rounded px-3 py-1.5 focus:outline-none cursor-default', editClass: 'w-full bg-gray-950 border border-amber-500/70 text-gray-100 font-semibold rounded px-3 py-1.5 focus:outline-none focus:ring-1 focus:ring-amber-500 cursor-text transition' },
       { id: 'existLocOut', defaultClass: 'w-full bg-gray-900 border border-gray-800 text-gray-100 font-semibold rounded px-3 py-1.5 focus:outline-none cursor-default', editClass: 'w-full bg-gray-950 border border-amber-500/70 text-gray-100 font-semibold rounded px-3 py-1.5 focus:outline-none focus:ring-1 focus:ring-amber-500 cursor-text transition' },
-      { id: 'existSpecDetail', defaultClass: 'w-full bg-gray-900 border border-gray-800 text-gray-100 rounded px-3 py-1.5 focus:outline-none cursor-default', editClass: 'w-full bg-gray-950 border border-amber-500/70 text-gray-100 rounded px-3 py-1.5 focus:outline-none focus:ring-1 focus:ring-amber-500 cursor-text transition' },
       { id: 'existNotes', defaultClass: 'w-full bg-gray-900 border border-gray-800 text-gray-100 rounded px-3 py-1.5 focus:outline-none cursor-default resize-none', editClass: 'w-full bg-gray-950 border border-amber-500/70 text-gray-100 rounded px-3 py-1.5 focus:outline-none focus:ring-1 focus:ring-amber-500 cursor-text resize-none transition' },
     ];
 
@@ -1418,13 +1434,14 @@
           part_no: inputPartNo,
           name: '',
           category: '',
-          spec: '',
           length: '',
+          length2: '',
           inner_dia: '',
+          inner_dia2: '',
           outer_dia: '',
+          outer_dia2: '',
           location_in: '',
           location_out: '',
-          spec_detail: '',
           notes: ''
         };
         updateBadge('typing', '✨ 新增模式中 (請輸入配件資料後點選儲存)');
@@ -1435,13 +1452,14 @@
           part_no: document.getElementById('existPartNo').value,
           name: document.getElementById('existName').value,
           category: document.getElementById('existCategory').value,
-          spec: document.getElementById('existSpec').value,
           length: document.getElementById('existLength').value,
+          length2: document.getElementById('existLength2').value,
           inner_dia: document.getElementById('existInner').value,
+          inner_dia2: document.getElementById('existInner2').value,
           outer_dia: document.getElementById('existOuter').value,
+          outer_dia2: document.getElementById('existOuter2').value,
           location_in: document.getElementById('existLocIn').value,
           location_out: document.getElementById('existLocOut').value,
-          spec_detail: document.getElementById('existSpecDetail').value,
           notes: document.getElementById('existNotes').value,
         };
         updateBadge('typing', '✏️ 編輯模式中 (修改完成後請點選儲存)');
@@ -1535,13 +1553,14 @@
         part_no: newPartNo,
         name: newName,
         category: document.getElementById('existCategory').value.trim(),
-        spec: document.getElementById('existSpec').value.trim(),
         length: document.getElementById('existLength').value.trim(),
+        length2: document.getElementById('existLength2').value.trim(),
         inner_dia: document.getElementById('existInner').value.trim(),
+        inner_dia2: document.getElementById('existInner2').value.trim(),
         outer_dia: document.getElementById('existOuter').value.trim(),
+        outer_dia2: document.getElementById('existOuter2').value.trim(),
         location_in: document.getElementById('existLocIn').value.trim(),
         location_out: document.getElementById('existLocOut').value.trim(),
-        spec_detail: document.getElementById('existSpecDetail').value.trim(),
         notes: document.getElementById('existNotes').value.trim(),
       };
 
@@ -1686,6 +1705,22 @@
       }
     }
 
+    // 編輯尺寸時，即時更新「規格」「詳細規格」預覽
+    function existDimsFromForm() {
+      const v = id => document.getElementById(id).value;
+      return { length: v('existLength'), length2: v('existLength2'), inner_dia: v('existInner'),
+               inner_dia2: v('existInner2'), outer_dia: v('existOuter'), outer_dia2: v('existOuter2') };
+    }
+    function updateExistSpecPreview() {
+      const d = existDimsFromForm();
+      document.getElementById('existSpec').value = partSpec(d);
+      document.getElementById('existSpecDetail').value = partSpecDetail(d);
+    }
+    ['existLength', 'existLength2', 'existInner', 'existInner2', 'existOuter', 'existOuter2'].forEach(id => {
+      const el = document.getElementById(id);
+      if (el) el.addEventListener('input', updateExistSpecPreview);
+    });
+
     // 將資料填入現有資料欄位
     function populateExistingFields(item) {
       document.getElementById('existPartNo').value = item.part_no || '';
@@ -1694,6 +1729,9 @@
       document.getElementById('existLength').value = item.length || '';
       document.getElementById('existInner').value = item.inner_dia || '';
       document.getElementById('existOuter').value = item.outer_dia || '';
+      document.getElementById('existLength2').value = item.length2 || '';
+      document.getElementById('existInner2').value = item.inner_dia2 || '';
+      document.getElementById('existOuter2').value = item.outer_dia2 || '';
       document.getElementById('existLocIn').value = item.location_in || '';
       document.getElementById('existLocOut').value = item.location_out || '';
       document.getElementById('existSpec').value = partSpec(item);
@@ -1710,6 +1748,9 @@
       document.getElementById('existLength').value = '';
       document.getElementById('existInner').value = '';
       document.getElementById('existOuter').value = '';
+      document.getElementById('existLength2').value = '';
+      document.getElementById('existInner2').value = '';
+      document.getElementById('existOuter2').value = '';
       document.getElementById('existLocIn').value = '';
       document.getElementById('existLocOut').value = '';
       document.getElementById('existSpec').value = '';
