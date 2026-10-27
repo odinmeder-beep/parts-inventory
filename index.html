@@ -605,6 +605,19 @@
 
   <!-- ==================== JavaScript 邏輯 ==================== -->
   <script>
+    // 規格文字由長度／內徑／外徑欄位組出來（取代試算表 K、L 欄的 TEXTJOIN，空的格子會跳過）
+    function joinSpec(values) {
+      return values.map(v => String(v ?? '').trim()).filter(v => v !== '').join('*');
+    }
+    // 規格 (長*內*外)：C、E、G 欄
+    function partSpec(p) {
+      return p ? joinSpec([p.length, p.inner_dia, p.outer_dia]) : '';
+    }
+    // 詳細規格：C～H 欄
+    function partSpecDetail(p) {
+      return p ? joinSpec([p.length, p.length2, p.inner_dia, p.inner_dia2, p.outer_dia, p.outer_dia2]) : '';
+    }
+
     const API_URL = "https://script.google.com/macros/s/AKfycbz2VytI8-kk1e_wNyy-E2TDb8e6WTRd3lELyPri2vFm2k4hihXMLW4VCJGH379Ux8jp/exec";
 
     // 切換三個搜尋頁籤
@@ -956,7 +969,7 @@
 
         // 僅顯示 name 與 spec_detail（移除 hover 提示）
         const nameText = (item.name || '').trim();
-        const specDetailText = (item.spec_detail || item.spec || '').trim();
+        const specDetailText = partSpecDetail(item) || partSpec(item);
 
         let labelHtml = '';
         if (nameText && specDetailText) {
@@ -982,7 +995,7 @@
 
           // 同步在下方查詢結果區呈現該配件詳細卡片
           const matchedItems = dataList.filter(d => 
-            (d.spec && d.spec === item.spec) || 
+            (partSpec(d) && partSpec(d) === partSpec(item)) || 
             (d.part_no === item.part_no)
           );
           renderResultList(matchedItems.length > 0 ? matchedItems : [item]);
@@ -1069,7 +1082,7 @@
 
             <div class="bg-gray-950 p-2.5 rounded border border-gray-800">
               <span class="text-gray-400">規格 (長*內*外)</span>
-              <p class="font-semibold text-gray-100 mt-0.5">${data.spec || '-'}</p>
+              <p class="font-semibold text-gray-100 mt-0.5">${partSpec(data) || '-'}</p>
             </div>
             <div class="bg-gray-950 p-2.5 rounded border border-gray-800">
               <span class="text-gray-400">組裝位置</span>
@@ -1078,7 +1091,7 @@
           </div>
 
           <div class="bg-gray-950 p-3 rounded border border-gray-800 space-y-1 text-xl text-gray-400">
-            <p><strong>詳細規格：</strong><span class="text-gray-100">${data.spec_detail || '-'}</span></p>
+            <p><strong>詳細規格：</strong><span class="text-gray-100">${partSpecDetail(data) || '-'}</span></p>
             <p><strong>備註說明：</strong><span class="text-gray-300">${data.notes || '無'}</span></p>
           </div>
         `;
@@ -1683,8 +1696,8 @@
       document.getElementById('existOuter').value = item.outer_dia || '';
       document.getElementById('existLocIn').value = item.location_in || '';
       document.getElementById('existLocOut').value = item.location_out || '';
-      document.getElementById('existSpec').value = item.spec || '';
-      document.getElementById('existSpecDetail').value = item.spec_detail || '';
+      document.getElementById('existSpec').value = partSpec(item);
+      document.getElementById('existSpecDetail').value = partSpecDetail(item);
       document.getElementById('existNotes').value = item.notes || '';
       updateEditButtonText();
     }
@@ -2001,7 +2014,7 @@
       document.getElementById('invPartNo').innerText = p.part_no || '-';
       document.getElementById('invPartStock').innerText = d.stock;
       document.getElementById('invPartSafety').innerText = (d.safety === null || d.safety === undefined || d.safety === '') ? '未設定' : d.safety;
-      document.getElementById('invPartSpec').innerText = p.spec_detail || p.spec || '-';
+      document.getElementById('invPartSpec').innerText = partSpecDetail(p) || partSpec(p) || '-';
       document.getElementById('invPartLoc').innerText = p.location_in || '無';
       const isLow = d.safety !== null && d.safety !== undefined && d.safety !== '' && Number(d.stock) <= Number(d.safety);
       document.getElementById('invLowWarn').classList.toggle('hidden', !isLow);
@@ -2105,7 +2118,7 @@
       document.getElementById('invConfirmBody').innerHTML = `
         <p><span class="text-gray-500">料號：</span><span class="font-mono text-gray-100 font-semibold">${invEsc(p.part_no)}</span></p>
         <p><span class="text-gray-500">名稱：</span><span class="text-gray-100 font-semibold">${invEsc(p.name || '-')}</span></p>
-        <p><span class="text-gray-500">規格：</span>${invEsc(p.spec_detail || p.spec || '-')}</p>
+        <p><span class="text-gray-500">規格：</span>${invEsc(partSpecDetail(p) || partSpec(p) || '-')}</p>
         <p><span class="text-gray-500">類型：</span><span class="font-semibold">${invEsc(invType)}</span></p>
         <p><span class="text-gray-500">${invType === '盤點調整' ? '實盤數量' : '數量'}：</span><span class="font-mono font-bold text-gray-100">${f.qty}</span></p>
         <p><span class="text-gray-500">庫存變化：</span><span class="font-mono">${stockNow} → <span class="font-bold ${delta >= 0 ? 'text-green-400' : 'text-red-400'}">${after}</span>（${delta > 0 ? '+' : ''}${delta}）</span></p>
@@ -2238,7 +2251,7 @@
               <div class="bg-gray-950 p-2.5 rounded border border-gray-800"><span class="text-gray-400 text-sm">安全庫存</span>
                 <p class="font-mono font-semibold text-2xl text-gray-300">${hasSafety ? invEsc(d.safety) : '未設定'}</p></div>
               <div class="bg-gray-950 p-2.5 rounded border border-gray-800"><span class="text-gray-400 text-sm">規格</span>
-                <p class="font-semibold text-gray-100">${invEsc(p.spec_detail || p.spec || '-')}</p></div>
+                <p class="font-semibold text-gray-100">${invEsc(partSpecDetail(p) || partSpec(p) || '-')}</p></div>
               <div class="bg-gray-950 p-2.5 rounded border border-gray-800"><span class="text-gray-400 text-sm">當前儲位</span>
                 <p class="font-mono font-extrabold text-gray-100">${invEsc(p.location_in || '無')}</p></div>
             </div>
