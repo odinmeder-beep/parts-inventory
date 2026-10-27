@@ -301,9 +301,14 @@
                         class="bg-gray-800 hover:bg-gray-700 text-gray-300 hover:text-gray-100 border border-gray-700 text-xs font-semibold px-2 py-0.5 rounded-md transition">編輯名單</button>
               </div>
               <!-- 經手人：可從名單下拉選擇，也可直接輸入新名字（新名字送出後會自動加入名單） -->
-              <input type="text" id="invHandler" list="invHandlerList" maxlength="20" autocomplete="off" placeholder="選擇或輸入名字"
-                     class="w-full bg-gray-950 border border-gray-700 text-gray-100 placeholder-gray-500 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-blue-500">
-              <datalist id="invHandlerList"></datalist>
+              <div id="invHandlerWrap" class="relative">
+                <input type="text" id="invHandler" maxlength="20" autocomplete="off" placeholder="選擇或輸入名字"
+                       onfocus="openHandlerMenu(false)" oninput="openHandlerMenu(true)"
+                       class="w-full bg-gray-950 border border-gray-700 text-gray-100 placeholder-gray-500 rounded-lg pl-3 pr-10 py-2 text-sm focus:outline-none focus:border-blue-500">
+                <button type="button" id="invHandlerToggle" onclick="toggleHandlerMenu()" aria-label="展開經手人名單"
+                        class="absolute inset-y-0 right-0 w-10 flex items-center justify-center text-gray-400 hover:text-gray-100 transition">▼</button>
+                <div id="invHandlerMenu" class="hidden absolute z-30 left-0 right-0 mt-1 max-h-56 overflow-y-auto bg-gray-900 border border-gray-700 rounded-lg shadow-lg"></div>
+              </div>
             </div>
             <div>
               <label class="block text-xs font-medium text-gray-400 mb-1">備註</label>
@@ -2318,17 +2323,54 @@
       renderHandlerModalList();
     }
 
-    // 下拉選單（datalist）
+    // 下拉選單（自製，手機也能用；不用 datalist，因為有些手機不顯示、或被已填的名字過濾掉）
+    let handlerMenuFilter = false;
     function renderHandlerOptions() {
-      const dl = document.getElementById('invHandlerList');
-      if (!dl) return;
-      dl.innerHTML = '';
-      invHandlers.forEach(n => {
-        const o = document.createElement('option');
-        o.value = n;
-        dl.appendChild(o);
+      const menu = document.getElementById('invHandlerMenu');
+      if (!menu || menu.classList.contains('hidden')) return;
+      const input = document.getElementById('invHandler');
+      const q = handlerMenuFilter ? input.value.trim().toUpperCase() : '';
+      const list = q ? invHandlers.filter(n => n.toUpperCase().includes(q)) : invHandlers;
+      menu.innerHTML = '';
+      if (!list.length) {
+        const p = document.createElement('p');
+        p.className = 'px-3 py-2 text-sm text-gray-500';
+        p.textContent = invHandlers.length ? '名單裡沒有這個名字，送出後會自動加入' : '名單是空的，可以按「編輯名單」新增';
+        menu.appendChild(p);
+        return;
+      }
+      list.forEach(n => {
+        const b = document.createElement('button');
+        b.type = 'button';
+        b.className = 'block w-full text-left px-3 py-2 text-sm text-gray-100 hover:bg-gray-800 truncate' + (n === input.value.trim() ? ' bg-gray-800' : '');
+        b.textContent = n;
+        b.addEventListener('mousedown', e => e.preventDefault()); // 避免輸入框先失去焦點
+        b.addEventListener('click', () => { input.value = n; closeHandlerMenu(); });
+        menu.appendChild(b);
       });
     }
+
+    function openHandlerMenu(filter) {
+      handlerMenuFilter = !!filter;
+      document.getElementById('invHandlerMenu').classList.remove('hidden');
+      renderHandlerOptions();
+    }
+
+    function closeHandlerMenu() {
+      const menu = document.getElementById('invHandlerMenu');
+      if (menu) menu.classList.add('hidden');
+    }
+
+    function toggleHandlerMenu() {
+      const menu = document.getElementById('invHandlerMenu');
+      if (menu.classList.contains('hidden')) openHandlerMenu(false); else closeHandlerMenu();
+    }
+
+    // 點選單以外的地方就收起來
+    document.addEventListener('pointerdown', e => {
+      const wrap = document.getElementById('invHandlerWrap');
+      if (wrap && !wrap.contains(e.target)) closeHandlerMenu();
+    });
 
     function setHandlerStatus(msg) {
       const el = document.getElementById('handlerStatus');
