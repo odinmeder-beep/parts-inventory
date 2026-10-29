@@ -1234,13 +1234,13 @@
         editActionType = 'add';
       }
 
-      // 新增／修改配件資料只有 A 管理員可以（後端也會再檢查一次）
-      if (authRole !== 'A') {
+      // 新增／修改配件資料：倉庫人員或管理員（後端也會再檢查一次）
+      if (authRole !== 'A' && authRole !== 'B') {
         loginCallback = () => {
-          if (authRole === 'A') enterEditMode();
-          else alert('目前身分沒有新增或修改配件資料的權限，需要管理員密碼。');
+          if (authRole === 'A' || authRole === 'B') enterEditMode();
+          else alert('目前身分沒有新增或修改配件資料的權限，需要倉庫人員或管理員密碼。');
         };
-        openLoginModal('新增或修改配件資料需要管理員密碼');
+        openLoginModal('新增或修改配件資料需要倉庫人員或管理員密碼');
       } else {
         enterEditMode();
       }
@@ -1277,18 +1277,20 @@
 
     // 依照身分顯示／隱藏功能
     function applyRoleUI() {
-      const canMove = authRole === 'A' || authRole === 'B';
+      const loggedIn = authRole === 'A' || authRole === 'B';
+      const canMove = authRole === 'A';          // 出入庫管理：只有管理員
+      const canEditParts = loggedIn;             // 新增／修改配件資料：倉庫人員和管理員
       const isAdmin = authRole === 'A';
       if (!canMove && !document.getElementById('viewInventory').classList.contains('hidden')) switchView('search');
       const roleLabel = document.getElementById('roleNameLabel');
-      roleLabel.textContent = canMove ? ROLE_LABELS[authRole] : '';
-      roleLabel.classList.toggle('hidden', !canMove);          // 未登入時標題下方不顯示任何字
+      roleLabel.textContent = loggedIn ? ROLE_LABELS[authRole] : '';
+      roleLabel.classList.toggle('hidden', !loggedIn);          // 未登入時標題下方不顯示任何字
       document.getElementById('roleMenuName').textContent = ROLE_LABELS[authRole];
-      if (!canMove) closeRoleMenu();
+      if (!loggedIn) closeRoleMenu();
       document.getElementById('nav-inv').classList.toggle('hidden', !canMove);
-      document.getElementById('addBtnWrap').classList.toggle('hidden', !isAdmin);
+      document.getElementById('addBtnWrap').classList.toggle('hidden', !canEditParts);
       const editBtn = document.getElementById('btnEditExist');
-      if (editBtn && !isEditMode) editBtn.classList.toggle('hidden', !isAdmin);
+      if (editBtn && !isEditMode) editBtn.classList.toggle('hidden', !canEditParts);
       const stockBtn = document.querySelector('#invTypeGroup button[data-type="盤點調整"]');
       if (stockBtn) stockBtn.classList.toggle('hidden', !isAdmin);
       const group = document.getElementById('invTypeGroup');
@@ -1299,7 +1301,7 @@
       if (!isAdmin && typeof invType !== 'undefined' && invType === '盤點調整') setInvType('出貨');
       if (!canMove) closeHandlerModal();
       renderHandlerModalList(); // 身分改變時更新名單彈窗（刪除鈕只給管理員）
-      if (!isAdmin) {
+      if (!canEditParts) {
         const addModal = document.getElementById('addModal');
         if (addModal && !addModal.classList.contains('hidden')) {
           if (isEditMode) cancelExistingDataEdit();
@@ -1889,7 +1891,7 @@
 
     // ---------- 主畫面切換（配件查詢 / 進銷存） ----------
     function switchView(view) {
-      if (view === 'inventory' && authRole === 'C') view = 'search'; // 現場人員不能進出入庫
+      if (view === 'inventory' && authRole !== 'A') view = 'search'; // 出入庫管理只有管理員能用
       const navSpec = document.getElementById('nav-spec');
       const navInv = document.getElementById('nav-inv');
       const activeNav = 'flex items-center space-x-3 px-3 py-2.5 rounded-lg bg-blue-600 text-gray-100 font-medium transition cursor-default';
@@ -1909,7 +1911,7 @@
         navInv.className = idleNav;
         navSpec.className = activeNav;
       }
-      navInv.classList.toggle('hidden', authRole === 'C'); // 依身分決定是否顯示「出入庫管理」
+      navInv.classList.toggle('hidden', authRole !== 'A'); // 依身分決定是否顯示「出入庫管理」
     }
 
     function switchInvTab(tab) {
@@ -2178,11 +2180,11 @@
       const f = readInvForm();
       const partNo = invCurrentPart.part.part_no;
 
-      // 出入庫需要登入（A 或 B）；盤點調整只有 A（後端也會再檢查一次）
-      if (authRole === 'C' || !authPassword) {
+      // 出入庫只有管理員（後端也會再檢查一次）
+      if (authRole !== 'A' || !authPassword) {
         closeInvConfirm();
-        loginCallback = () => { openInvConfirm(); };
-        openLoginModal('出入庫需要倉庫人員或管理員密碼');
+        loginCallback = () => { if (authRole === 'A') openInvConfirm(); };
+        openLoginModal('出入庫需要管理員密碼');
         return;
       }
       if (invType === '盤點調整' && authRole !== 'A') {
@@ -2460,7 +2462,7 @@
     function renderHandlerModalList() {
       const box = document.getElementById('handlerListBox');
       if (!box) return;
-      const canAdd = authRole === 'A' || authRole === 'B';
+      const canAdd = authRole === 'A';
       const isAdmin = authRole === 'A';
       document.getElementById('handlerAddRow').classList.toggle('hidden', !canAdd);
       box.innerHTML = '';
@@ -2493,15 +2495,15 @@
       });
     }
 
-    // 新增名字：倉庫人員或管理員（後端會再檢查密碼）
+    // 新增名字：管理員（後端會再檢查密碼）
     async function addHandlerName() {
       const input = document.getElementById('handlerNewName');
       const name = input.value.trim();
       if (!name) { alert('請輸入名字！'); input.focus(); return; }
       if (name.length > HANDLER_MAX_LEN) { alert('名字最多 ' + HANDLER_MAX_LEN + ' 個字！'); input.focus(); return; }
-      if (authRole === 'C' || !authPassword) {
+      if (authRole !== 'A' || !authPassword) {
         loginCallback = () => { openHandlerModal(); };
-        openLoginModal('新增經手人需要倉庫人員或管理員密碼');
+        openLoginModal('新增經手人需要管理員密碼');
         return;
       }
       const btn = document.getElementById('handlerBtnAdd');
