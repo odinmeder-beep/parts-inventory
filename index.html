@@ -23,6 +23,12 @@
     input[type=number] {
       -moz-appearance: textfield;
     }
+
+    /* 平板（寬 600～1199px，例如平板直放）：全站字體和按鈕放大 1.25 倍；手機和電腦維持原樣 */
+    @media (min-width: 600px) and (max-width: 1199px) {
+      html { font-size: 20px; }
+      aside.md\:w-64 { width: 12rem; }  /* 左側選單維持原本約 240px 寬，讓內容區不被擠窄 */
+    }
   </style>
 </head>
 <body class="bg-gray-950 text-gray-100 min-h-screen flex flex-col md:flex-row font-sans">
