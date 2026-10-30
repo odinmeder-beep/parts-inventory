@@ -27,7 +27,10 @@
     /* 平板（寬 600～1199px，例如平板直放）：全站字體和按鈕放大 1.25 倍；手機和電腦維持原樣 */
     @media (min-width: 600px) and (max-width: 1199px) {
       html { font-size: 20px; }
-      aside.md\:w-64 { width: 12rem; }  /* 左側選單維持原本約 240px 寬，讓內容區不被擠窄 */
+    }
+    /* 選單在左側時（寬 768px 以上）維持原本約 240px 寬，讓內容區不被擠窄；比較窄時選單在上方、維持整排寬度 */
+    @media (min-width: 768px) and (max-width: 1199px) {
+      aside.md\:w-64 { width: 12rem; }
     }
   </style>
 </head>
