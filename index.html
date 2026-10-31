@@ -1534,6 +1534,15 @@
       updateEditButtonText();
     }
 
+    // 自動消失的提示泡泡（1 秒）
+    function showToast(msg, ok) {
+      const t = document.createElement('div');
+      t.textContent = msg;
+      t.style.cssText = 'position:fixed;left:50%;top:40%;transform:translate(-50%,-50%);z-index:9999;font-size:0.5rem;padding:0.75em 1.25em;border-radius:0.75em;color:#fff;font-weight:600;box-shadow:0 4px 12px rgba(0,0,0,.25);max-width:90vw;text-align:center;pointer-events:none;transition:opacity .2s;background:' + (ok ? 'rgba(22,163,74,0.25)' : 'rgba(220,38,38,0.25)');
+      document.body.appendChild(t);
+      setTimeout(() => { t.style.opacity = '0'; setTimeout(() => t.remove(), 200); }, 1000);
+    }
+
     // 儲存修改或新增的配件資料回 Google Apps Script
     async function saveExistingDataChanges() {
       if (!isEditMode) return;
@@ -1596,7 +1605,7 @@
 
         if (result.status === 'success') {
           const successMsg = isAdding ? '配件資料新增成功！' : '配件資料修改成功！';
-          alert('🎉 ' + (result.message || successMsg));
+          showToast('成功', true);
 
           // 更新備份並退出編輯模式
           itemDataBackup = { ...itemData };
@@ -1620,7 +1629,7 @@
           updateEditButtonText();
           updateBadge('success', isAdding ? '✅ 新資料已成功建立' : '✅ 配件資料已成功儲存修改');
         } else {
-          alert('❌ 操作失敗：' + (result.message || '未知錯誤'));
+          showToast('失敗', false);
           updateBadge('error', '❌ 操作失敗');
           if (handleAuthError(result)) {
             cancelExistingDataEdit();
@@ -1628,7 +1637,7 @@
         }
       } catch (err) {
         console.error(err);
-        alert('連線失敗，請檢查網路或 Google Apps Script 部署設定！');
+        showToast('失敗', false);
         updateBadge('error', '❌ 連線失敗');
       } finally {
         saveBtn.disabled = false;
