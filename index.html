@@ -40,7 +40,16 @@
       body.sb-collapsed #btnTitle { display: none; }
       body.sb-collapsed #titleRow { justify-content: center; padding: 0; }
     }
-  </style>
+      /* 清單模式表格：斑馬紋、料號固定在左邊 */
+    .rv-table .rv-even > td { background: #111827; }
+    .rv-table .rv-odd > td { background: #0b1120; }
+    .rv-table .rv-row:hover > td { background: #1f2937; }
+    .rv-table .rv-sticky { position: sticky; left: 0; z-index: 1; box-shadow: 1px 0 0 #374151; }
+    .rv-table th.rv-sticky { z-index: 2; }
+    .rv-table .rv-name { min-width: 8rem; max-width: 14rem; }
+    .rv-table .rv-idx { width: 3rem; }
+    @media (max-width: 767px) { .rv-table .rv-idx { display: none; } }
+</style>
 </head>
 <body class="bg-gray-950 text-gray-100 min-h-screen flex flex-col md:flex-row font-sans">
 
@@ -1085,16 +1094,118 @@
       activeSpecPartNo = '';
     }
 
+    // ===== 查詢結果：卡片／清單切換 =====
+    const RV_ICON_CARD = `<path d="M19.9 13.5H4.1C2.6 13.5 2 14.14 2 15.73V19.77C2 21.36 2.6 22 4.1 22H19.9C21.4 22 22 21.36 22 19.77V15.73C22 14.14 21.4 13.5 19.9 13.5Z" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/><path d="M19.9 2H4.1C2.6 2 2 2.64 2 4.23V8.27C2 9.86 2.6 10.5 4.1 10.5H19.9C21.4 10.5 22 9.86 22 8.27V4.23C22 2.64 21.4 2 19.9 2Z" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>`;
+    const RV_ICON_LIST = `<path d="M2 4C1.44772 4 1 4.44772 1 5C1 5.55228 1.44772 6 2 6C2.55228 6 3.0001 5.55228 3.0001 5C3.0001 4.44772 2.55228 4 2 4Z" fill="currentColor"/> <path d="M7 4.25C6.58579 4.25 6.25 4.58579 6.25 5C6.25 5.41421 6.58579 5.75 7 5.75H22C22.4142 5.75 22.75 5.41421 22.75 5C22.75 4.58579 22.4142 4.25 22 4.25H7Z" fill="currentColor"/> <path d="M7 11.25C6.58579 11.25 6.25 11.5858 6.25 12C6.25 12.4142 6.58579 12.75 7 12.75H22C22.4142 12.75 22.75 12.4142 22.75 12C22.75 11.5858 22.4142 11.25 22 11.25H7Z" fill="currentColor"/> <path d="M6.25 19C6.25 18.5858 6.58579 18.25 7 18.25H22C22.4142 18.25 22.75 18.5858 22.75 19C22.75 19.4142 22.4142 19.75 22 19.75H7C6.58579 19.75 6.25 19.4142 6.25 19Z" fill="currentColor"/> <path d="M1 12C1 11.4477 1.44772 11 2 11C2.55228 11 3.0001 11.4477 3.0001 12C3.0001 12.5523 2.55238 13 2.0001 13C1.44782 13 1 12.5523 1 12Z" fill="currentColor"/> <path d="M2 18C1.44772 18 1 18.4477 1 19C1 19.5523 1.44772 20 2 20C2.55228 20 3.0001 19.5523 3.0001 19C3.0001 18.4477 2.55228 18 2 18Z" fill="currentColor"/>`;
+    let lastResultList = [];
+    let resultSort = { col: null, dir: 1 };
+    function getResultView() {
+      try { return localStorage.getItem('resultView') === 'list' ? 'list' : 'card'; } catch (e) { return 'card'; }
+    }
+    function setResultView(v) {
+      try { localStorage.setItem('resultView', v); } catch (e) {}
+    }
+
+    // 清單模式：像 Excel 的表格（料號固定在左邊，可排序、點列展開詳細）
+    function buildResultTable(dataList) {
+      const cols = [
+        { key: 'idx', label: '序號', get: (d, i) => i + 1, th: 'rv-idx', td: 'rv-idx text-gray-500 text-right' },
+        { key: 'part_no', label: '料號', get: d => d.part_no, th: 'rv-sticky', td: 'rv-sticky font-mono font-semibold' },
+        { key: 'name', label: '名稱', get: d => d.name, th: '', td: 'rv-name' },
+        { key: 'spec', label: '規格（長*內*外）', get: d => partSpec(d), th: '', td: '' },
+        { key: 'location_in', label: '當前儲位', get: d => d.location_in, th: '', td: 'font-mono' },
+        { key: 'location_out', label: '組裝位置', get: d => d.location_out, th: '', td: '' },
+        { key: 'category', label: '分類', get: d => d.category, th: '', td: '' }
+      ];
+      const show = v => (v === undefined || v === null || String(v).trim() === '') ? '-' : invEsc(v);
+
+      // 依目前排序整理資料（保留原本序號）
+      let rows = dataList.map((d, i) => ({ d, i }));
+      const sc = cols.find(c => c.key === resultSort.col);
+      if (sc && sc.key !== 'idx') {
+        rows.sort((a, b) => {
+          const va = String(sc.get(a.d, a.i) ?? ''), vb = String(sc.get(b.d, b.i) ?? '');
+          if (!va && vb) return 1;
+          if (va && !vb) return -1;
+          return va.localeCompare(vb, 'zh-Hant', { numeric: true }) * resultSort.dir;
+        });
+      } else if (sc && resultSort.dir < 0) {
+        rows.reverse();
+      }
+
+      const wrap = document.createElement('div');
+      wrap.className = 'overflow-x-auto rounded-lg border border-gray-800';
+      const table = document.createElement('table');
+      table.className = 'rv-table w-full text-sm text-gray-200 border-collapse';
+      const arrow = c => resultSort.col === c.key ? (resultSort.dir > 0 ? ' ▲' : ' ▼') : '';
+      table.innerHTML = `<thead><tr>${cols.map(c => `<th data-col="${c.key}" class="${c.th} px-3 py-2 text-left font-bold whitespace-nowrap bg-gray-800 border border-gray-700 cursor-pointer select-none">${c.label}<span class="text-blue-400">${arrow(c)}</span></th>`).join('')}</tr></thead>`;
+      const tbody = document.createElement('tbody');
+      rows.forEach(({ d, i }, n) => {
+        const tr = document.createElement('tr');
+        tr.className = 'rv-row cursor-pointer ' + (n % 2 ? 'rv-odd' : 'rv-even');
+        tr.innerHTML = cols.map(c => `<td class="${c.td} px-3 py-2 border border-gray-800 ${c.key === 'name' ? '' : 'whitespace-nowrap'}">${show(c.get(d, i))}</td>`).join('');
+        tr.onclick = () => {
+          const next = tr.nextElementSibling;
+          const opened = next && next.classList.contains('rv-detail');
+          tbody.querySelectorAll('.rv-detail').forEach(el => el.remove());
+          if (opened) return;
+          const dt = document.createElement('tr');
+          dt.className = 'rv-detail';
+          dt.innerHTML = `<td colspan="${cols.length}" class="px-3 py-2 border border-gray-800 bg-gray-950 text-gray-400">
+            <p><strong>詳細規格：</strong><span class="text-gray-100">${show(partSpecDetail(d))}</span></p>
+            <p><strong>備註說明：</strong><span class="text-gray-300">${d.notes ? invEsc(d.notes) : '無'}</span></p></td>`;
+          tr.after(dt);
+        };
+        tbody.appendChild(tr);
+      });
+      table.appendChild(tbody);
+      table.querySelectorAll('th').forEach(th => {
+        th.onclick = () => {
+          const k = th.dataset.col;
+          resultSort = resultSort.col === k ? { col: k, dir: -resultSort.dir } : { col: k, dir: 1 };
+          renderResultList(lastResultList);
+        };
+      });
+      wrap.appendChild(table);
+      return wrap;
+    }
+
     // 渲染查詢結果列表
     function renderResultList(dataList) {
       hideAllStatus();
       const container = document.getElementById('resultContainer');
       container.innerHTML = '';
 
+      lastResultList = dataList;
+      const view = getResultView();
+
+      // 筆數標題列：左邊是筆數，右邊是卡片／清單切換鈕
       const countHeader = document.createElement('div');
-      countHeader.className = "text-sm text-gray-400 mb-2";
-      countHeader.innerText = `找到 ${dataList.length} 筆符合條件的配件資料：`;
+      countHeader.className = "flex items-center justify-between gap-3 mb-2";
+      const countText = document.createElement('div');
+      countText.className = "text-sm text-gray-400";
+      countText.innerText = `找到 ${dataList.length} 筆符合條件的配件資料：`;
+      countHeader.appendChild(countText);
+      const toggle = document.createElement('div');
+      toggle.className = "flex shrink-0 bg-gray-900 border border-gray-800 rounded-lg p-1 gap-1";
+      [['card', '卡片', RV_ICON_CARD], ['list', '清單', RV_ICON_LIST]].forEach(([key, label, icon]) => {
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.title = label;
+        btn.setAttribute('aria-label', label);
+        btn.dataset.view = key;
+        btn.className = 'px-2.5 py-1.5 rounded-md transition ' + (view === key ? 'bg-blue-600 text-white' : 'text-gray-400 hover:text-gray-200');
+        btn.innerHTML = `<svg viewBox="0 0 24 24" fill="none" class="w-5 h-5">${icon}</svg>`;
+        btn.onclick = () => { setResultView(key); renderResultList(lastResultList); };
+        toggle.appendChild(btn);
+      });
+      countHeader.appendChild(toggle);
       container.appendChild(countHeader);
+
+      if (view === 'list') {
+        container.appendChild(buildResultTable(dataList));
+        return;
+      }
 
       dataList.forEach((data, index) => {
         const card = document.createElement('div');
