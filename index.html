@@ -1762,8 +1762,9 @@
           updateEditButtonText();
           updateBadge('success', isAdding ? '✅ 新資料已成功建立' : '✅ 配件資料已成功儲存修改');
         } else {
-          showToast('失敗', false);
-          updateBadge('error', '❌ 操作失敗');
+          const isDup = result.code === 'DUPLICATE' || /已存在於資料庫/.test(result.message || '');
+          showToast(isDup ? '料號重複' : '失敗', false);
+          updateBadge('error', isDup ? '❌ 料號重複，未寫入' : '❌ 操作失敗');
           if (handleAuthError(result)) {
             cancelExistingDataEdit();
           }
