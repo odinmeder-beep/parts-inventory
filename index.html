@@ -90,6 +90,10 @@
            class="hidden flex items-center space-x-3 px-3 py-2.5 rounded-lg text-gray-400 hover:bg-gray-800 hover:text-gray-100 font-medium transition">
           <span>出入庫管理</span>
         </a>
+        <a href="#" id="nav-wo" onclick="event.preventDefault(); switchView('workorder')"
+           class="hidden flex items-center space-x-3 px-3 py-2.5 rounded-lg text-gray-400 hover:bg-gray-800 hover:text-gray-100 font-medium transition">
+          <span>工作單</span>
+        </a>
       </nav>
     </div>
 
@@ -393,6 +397,38 @@
         </div>
         <div id="invLowResult" class="space-y-2"></div>
       </div>
+    </div>
+
+    <!-- ==================== 工作單（圖號 → 需要的零件） ==================== -->
+    <div id="viewWorkOrder" class="hidden max-w-3xl mx-auto space-y-6">
+      <div class="border-b border-gray-800 pb-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <h1 class="text-2xl font-bold text-gray-100">工作單</h1>
+        <div class="flex items-center gap-2">
+          <label for="woCompany" class="text-xs font-medium text-gray-400 whitespace-nowrap">公司</label>
+          <select id="woCompany" onchange="onWoCompanyChange()"
+                  class="bg-gray-950 border border-gray-700 text-gray-100 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-blue-500"></select>
+        </div>
+      </div>
+
+      <div class="bg-gray-900 border border-gray-800 rounded-xl p-5 space-y-4 shadow-xl">
+        <div class="hidden sm:flex items-center gap-2 text-xs font-medium text-gray-400">
+          <span class="w-[4.5rem]">公司</span><span class="flex-1">圖號</span><span class="w-32 text-center">數量</span><span class="w-9"></span>
+        </div>
+        <div id="woRows" class="space-y-2"></div>
+        <button type="button" onclick="addWoRow(true)"
+                class="w-full border border-dashed border-gray-700 hover:border-gray-500 text-gray-400 hover:text-gray-100 hover:bg-gray-800 text-sm font-semibold py-2 rounded-lg transition">＋新增一列</button>
+        <div class="flex flex-col sm:flex-row gap-2 pt-2">
+          <button id="woBtnGenerate" onclick="generateWorkOrder()" class="flex-1 bg-blue-600 hover:bg-blue-500 text-gray-100 font-semibold py-2.5 rounded-lg transition shadow-lg shadow-blue-600/30">產生工作單</button>
+          <button onclick="clearWorkOrder()" class="bg-gray-800 hover:bg-gray-700 text-gray-300 font-semibold px-4 py-2.5 rounded-lg transition">清除輸入</button>
+        </div>
+      </div>
+
+      <div id="woLoading" class="hidden text-center text-gray-400 py-8">
+        <div class="inline-block animate-spin rounded-full h-8 w-8 border-4 border-gray-700 border-t-blue-500 mb-2"></div>
+        <p>正在產生工作單...</p>
+      </div>
+
+      <div id="woResult" class="space-y-6"></div>
     </div>
   </main>
 
@@ -1416,13 +1452,16 @@
       const canMove = authRole === 'A';          // 出入庫管理：只有管理員
       const canEditParts = loggedIn;             // 新增／修改配件資料：倉庫人員和管理員
       const isAdmin = authRole === 'A';
+      const canWorkOrder = authRole === 'A';     // 工作單：只有管理員看得到（後端允許 A、B）
       if (!canMove && !document.getElementById('viewInventory').classList.contains('hidden')) switchView('search');
+      if (!canWorkOrder && !document.getElementById('viewWorkOrder').classList.contains('hidden')) switchView('search');
       const roleLabel = document.getElementById('roleNameLabel');
       roleLabel.textContent = loggedIn ? ROLE_LABELS[authRole] : '';
       roleLabel.classList.toggle('hidden', !loggedIn);          // 未登入時標題下方不顯示任何字
       document.getElementById('roleMenuName').textContent = ROLE_LABELS[authRole];
       if (!loggedIn) closeRoleMenu();
       document.getElementById('nav-inv').classList.toggle('hidden', !canMove);
+      document.getElementById('nav-wo').classList.toggle('hidden', !canWorkOrder);
       document.getElementById('addBtnWrap').classList.toggle('hidden', !canEditParts);
       const editBtn = document.getElementById('btnEditExist');
       if (editBtn && !isEditMode) editBtn.classList.toggle('hidden', !canEditParts);
@@ -2041,29 +2080,28 @@
       showInvToast._t = setTimeout(() => el.classList.add('hidden'), 2800);
     }
 
-    // ---------- 主畫面切換（配件查詢 / 進銷存） ----------
+    // ---------- 主畫面切換（配件查詢 / 進銷存 / 工作單） ----------
     function switchView(view) {
       if (view === 'inventory' && authRole !== 'A') view = 'search'; // 出入庫管理只有管理員能用
-      const navSpec = document.getElementById('nav-spec');
-      const navInv = document.getElementById('nav-inv');
+      if (view === 'workorder' && authRole !== 'A') view = 'search'; // 工作單只有管理員看得到
+      const navs = { search: 'nav-spec', inventory: 'nav-inv', workorder: 'nav-wo' };
+      const views = { search: 'viewSearch', inventory: 'viewInventory', workorder: 'viewWorkOrder' };
       const activeNav = 'flex items-center space-x-3 px-3 py-2.5 rounded-lg bg-blue-600 text-gray-100 font-medium transition cursor-default';
       const idleNav = 'flex items-center space-x-3 px-3 py-2.5 rounded-lg text-gray-400 hover:bg-gray-800 hover:text-gray-100 font-medium transition cursor-pointer';
+      Object.keys(views).forEach(k => {
+        document.getElementById(views[k]).classList.toggle('hidden', k !== view);
+        document.getElementById(navs[k]).className = k === view ? activeNav : idleNav;
+      });
       if (view === 'inventory') {
-        document.getElementById('viewSearch').classList.add('hidden');
-        document.getElementById('viewInventory').classList.remove('hidden');
-        navSpec.className = idleNav;
-        navInv.className = activeNav;
         const h = document.getElementById('invHandler');
         if (h && !h.value) h.value = localStorage.getItem('inv_handler') || '';
         refreshHandlers(); // 進入出入庫頁時更新經手人名單（失敗就用這台裝置上次存的）
       } else {
         stopInvScanner();
-        document.getElementById('viewInventory').classList.add('hidden');
-        document.getElementById('viewSearch').classList.remove('hidden');
-        navInv.className = idleNav;
-        navSpec.className = activeNav;
       }
-      navInv.classList.toggle('hidden', authRole !== 'A'); // 依身分決定是否顯示「出入庫管理」
+      if (view === 'workorder') initWorkOrder();
+      document.getElementById('nav-inv').classList.toggle('hidden', authRole !== 'A'); // 依身分決定是否顯示「出入庫管理」
+      document.getElementById('nav-wo').classList.toggle('hidden', authRole !== 'A');  // 依身分決定是否顯示「工作單」
     }
 
     function switchInvTab(tab) {
@@ -2700,6 +2738,376 @@
         alert('連線失敗，請檢查網路後再試一次。');
         renderHandlerModalList();
       }
+    }
+
+    // ==================== 工作單（圖號 → 需要的零件） ====================
+    // 後端 getWorkOrder 負責比對（公司＋圖號 → 圖號對照的尺寸 → Parts 的長*內*外），這裡只負責輸入和顯示。
+    const WO_STORE_COMPANY = 'wo_company';
+    const WO_STORE_COMPANIES = 'wo_companies';
+    const WO_STORE_VIEW = { merged: 'woMergedView', detail: 'woDetailView' };
+    const WO_STATUS_TEXT = { none: '資料庫無此尺寸', bad: '無法比對' };
+    const WO_STATUS_BADGE = {
+      dup: 'bg-amber-950/40 text-amber-300 border border-amber-700/60',
+      none: 'bg-red-950/40 text-red-400 border border-red-700/60',
+      bad: 'bg-gray-800 text-gray-400 border border-gray-700'
+    };
+    const WO_STATUS_TEXTCLS = { dup: 'text-amber-300', none: 'text-red-400', bad: 'text-gray-400', empty: 'text-gray-500' };
+    let woCompanies = [];
+    let woLastResult = null;
+    let woBusy = false;
+
+    function woStatusText(line) {
+      if (line.status === 'dup') return `尺寸重複（${line.parts.length} 筆）`;
+      return WO_STATUS_TEXT[line.status] || '';
+    }
+    function woGetView(sec) {
+      try { return localStorage.getItem(WO_STORE_VIEW[sec]) === 'list' ? 'list' : 'card'; } catch (e) { return 'card'; }
+    }
+    function woSetView(sec, v) {
+      try { localStorage.setItem(WO_STORE_VIEW[sec], v); } catch (e) {}
+    }
+
+    // ---------- 公司選單 ----------
+    function woLoadCompanyCache() {
+      let list = [];
+      try { list = JSON.parse(localStorage.getItem(WO_STORE_COMPANIES) || '[]'); } catch (e) { list = []; }
+      if (!Array.isArray(list) || !list.length) list = ['BC', 'BZ'];
+      return list.map(String);
+    }
+    function woCompanyOptions(selected) {
+      return woCompanies.map(c => `<option value="${invEsc(c)}"${c === selected ? ' selected' : ''}>${invEsc(c)}</option>`).join('');
+    }
+    function woTopCompany() {
+      const v = document.getElementById('woCompany').value;
+      return v || woCompanies[0] || '';
+    }
+    function setWoCompanies(list) {
+      woCompanies = list.length ? list : ['BC', 'BZ'];
+      try { localStorage.setItem(WO_STORE_COMPANIES, JSON.stringify(woCompanies)); } catch (e) {}
+      let saved = '';
+      try { saved = localStorage.getItem(WO_STORE_COMPANY) || ''; } catch (e) {}
+      const top = document.getElementById('woCompany');
+      const cur = top.value || saved;
+      top.innerHTML = woCompanyOptions(woCompanies.includes(cur) ? cur : woCompanies[0]);
+      document.querySelectorAll('#woRows .wo-row').forEach(row => {
+        const sel = row.querySelector('.wo-co');
+        const keep = sel.dataset.custom === '1' && woCompanies.includes(sel.value) ? sel.value : top.value;
+        sel.innerHTML = woCompanyOptions(keep);
+        if (keep === top.value) sel.dataset.custom = '';
+      });
+    }
+    function onWoCompanyChange() {
+      const v = woTopCompany();
+      try { localStorage.setItem(WO_STORE_COMPANY, v); } catch (e) {}
+      // 沒有單獨改過公司的列，跟著上面的公司走
+      document.querySelectorAll('#woRows .wo-co').forEach(sel => { if (sel.dataset.custom !== '1') sel.value = v; });
+    }
+
+    // 第一次進工作單：放一列空白、載入公司清單（先用這台裝置記住的，背景再跟後端更新）
+    let woInited = false;
+    function initWorkOrder() {
+      if (!woInited) {
+        woInited = true;
+        setWoCompanies(woLoadCompanyCache());
+        addWoRow(false);
+      }
+      woRefreshCompanies();
+    }
+    async function woRefreshCompanies() {
+      if (authRole !== 'A' || !authPassword) return;
+      try {
+        const r = await invApiPost({ action: 'getWorkOrder', password: authPassword, items: [] });
+        if (r.status === 'success' && r.data && Array.isArray(r.data.companies) && r.data.companies.length) setWoCompanies(r.data.companies);
+      } catch (e) { /* 網路問題時用上次記住的公司清單 */ }
+    }
+
+    // ---------- 輸入列 ----------
+    function addWoRow(focus) {
+      const wrap = document.getElementById('woRows');
+      const row = document.createElement('div');
+      row.className = 'wo-row flex flex-wrap items-center gap-2';
+      row.innerHTML = `
+        <select class="wo-co w-[4.5rem] bg-gray-950 border border-gray-700 text-gray-100 rounded-lg px-1.5 py-2 text-sm focus:outline-none focus:border-blue-500">${woCompanyOptions(woTopCompany())}</select>
+        <input type="text" class="wo-dw flex-1 min-w-[5rem] bg-gray-950 border border-gray-700 text-gray-100 placeholder-gray-500 rounded-lg px-3 py-2 text-sm font-mono focus:outline-none focus:border-blue-500" placeholder="圖號，例如 a-07-ra" autocomplete="off">
+        <div class="flex items-center gap-2 ml-auto">
+          <div class="flex items-stretch">
+            <button type="button" class="wo-minus w-9 bg-gray-800 hover:bg-gray-700 text-gray-300 font-bold rounded-l-lg border border-gray-700 transition" title="減 1">−</button>
+            <input type="number" min="1" step="1" inputmode="numeric" value="1" class="wo-qty w-14 bg-gray-950 border-y border-gray-700 text-gray-100 text-center py-2 text-sm focus:outline-none focus:border-blue-500">
+            <button type="button" class="wo-plus w-9 bg-gray-800 hover:bg-gray-700 text-gray-300 font-bold rounded-r-lg border border-gray-700 transition" title="加 1">＋</button>
+          </div>
+          <button type="button" class="wo-del w-9 h-9 flex items-center justify-center rounded-lg text-gray-500 hover:text-red-400 hover:bg-gray-800 transition" title="刪除這一列">✕</button>
+        </div>`;
+      const sel = row.querySelector('.wo-co');
+      const dw = row.querySelector('.wo-dw');
+      const qty = row.querySelector('.wo-qty');
+      sel.onchange = () => { sel.dataset.custom = sel.value === woTopCompany() ? '' : '1'; };
+      const fixQty = () => { const n = Math.floor(Number(qty.value)); qty.value = isFinite(n) && n >= 1 ? n : 1; };
+      row.querySelector('.wo-minus').onclick = () => { fixQty(); qty.value = Math.max(1, Number(qty.value) - 1); };
+      row.querySelector('.wo-plus').onclick = () => { fixQty(); qty.value = Number(qty.value) + 1; };
+      qty.onchange = fixQty;
+      qty.onblur = fixQty;
+      // Enter：圖號 → 數量 → 下一列（最後一列就自動新增一列）
+      dw.onkeydown = e => { if (e.key === 'Enter') { e.preventDefault(); qty.focus(); qty.select(); } };
+      qty.onkeydown = e => {
+        if (e.key !== 'Enter') return;
+        e.preventDefault(); fixQty();
+        const next = row.nextElementSibling;
+        if (next) next.querySelector('.wo-dw').focus(); else addWoRow(true);
+      };
+      row.querySelector('.wo-del').onclick = () => {
+        if (wrap.children.length > 1) { row.remove(); return; }
+        dw.value = ''; qty.value = 1; sel.value = woTopCompany(); sel.dataset.custom = '';
+      };
+      wrap.appendChild(row);
+      if (focus) dw.focus();
+    }
+
+    function readWoItems() {
+      return Array.from(document.querySelectorAll('#woRows .wo-row')).map(row => {
+        const n = Math.floor(Number(row.querySelector('.wo-qty').value));
+        return {
+          company: row.querySelector('.wo-co').value || woTopCompany(),
+          drawing: row.querySelector('.wo-dw').value.trim(),
+          qty: isFinite(n) && n >= 1 ? n : 1
+        };
+      }).filter(it => it.drawing);
+    }
+
+    function clearWorkOrder() {
+      document.getElementById('woRows').innerHTML = '';
+      addWoRow(true);
+      woLastResult = null;
+      document.getElementById('woResult').innerHTML = '';
+    }
+
+    async function generateWorkOrder() {
+      if (woBusy) return;
+      if (authRole !== 'A' || !authPassword) {
+        loginCallback = () => { if (authRole === 'A') generateWorkOrder(); };
+        openLoginModal('工作單需要管理員密碼');
+        return;
+      }
+      const items = readWoItems();
+      if (!items.length) { showInvToast('請先輸入圖號', 'warn'); return; }
+      woBusy = true;
+      const btn = document.getElementById('woBtnGenerate');
+      btn.disabled = true; btn.classList.add('opacity-60');
+      document.getElementById('woResult').innerHTML = '';
+      document.getElementById('woLoading').classList.remove('hidden');
+      try {
+        const r = await invApiPost({ action: 'getWorkOrder', password: authPassword, items });
+        if (r.status === 'success' && r.data) {
+          if (Array.isArray(r.data.companies) && r.data.companies.length) setWoCompanies(r.data.companies);
+          woLastResult = r.data;
+          renderWorkOrder();
+        } else if (!handleAuthError(r)) {
+          const old = /未知的操作指令|無效的 action/.test(r.message || '');
+          showInvToast(old ? '❌ 後端還沒更新工作單功能，請稍後再試' : '❌ ' + (r.message || '產生工作單失敗'), 'error');
+        }
+      } catch (err) {
+        console.error(err);
+        showInvToast('❌ 連線失敗，請檢查網路後再試一次', 'error');
+      } finally {
+        woBusy = false;
+        btn.disabled = false; btn.classList.remove('opacity-60');
+        document.getElementById('woLoading').classList.add('hidden');
+      }
+    }
+
+    // ---------- 結果：資料整理（畫面和複製共用） ----------
+    function woMergedRows(d) {
+      return d.merged.map(p => [p.part_no, p.name, partSpec(p), p.location_in, p.total]);
+    }
+    const WO_MERGED_HEAD = ['料號', '名稱', '規格（長*內*外）', '當前儲位', '總需求'];
+    const WO_DETAIL_HEAD = ['圖號', '公司', '數量', '位置', '尺寸', '料號', '名稱', '每組用量', '需求數量', '狀態'];
+    // 明細一列一個零件；尺寸重複時每個候選零件各一列
+    function woDetailRows(d) {
+      const out = [];
+      d.details.forEach(g => {
+        if (!g.lines.length) { out.push({ cells: [g.drawing, g.company, g.qty, '', '', '', '', '', '', '此圖號沒有需管理的零件'], status: 'empty' }); return; }
+        g.lines.forEach(l => {
+          const base = [g.drawing, g.company, g.qty, l.position, l.size];
+          const st = woStatusText(l);
+          if (l.parts.length) l.parts.forEach(p => out.push({ cells: base.concat([p.part_no, p.name, l.per_set, l.need, st]), status: l.status }));
+          else out.push({ cells: base.concat(['', '', l.per_set, l.need, st]), status: l.status });
+        });
+      });
+      return out;
+    }
+
+    function woToTSV(head, rows) {
+      const clean = v => String(v === undefined || v === null ? '' : v).replace(/[\t\r\n]+/g, ' ');
+      return [head].concat(rows).map(r => r.map(clean).join('\t')).join('\r\n');
+    }
+    async function woCopy(text) {
+      let ok = false;
+      try { await navigator.clipboard.writeText(text); ok = true; } catch (e) {
+        const ta = document.createElement('textarea');
+        ta.value = text; ta.style.cssText = 'position:fixed;left:-9999px;top:0';
+        document.body.appendChild(ta); ta.select();
+        try { ok = document.execCommand('copy'); } catch (e2) { ok = false; }
+        ta.remove();
+      }
+      showToast(ok ? '已複製' : '複製失敗', ok);
+    }
+
+    // ---------- 結果：畫面 ----------
+    function woSectionHeader(title, sub, sec, onCopy) {
+      const h = document.createElement('div');
+      h.className = 'flex flex-wrap items-center justify-between gap-3 mb-2';
+      h.innerHTML = `<div><h2 class="text-lg font-bold text-gray-100">${title}</h2><p class="text-sm text-gray-400">${sub}</p></div>`;
+      const right = document.createElement('div');
+      right.className = 'flex items-center gap-2';
+      const copy = document.createElement('button');
+      copy.type = 'button';
+      copy.className = 'bg-gray-800 hover:bg-gray-700 text-gray-300 hover:text-gray-100 text-sm font-semibold px-3 py-1.5 rounded-lg border border-gray-700 transition';
+      copy.textContent = '複製';
+      copy.title = '複製成表格，可以直接貼到 Excel';
+      copy.onclick = onCopy;
+      right.appendChild(copy);
+      const view = woGetView(sec);
+      const toggle = document.createElement('div');
+      toggle.className = 'flex shrink-0 bg-gray-900 border border-gray-800 rounded-lg p-1 gap-1';
+      [['card', '卡片', RV_ICON_CARD], ['list', '清單', RV_ICON_LIST]].forEach(([key, label, icon]) => {
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.title = label;
+        btn.setAttribute('aria-label', label);
+        btn.className = 'px-2.5 py-1.5 rounded-md transition ' + (view === key ? 'bg-blue-600 text-white' : 'text-gray-400 hover:text-gray-200');
+        btn.innerHTML = `<svg viewBox="0 0 24 24" fill="none" class="w-5 h-5">${icon}</svg>`;
+        btn.onclick = () => { woSetView(sec, key); renderWorkOrder(); };
+        toggle.appendChild(btn);
+      });
+      right.appendChild(toggle);
+      h.appendChild(right);
+      return h;
+    }
+
+    // 清單模式表格（沿用查詢結果的 rv-table 樣式；第一欄固定在左邊）
+    function woTable(head, rows, opts) {
+      const show = v => (v === undefined || v === null || String(v).trim() === '') ? '-' : invEsc(v);
+      const wrap = document.createElement('div');
+      wrap.className = 'overflow-x-auto rounded-lg border border-gray-800';
+      const body = rows.map((r, n) => {
+        const cells = r.cells || r;
+        return `<tr class="rv-row ${n % 2 ? 'rv-odd' : 'rv-even'}">${cells.map((c, i) => {
+          let cls = 'px-3 py-2 border border-gray-800 ';
+          cls += i === 0 ? 'rv-sticky font-mono font-semibold whitespace-nowrap' : (opts.nameCol === i ? 'rv-name' : 'whitespace-nowrap');
+          if (opts.monoCols && opts.monoCols.includes(i)) cls += ' font-mono';
+          if (opts.numCols && opts.numCols.includes(i)) cls += ' text-right';
+          if (opts.statusCol === i && r.status) cls += ' ' + (WO_STATUS_TEXTCLS[r.status] || '');
+          return `<td class="${cls}">${opts.statusCol === i && !c ? '' : show(c)}</td>`;
+        }).join('')}</tr>`;
+      }).join('');
+      wrap.innerHTML = `<table class="rv-table w-full text-sm text-gray-200 border-collapse"><thead><tr>${head.map((h, i) =>
+        `<th class="${i === 0 ? 'rv-sticky ' : ''}px-3 py-2 text-left font-bold whitespace-nowrap bg-gray-800 border border-gray-700">${h}</th>`).join('')}</tr></thead><tbody>${body}</tbody></table>`;
+      return wrap;
+    }
+
+    function woPartLine(p) {
+      return `<p class="text-sm"><span class="font-mono font-semibold text-gray-100">${invEsc(p.part_no)}</span>
+        <span class="text-gray-300 ml-1">${invEsc(p.name || '')}</span>
+        <span class="text-gray-400 ml-1">儲位 <span class="font-mono text-gray-100">${invEsc(p.location_in || '無')}</span></span></p>`;
+    }
+
+    function renderWorkOrder() {
+      const box = document.getElementById('woResult');
+      box.innerHTML = '';
+      const d = woLastResult;
+      if (!d) return;
+
+      // 找不到的圖號（紅色）
+      if (d.missing.length) {
+        const m = document.createElement('div');
+        m.className = 'bg-red-950/40 border border-red-800/50 rounded-xl p-4 space-y-2';
+        m.innerHTML = `<p class="font-bold text-red-400">找不到的圖號（${d.missing.length}）</p>
+          <div class="flex flex-wrap gap-2">${d.missing.map(x =>
+            `<span class="px-2 py-1 rounded-md bg-red-950/80 border border-red-700/60 text-red-300 text-sm"><span class="text-xs mr-1">${invEsc(x.company)}</span><span class="font-mono">${invEsc(x.drawing)}</span> ×${x.qty}</span>`).join('')}</div>`;
+        box.appendChild(m);
+      }
+      if (!d.details.length) return;
+
+      // 一、合併總表
+      const sec1 = document.createElement('div');
+      const mRows = woMergedRows(d);
+      sec1.appendChild(woSectionHeader('合併總表', `共 ${d.merged.length} 種零件（同一個料號的數量已加總）`, 'merged',
+        () => woCopy(woToTSV(WO_MERGED_HEAD, mRows))));
+      if (d.flagged) {
+        const warn = document.createElement('p');
+        warn.className = 'text-sm text-amber-400 mb-2';
+        warn.textContent = `⚠️ 有 ${d.flagged} 個位置需要確認（尺寸重複、資料庫無此尺寸或無法比對），沒有算進總表，請看下方明細。`;
+        sec1.appendChild(warn);
+      }
+      if (!d.merged.length) {
+        const e = document.createElement('p');
+        e.className = 'text-sm text-gray-500';
+        e.textContent = '沒有可以加總的零件。';
+        sec1.appendChild(e);
+      } else if (woGetView('merged') === 'list') {
+        sec1.appendChild(woTable(WO_MERGED_HEAD, mRows, { nameCol: 1, monoCols: [3], numCols: [4] }));
+      } else {
+        const grid = document.createElement('div');
+        grid.className = 'space-y-3';
+        d.merged.forEach(p => {
+          const c = document.createElement('div');
+          c.className = 'bg-gray-900 border border-gray-800 rounded-xl p-4 shadow-xl space-y-3';
+          c.innerHTML = `
+            <div class="flex items-start justify-between gap-3 border-b border-gray-800 pb-2">
+              <div class="min-w-0"><p class="font-mono font-semibold text-gray-100">${invEsc(p.part_no)}</p>
+                <p class="text-sm text-gray-300 break-words">${invEsc(p.name || '未命名配件')}</p></div>
+              <div class="text-right shrink-0"><span class="text-xs text-gray-400">總需求</span>
+                <p class="text-2xl font-extrabold text-gray-100 leading-tight">${p.total}</p></div>
+            </div>
+            <div class="grid grid-cols-2 gap-2 text-sm">
+              <div class="bg-gray-950 p-2 rounded border border-gray-800"><span class="text-gray-400">規格 (長*內*外)</span>
+                <p class="font-semibold text-gray-100">${invEsc(partSpec(p) || '-')}</p></div>
+              <div class="bg-gray-950 p-2 rounded border border-gray-800"><span class="text-gray-400">當前儲位</span>
+                <p class="font-mono font-extrabold text-gray-100">${invEsc(p.location_in || '無')}</p></div>
+            </div>
+            <p class="text-xs text-gray-500">用在：${p.sources.map(invEsc).join('、')}</p>`;
+          grid.appendChild(c);
+        });
+        sec1.appendChild(grid);
+      }
+      box.appendChild(sec1);
+
+      // 二、各圖號明細
+      const sec2 = document.createElement('div');
+      const dRows = woDetailRows(d);
+      sec2.appendChild(woSectionHeader('各圖號明細', `共 ${d.details.length} 個圖號`, 'detail',
+        () => woCopy(woToTSV(WO_DETAIL_HEAD, dRows.map(r => r.cells)))));
+      if (woGetView('detail') === 'list') {
+        sec2.appendChild(woTable(WO_DETAIL_HEAD, dRows, { nameCol: 6, monoCols: [4, 5], numCols: [2, 7, 8], statusCol: 9 }));
+      } else {
+        const list = document.createElement('div');
+        list.className = 'space-y-3';
+        d.details.forEach(g => {
+          const c = document.createElement('div');
+          c.className = 'bg-gray-900 border border-gray-800 rounded-xl p-4 shadow-xl space-y-2';
+          const lines = g.lines.length ? g.lines.map(l => {
+            const st = woStatusText(l);
+            const badge = st ? `<span class="px-2 py-0.5 rounded-md text-xs font-semibold ${WO_STATUS_BADGE[l.status]}">${invEsc(st)}</span>` : '';
+            let partsHtml = '';
+            if (l.status === 'ok') partsHtml = woPartLine(l.parts[0]);
+            else if (l.status === 'dup') partsHtml = `<div class="mt-1 pl-2 border-l-2 border-amber-700/60 space-y-0.5">${l.parts.map(woPartLine).join('')}</div>`;
+            return `<div class="bg-gray-950 border border-gray-800 rounded-lg p-2.5 space-y-1">
+              <div class="flex flex-wrap items-center gap-2 text-sm">
+                <span class="px-2 py-0.5 rounded-md bg-gray-800 border border-gray-700 text-gray-300 text-xs font-semibold">${invEsc(l.position)}</span>
+                <span class="font-mono text-gray-100">${invEsc(l.size)}</span>
+                <span class="text-gray-400">每組 ${l.per_set} → 需 <span class="font-bold text-gray-100">${l.need}</span></span>
+                ${badge}
+              </div>${partsHtml}</div>`;
+          }).join('') : '<p class="text-sm text-gray-500">此圖號沒有需管理的零件</p>';
+          c.innerHTML = `
+            <div class="flex items-center justify-between gap-3 border-b border-gray-800 pb-2">
+              <h3 class="font-mono text-lg font-bold text-gray-100 break-all">${invEsc(g.drawing)}</h3>
+              <span class="text-sm text-gray-400 whitespace-nowrap">${invEsc(g.company)}｜數量 <span class="font-bold text-gray-100">${g.qty}</span></span>
+            </div>${lines}`;
+          list.appendChild(c);
+        });
+        sec2.appendChild(list);
+      }
+      box.appendChild(sec2);
     }
 
     // ---------- 啟動：讀取這台裝置記住的身分 ----------
