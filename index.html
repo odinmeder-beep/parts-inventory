@@ -713,7 +713,7 @@
           </div>
           <button type="button" id="dwBtnLoad" onclick="loadDrawing()" class="bg-blue-600 hover:bg-blue-500 text-gray-100 text-sm font-semibold px-4 py-2 rounded-lg transition shadow-md shadow-blue-600/30">載入</button>
         </div>
-        <p id="dwIdHint" class="hidden text-xs text-amber-400">品牌和圖號只能輸入英文、數字和 -</p>
+        <p id="dwIdHint" class="hidden text-xs text-amber-400">圖號只能輸入英文、數字和 -</p>
         <div class="grid grid-cols-2 gap-3">
           <div><label for="dwFUp" class="block text-xs font-medium text-gray-400 mb-1">F上</label>
             <input id="dwFUp" type="text" autocomplete="off" class="dw-size w-full bg-gray-950 border border-gray-700 text-gray-100 rounded-lg px-3 py-2 text-sm font-mono focus:outline-none focus:border-blue-500"></div>
@@ -2822,7 +2822,7 @@
       let saved = '';
       try { saved = localStorage.getItem(WO_STORE_COMPANY) || ''; } catch (e) {}
       const top = document.getElementById('woCompany');
-      const cur = woCleanDrawing(top.value || saved);
+      const cur = woCleanBrand(top.value || saved);
       top.innerHTML = woCompanyOptions(woCompanies.includes(cur) ? cur : woCompanies[0]);
       document.querySelectorAll('#woRows .wo-row').forEach(row => {
         const sel = row.querySelector('.wo-co');
@@ -2858,17 +2858,19 @@
 
     // ---------- 輸入列 ----------
     function woToHalf(v) { return String(v || '').replace(/[\uFF01-\uFF5E]/g, ch => String.fromCharCode(ch.charCodeAt(0) - 0xFEE0)); }
-    // 品牌／圖號：只留英文、數字和 -，英文一律轉大寫
+    // 圖號：只留英文、數字和 -，英文一律轉大寫
     function woStripId(v) { return woToHalf(v).replace(/[^A-Za-z0-9-]/g, ''); }
     function woCleanDrawing(v) { return woStripId(v).toUpperCase(); }
-    // 品牌清單：轉大寫、去掉不合格的、去重複（保留第一次出現的順序）
+    // 品牌：不限字元，只去前後空白、全形英數轉半形、英文轉大寫
+    function woCleanBrand(v) { return woToHalf(String(v || '')).trim().toUpperCase(); }
+    // 品牌清單：轉大寫、去前後空白、去重複（保留第一次出現的順序）
     function woNormCompanies(list) {
       const out = [];
-      (Array.isArray(list) ? list : []).forEach(c => { const v = woCleanDrawing(c); if (v && !out.includes(v)) out.push(v); });
+      (Array.isArray(list) ? list : []).forEach(c => { const v = woCleanBrand(c); if (v && !out.includes(v)) out.push(v); });
       return out;
     }
     function woDigits(v) { return woToHalf(v).replace(/[^0-9]/g, ''); }
-    // 圖號／品牌輸入框：打字、貼上、中文輸入法選字完成時，把英文、數字和 - 以外的字拿掉（全形英數會先轉半形），有拿掉就短暫顯示提示
+    // 圖號輸入框：打字、貼上、中文輸入法選字完成時，把英文、數字和 - 以外的字拿掉（全形英數會先轉半形），有拿掉就短暫顯示提示
     function woBindIdInput(input, hint) {
       const clean = () => {
         const before = input.value, after = woCleanDrawing(before);
@@ -2884,6 +2886,20 @@
       };
       input.addEventListener('input', e => { if (!e.isComposing) clean(); });
       input.addEventListener('compositionend', clean);
+    }
+    // 品牌輸入框：不擋字元，只把英文轉大寫（全形英數先轉半形）；前後空白在送出時再 trim
+    function woBindBrandInput(input) {
+      const clean = () => {
+        const before = input.value;
+        const after = woToHalf(before).replace(/[A-Za-z]/g, ch => ch.toUpperCase());
+        if (after === before) return;
+        const pos = woToHalf(before.slice(0, input.selectionStart || 0)).replace(/[A-Za-z]/g, ch => ch.toUpperCase()).length;
+        input.value = after;
+        try { input.setSelectionRange(pos, pos); } catch (e) {}
+      };
+      input.addEventListener('input', e => { if (!e.isComposing) clean(); });
+      input.addEventListener('compositionend', clean);
+      input.addEventListener('blur', () => { input.value = woCleanBrand(input.value); });
     }
     function addWoRow(focus) {
       const wrap = document.getElementById('woRows');
@@ -2934,7 +2950,7 @@
       return Array.from(document.querySelectorAll('#woRows .wo-row')).map(row => {
         const n = parseInt(woDigits(row.querySelector('.wo-qty').value), 10);
         return {
-          company: woCleanDrawing(row.querySelector('.wo-co').value || woTopCompany()),
+          company: woCleanBrand(row.querySelector('.wo-co').value || woTopCompany()),
           drawing: woCleanDrawing(row.querySelector('.wo-dw').value), // 送出前再檢查一次
           qty: isFinite(n) && n >= 1 ? n : 1
         };
@@ -3139,7 +3155,7 @@
     }
     function readDwForm() {
       const out = {
-        brand: woCleanDrawing(document.getElementById('dwBrand').value),
+        brand: woCleanBrand(document.getElementById('dwBrand').value),
         drawing_no: woCleanDrawing(document.getElementById('dwDrawing').value)
       };
       DW_FIELDS.forEach(([k, id]) => { out[k] = document.getElementById(id).value.trim(); });
@@ -3154,7 +3170,7 @@
       if (!dwBound) {
         dwBound = true;
         const hint = document.getElementById('dwIdHint');
-        woBindIdInput(document.getElementById('dwBrand'), hint);
+        woBindBrandInput(document.getElementById('dwBrand'));
         woBindIdInput(document.getElementById('dwDrawing'), hint);
         document.getElementById('dwDrawing').addEventListener('keydown', e => { if (e.key === 'Enter' && !e.isComposing) { e.preventDefault(); loadDrawing(); } });
       }
@@ -3168,7 +3184,7 @@
     }
     // 品牌：下拉選現有品牌；選「＋新品牌」才出現輸入框
     function setDwBrand(v) {
-      v = woCleanDrawing(v);
+      v = woCleanBrand(v);
       const list = woCompanies.slice();
       if (v && !list.includes(v)) list.push(v);
       const sel = document.getElementById('dwBrandSel');
