@@ -700,10 +700,11 @@
         </div>
         <div class="grid grid-cols-[6rem_1fr_auto] gap-2 items-end">
           <div>
-            <label for="dwBrand" class="block text-xs font-medium text-gray-400 mb-1">品牌</label>
-            <input id="dwBrand" type="text" list="dwBrandList" autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="BC"
-                   class="w-full bg-gray-950 border border-gray-700 text-gray-100 placeholder-gray-500 rounded-lg px-2 py-2 text-sm font-mono focus:outline-none focus:border-blue-500">
-            <datalist id="dwBrandList"></datalist>
+            <label for="dwBrandSel" class="block text-xs font-medium text-gray-400 mb-1">品牌</label>
+            <select id="dwBrandSel" onchange="onDwBrandChange()"
+                    class="w-full bg-gray-950 border border-gray-700 text-gray-100 rounded-lg px-1.5 py-2 text-sm font-mono focus:outline-none focus:border-blue-500"></select>
+            <input id="dwBrand" type="text" autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="新品牌"
+                   class="hidden mt-1 w-full bg-gray-950 border border-gray-700 text-gray-100 placeholder-gray-500 rounded-lg px-2 py-2 text-sm font-mono focus:outline-none focus:border-blue-500">
           </div>
           <div>
             <label for="dwDrawing" class="block text-xs font-medium text-gray-400 mb-1">圖號</label>
@@ -3157,7 +3158,7 @@
         woBindIdInput(document.getElementById('dwDrawing'), hint);
         document.getElementById('dwDrawing').addEventListener('keydown', e => { if (e.key === 'Enter' && !e.isComposing) { e.preventDefault(); loadDrawing(); } });
       }
-      document.getElementById('dwBrandList').innerHTML = woCompanies.map(c => `<option value="${invEsc(c)}"></option>`).join('');
+      if (!woCompanies.length) woCompanies = woLoadCompanyCache();
       resetDwForm();
       document.getElementById('dwModal').classList.remove('hidden');
       setTimeout(() => document.getElementById('dwDrawing').focus(), 100);
@@ -3165,8 +3166,26 @@
     function closeDwModal() {
       document.getElementById('dwModal').classList.add('hidden');
     }
+    // 品牌：下拉選現有品牌；選「＋新品牌」才出現輸入框
+    function setDwBrand(v) {
+      v = woCleanDrawing(v);
+      const list = woCompanies.slice();
+      if (v && !list.includes(v)) list.push(v);
+      const sel = document.getElementById('dwBrandSel');
+      sel.innerHTML = list.map(c => `<option value="${invEsc(c)}">${invEsc(c)}</option>`).join('') + '<option value="__new__">＋新品牌</option>';
+      sel.value = v || list[0] || '__new__';
+      onDwBrandChange();
+    }
+    function onDwBrandChange() {
+      const v = document.getElementById('dwBrandSel').value;
+      const input = document.getElementById('dwBrand');
+      const isNew = v === '__new__';
+      input.classList.toggle('hidden', !isNew);
+      input.value = isNew ? '' : v;
+      if (isNew) input.focus();
+    }
     function resetDwForm() {
-      document.getElementById('dwBrand').value = woTopCompany();
+      setDwBrand(woTopCompany());
       document.getElementById('dwDrawing').value = '';
       fillDwSizes(null);
       setDwMode(null);
@@ -3204,7 +3223,7 @@
       const r = await dwPost({ action: 'getDrawing', brand: f.brand, drawing_no: f.drawing_no });
       if (!r) return;
       if (r.status === 'success' && r.data) {
-        document.getElementById('dwBrand').value = r.data.brand;
+        setDwBrand(r.data.brand);
         document.getElementById('dwDrawing').value = r.data.drawing_no;
         fillDwSizes(r.data);
         setDwMode({ brand: r.data.brand, drawing_no: r.data.drawing_no });
