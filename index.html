@@ -3005,7 +3005,6 @@
       return list.map(x => [x.size, x.total, x.sources.join('、')]);
     }
     const WO_MERGED_HEAD = ['尺寸', '總需求', '來源'];
-    const WO_MERGED_COPY_HEAD = ['尺寸', '總需求']; // 複製只帶尺寸和數量（畫面上仍顯示來源）
     const WO_DETAIL_HEAD = ['圖號', '品牌', '數量', '位置', '尺寸', '每組用量', '需求數量'];
     // 明細一列一個位置
     function woDetailRows(d) {
@@ -3019,7 +3018,8 @@
 
     function woToTSV(head, rows) {
       const clean = v => String(v === undefined || v === null ? '' : v).replace(/[\t\r\n]+/g, ' ');
-      return [head].concat(rows).map(r => r.map(clean).join('\t')).join('\r\n');
+      // head 有值才加標題列；合併總表複製只要資料列
+      return (head && head.length ? [head] : []).concat(rows).map(r => r.map(clean).join('\t')).join('\r\n');
     }
     async function woCopy(text) {
       let ok = false;
@@ -3096,7 +3096,7 @@
       const totals = woSizeTotals(d);
       const mRows = woMergedRows(totals);
       sec1.appendChild(woSectionHeader('合併總表', `共 ${totals.length} 種尺寸（同一個尺寸的數量已加總）`,
-        () => woCopy(woToTSV(WO_MERGED_COPY_HEAD, mRows.map(r => r.slice(0, 2))))));
+        () => woCopy(woToTSV(null, mRows.map(r => r.slice(0, 2))))));
       if (!totals.length) {
         const e = document.createElement('p');
         e.className = 'text-sm text-gray-500';
