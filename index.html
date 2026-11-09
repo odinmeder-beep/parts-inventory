@@ -407,6 +407,8 @@
           <label for="woCompany" class="text-xs font-medium text-gray-400 whitespace-nowrap">品牌</label>
           <select id="woCompany" onchange="onWoCompanyChange()"
                   class="bg-gray-950 border border-gray-700 text-gray-100 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-blue-500"></select>
+          <button type="button" id="woBtnDrawingMgr" onclick="openDwModal()"
+                  class="hidden bg-gray-800 hover:bg-gray-700 text-gray-300 hover:text-gray-100 text-sm font-semibold px-3 py-2 rounded-lg border border-gray-700 transition whitespace-nowrap">圖號管理</button>
         </div>
       </div>
 
@@ -681,6 +683,54 @@
       <p id="handlerStatus" class="hidden text-xs text-amber-400"></p>
       <div id="handlerListBox" class="space-y-1.5 overflow-y-auto min-h-[3rem]"></div>
       <button type="button" onclick="closeHandlerModal()" class="w-full bg-gray-800 hover:bg-gray-700 text-gray-300 text-sm font-semibold py-2.5 rounded-lg transition">關閉</button>
+    </div>
+  </div>
+
+  <!-- ==================== 圖號管理（只有管理員） ==================== -->
+  <div id="dwModal" class="hidden fixed inset-0 bg-black/75 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+    <div class="bg-gray-900 border border-gray-800 rounded-2xl w-full max-w-lg p-6 space-y-5 shadow-2xl overflow-y-auto max-h-[92vh]">
+      <div class="flex justify-between items-center border-b border-gray-800 pb-4">
+        <h3 class="text-lg font-bold text-gray-100 tracking-wide">圖號管理</h3>
+        <button type="button" onclick="closeDwModal()" class="text-gray-400 hover:text-gray-100 text-2xl font-bold leading-none p-1 rounded-lg hover:bg-gray-800 transition">&times;</button>
+      </div>
+      <div class="bg-gray-950/60 border border-gray-800 rounded-xl p-5 space-y-4">
+        <div class="flex items-center justify-between gap-2 border-b border-gray-800 pb-3">
+          <p class="text-xs text-gray-500">新增：直接填好按「新增」。修改／刪除：先輸入品牌和圖號按「載入」。</p>
+          <div id="dwBadge" class="shrink-0 text-xs px-2.5 py-0.5 rounded-full border bg-gray-800 text-gray-400 border-gray-700">新增模式</div>
+        </div>
+        <div class="grid grid-cols-[6rem_1fr_auto] gap-2 items-end">
+          <div>
+            <label for="dwBrand" class="block text-xs font-medium text-gray-400 mb-1">品牌</label>
+            <input id="dwBrand" type="text" list="dwBrandList" autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="BC"
+                   class="w-full bg-gray-950 border border-gray-700 text-gray-100 placeholder-gray-500 rounded-lg px-2 py-2 text-sm font-mono focus:outline-none focus:border-blue-500">
+            <datalist id="dwBrandList"></datalist>
+          </div>
+          <div>
+            <label for="dwDrawing" class="block text-xs font-medium text-gray-400 mb-1">圖號</label>
+            <input id="dwDrawing" type="text" autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="例如 A-07-RA"
+                   class="w-full bg-gray-950 border border-gray-700 text-gray-100 placeholder-gray-500 rounded-lg px-3 py-2 text-sm font-mono focus:outline-none focus:border-blue-500">
+          </div>
+          <button type="button" id="dwBtnLoad" onclick="loadDrawing()" class="bg-blue-600 hover:bg-blue-500 text-gray-100 text-sm font-semibold px-4 py-2 rounded-lg transition shadow-md shadow-blue-600/30">載入</button>
+        </div>
+        <p id="dwIdHint" class="hidden text-xs text-amber-400">品牌和圖號只能輸入英文、數字和 -</p>
+        <div class="grid grid-cols-2 gap-3">
+          <div><label for="dwFUp" class="block text-xs font-medium text-gray-400 mb-1">F上</label>
+            <input id="dwFUp" type="text" autocomplete="off" class="dw-size w-full bg-gray-950 border border-gray-700 text-gray-100 rounded-lg px-3 py-2 text-sm font-mono focus:outline-none focus:border-blue-500"></div>
+          <div><label for="dwFDown" class="block text-xs font-medium text-gray-400 mb-1">F下</label>
+            <input id="dwFDown" type="text" autocomplete="off" class="dw-size w-full bg-gray-950 border border-gray-700 text-gray-100 rounded-lg px-3 py-2 text-sm font-mono focus:outline-none focus:border-blue-500"></div>
+          <div><label for="dwRUp" class="block text-xs font-medium text-gray-400 mb-1">R上</label>
+            <input id="dwRUp" type="text" autocomplete="off" class="dw-size w-full bg-gray-950 border border-gray-700 text-gray-100 rounded-lg px-3 py-2 text-sm font-mono focus:outline-none focus:border-blue-500"></div>
+          <div><label for="dwRDown" class="block text-xs font-medium text-gray-400 mb-1">R下</label>
+            <input id="dwRDown" type="text" autocomplete="off" class="dw-size w-full bg-gray-950 border border-gray-700 text-gray-100 rounded-lg px-3 py-2 text-sm font-mono focus:outline-none focus:border-blue-500"></div>
+        </div>
+        <p class="text-xs text-gray-500">尺寸照長*內*外，要 4 個寫 x4（例如 40*12*37.5x4）；不用管的位置留空白。</p>
+      </div>
+      <div class="flex flex-col sm:flex-row gap-2">
+        <button type="button" id="dwBtnAdd" onclick="saveDrawing('add')" class="flex-1 bg-green-600 hover:bg-green-500 text-gray-100 font-semibold py-2.5 rounded-lg transition shadow-md shadow-green-600/30">新增</button>
+        <button type="button" id="dwBtnSave" onclick="saveDrawing('update')" class="hidden flex-1 bg-green-600 hover:bg-green-500 text-gray-100 font-semibold py-2.5 rounded-lg transition shadow-md shadow-green-600/30">儲存修改</button>
+        <button type="button" id="dwBtnDelete" onclick="deleteDrawing()" class="hidden bg-red-600 hover:bg-red-500 text-gray-100 font-semibold px-4 py-2.5 rounded-lg transition shadow-md shadow-red-600/30">刪除</button>
+        <button type="button" onclick="resetDwForm()" class="bg-gray-800 hover:bg-gray-700 text-gray-300 font-semibold px-4 py-2.5 rounded-lg transition">清除</button>
+      </div>
     </div>
   </div>
 
@@ -1462,6 +1512,8 @@
       if (!loggedIn) closeRoleMenu();
       document.getElementById('nav-inv').classList.toggle('hidden', !canMove);
       document.getElementById('nav-wo').classList.toggle('hidden', !canWorkOrder);
+      document.getElementById('woBtnDrawingMgr').classList.toggle('hidden', !isAdmin); // 圖號管理：只有管理員
+      if (!isAdmin) closeDwModal();
       document.getElementById('addBtnWrap').classList.toggle('hidden', !canEditParts);
       const editBtn = document.getElementById('btnEditExist');
       if (editBtn && !isEditMode) editBtn.classList.toggle('hidden', !canEditParts);
@@ -2752,8 +2804,8 @@
     function woLoadCompanyCache() {
       let list = [];
       try { list = JSON.parse(localStorage.getItem(WO_STORE_COMPANIES) || '[]'); } catch (e) { list = []; }
-      if (!Array.isArray(list) || !list.length) list = ['BC', 'BZ'];
-      return list.map(String);
+      list = woNormCompanies(list);
+      return list.length ? list : ['BC', 'BZ'];
     }
     function woCompanyOptions(selected) {
       return woCompanies.map(c => `<option value="${invEsc(c)}"${c === selected ? ' selected' : ''}>${invEsc(c)}</option>`).join('');
@@ -2763,12 +2815,13 @@
       return v || woCompanies[0] || '';
     }
     function setWoCompanies(list) {
+      list = woNormCompanies(list);
       woCompanies = list.length ? list : ['BC', 'BZ'];
       try { localStorage.setItem(WO_STORE_COMPANIES, JSON.stringify(woCompanies)); } catch (e) {}
       let saved = '';
       try { saved = localStorage.getItem(WO_STORE_COMPANY) || ''; } catch (e) {}
       const top = document.getElementById('woCompany');
-      const cur = top.value || saved;
+      const cur = woCleanDrawing(top.value || saved);
       top.innerHTML = woCompanyOptions(woCompanies.includes(cur) ? cur : woCompanies[0]);
       document.querySelectorAll('#woRows .wo-row').forEach(row => {
         const sel = row.querySelector('.wo-co');
@@ -2804,15 +2857,40 @@
 
     // ---------- 輸入列 ----------
     function woToHalf(v) { return String(v || '').replace(/[\uFF01-\uFF5E]/g, ch => String.fromCharCode(ch.charCodeAt(0) - 0xFEE0)); }
-    function woCleanDrawing(v) { return woToHalf(v).replace(/[^A-Za-z0-9-]/g, ''); }
+    // 品牌／圖號：只留英文、數字和 -，英文一律轉大寫
+    function woStripId(v) { return woToHalf(v).replace(/[^A-Za-z0-9-]/g, ''); }
+    function woCleanDrawing(v) { return woStripId(v).toUpperCase(); }
+    // 品牌清單：轉大寫、去掉不合格的、去重複（保留第一次出現的順序）
+    function woNormCompanies(list) {
+      const out = [];
+      (Array.isArray(list) ? list : []).forEach(c => { const v = woCleanDrawing(c); if (v && !out.includes(v)) out.push(v); });
+      return out;
+    }
     function woDigits(v) { return woToHalf(v).replace(/[^0-9]/g, ''); }
+    // 圖號／品牌輸入框：打字、貼上、中文輸入法選字完成時，把英文、數字和 - 以外的字拿掉（全形英數會先轉半形），有拿掉就短暫顯示提示
+    function woBindIdInput(input, hint) {
+      const clean = () => {
+        const before = input.value, after = woCleanDrawing(before);
+        if (after === before) return;
+        const pos = woCleanDrawing(before.slice(0, input.selectionStart || 0)).length;
+        input.value = after;
+        try { input.setSelectionRange(pos, pos); } catch (e) {}
+        if (hint && woStripId(before) !== woToHalf(before)) {
+          hint.classList.remove('hidden');
+          clearTimeout(hint._t);
+          hint._t = setTimeout(() => hint.classList.add('hidden'), 1500);
+        }
+      };
+      input.addEventListener('input', e => { if (!e.isComposing) clean(); });
+      input.addEventListener('compositionend', clean);
+    }
     function addWoRow(focus) {
       const wrap = document.getElementById('woRows');
       const row = document.createElement('div');
       row.className = 'wo-row flex flex-wrap items-center gap-2';
       row.innerHTML = `
         <select class="wo-co w-[4.5rem] bg-gray-950 border border-gray-700 text-gray-100 rounded-lg px-1.5 py-2 text-sm focus:outline-none focus:border-blue-500">${woCompanyOptions(woTopCompany())}</select>
-        <input type="text" class="wo-dw flex-1 min-w-[5rem] bg-gray-950 border border-gray-700 text-gray-100 placeholder-gray-500 rounded-lg px-3 py-2 text-sm font-mono focus:outline-none focus:border-blue-500" placeholder="圖號，例如 a-07-ra" autocomplete="off">
+        <input type="text" class="wo-dw flex-1 min-w-[5rem] bg-gray-950 border border-gray-700 text-gray-100 placeholder-gray-500 rounded-lg px-3 py-2 text-sm font-mono focus:outline-none focus:border-blue-500" placeholder="圖號，例如 A-07-RA" autocomplete="off" autocapitalize="characters" spellcheck="false">
         <div class="flex items-center gap-2 ml-auto">
           <div class="flex items-stretch">
             <button type="button" class="wo-minus w-9 bg-gray-800 hover:bg-gray-700 text-gray-300 font-bold rounded-l-lg border border-gray-700 transition" title="減 1">−</button>
@@ -2827,22 +2905,7 @@
       const qty = row.querySelector('.wo-qty');
       sel.onchange = () => { sel.dataset.custom = sel.value === woTopCompany() ? '' : '1'; };
       const fixQty = () => { const n = parseInt(woDigits(qty.value), 10); qty.value = n >= 1 ? n : 1; };
-      // 圖號：打字、貼上、中文輸入法選字完成時，把英文、數字和 - 以外的字拿掉（全形英數會先轉半形）
-      const hint = row.querySelector('.wo-hint');
-      const cleanDw = () => {
-        const before = dw.value, after = woCleanDrawing(before);
-        if (after === before) return;
-        const pos = woCleanDrawing(before.slice(0, dw.selectionStart || 0)).length;
-        dw.value = after;
-        try { dw.setSelectionRange(pos, pos); } catch (e) {}
-        if (woCleanDrawing(woToHalf(before)) !== woToHalf(before)) {
-          hint.classList.remove('hidden');
-          clearTimeout(hint._t);
-          hint._t = setTimeout(() => hint.classList.add('hidden'), 1500);
-        }
-      };
-      dw.addEventListener('input', e => { if (!e.isComposing) cleanDw(); });
-      dw.addEventListener('compositionend', cleanDw);
+      woBindIdInput(dw, row.querySelector('.wo-hint'));
       // 數量：只收數字（擋 - e . + 等），空白先允許，離開欄位時補成 1
       qty.addEventListener('keydown', e => { if (e.key.length === 1 && !/[0-9０-９]/.test(e.key) && !e.ctrlKey && !e.metaKey) e.preventDefault(); });
       qty.addEventListener('input', () => { const v = woDigits(qty.value); if (v !== qty.value) qty.value = v; });
@@ -2870,7 +2933,7 @@
       return Array.from(document.querySelectorAll('#woRows .wo-row')).map(row => {
         const n = parseInt(woDigits(row.querySelector('.wo-qty').value), 10);
         return {
-          company: row.querySelector('.wo-co').value || woTopCompany(),
+          company: woCleanDrawing(row.querySelector('.wo-co').value || woTopCompany()),
           drawing: woCleanDrawing(row.querySelector('.wo-dw').value), // 送出前再檢查一次
           qty: isFinite(n) && n >= 1 ? n : 1
         };
@@ -3049,6 +3112,148 @@
       sec2.appendChild(woSectionHeader('各圖號明細', `共 ${d.details.length} 個圖號`));
       sec2.appendChild(woTable(WO_DETAIL_HEAD, woDetailRows(d), { monoCols: [4], numCols: [2, 5, 6] }));
       box.appendChild(sec2);
+    }
+
+    // ==================== 圖號管理（只有管理員；後端 getDrawing / addDrawing / updateDrawing / deleteDrawing） ====================
+    const DW_FIELDS = [['f_up', 'dwFUp'], ['f_down', 'dwFDown'], ['r_up', 'dwRUp'], ['r_down', 'dwRDown']];
+    let dwLoaded = null;   // 載入中的原始 { brand, drawing_no }；null 表示新增模式
+    let dwBusy = false;
+    let dwBound = false;
+
+    function setDwBadge(type, text) {
+      const b = document.getElementById('dwBadge');
+      b.innerText = text;
+      b.className = 'shrink-0 text-xs px-2.5 py-0.5 rounded-full border ' + ({
+        loading: 'bg-blue-950/80 text-blue-300 border-blue-700/60 animate-pulse',
+        success: 'bg-green-950/80 text-green-300 border-green-700/60',
+        warn: 'bg-amber-950/80 text-amber-300 border-amber-700/60',
+        error: 'bg-red-950/80 text-red-300 border-red-700/60'
+      }[type] || 'bg-gray-800 text-gray-400 border-gray-700');
+    }
+    function setDwMode(loaded) {
+      dwLoaded = loaded;
+      document.getElementById('dwBtnAdd').classList.toggle('hidden', !!loaded);
+      document.getElementById('dwBtnSave').classList.toggle('hidden', !loaded);
+      document.getElementById('dwBtnDelete').classList.toggle('hidden', !loaded);
+    }
+    function readDwForm() {
+      const out = {
+        brand: woCleanDrawing(document.getElementById('dwBrand').value),
+        drawing_no: woCleanDrawing(document.getElementById('dwDrawing').value)
+      };
+      DW_FIELDS.forEach(([k, id]) => { out[k] = document.getElementById(id).value.trim(); });
+      return out;
+    }
+    function fillDwSizes(d) {
+      DW_FIELDS.forEach(([k, id]) => { document.getElementById(id).value = (d && d[k]) || ''; });
+    }
+
+    function openDwModal() {
+      if (authRole !== 'A') return;
+      if (!dwBound) {
+        dwBound = true;
+        const hint = document.getElementById('dwIdHint');
+        woBindIdInput(document.getElementById('dwBrand'), hint);
+        woBindIdInput(document.getElementById('dwDrawing'), hint);
+        document.getElementById('dwDrawing').addEventListener('keydown', e => { if (e.key === 'Enter' && !e.isComposing) { e.preventDefault(); loadDrawing(); } });
+      }
+      document.getElementById('dwBrandList').innerHTML = woCompanies.map(c => `<option value="${invEsc(c)}"></option>`).join('');
+      resetDwForm();
+      document.getElementById('dwModal').classList.remove('hidden');
+      setTimeout(() => document.getElementById('dwDrawing').focus(), 100);
+    }
+    function closeDwModal() {
+      document.getElementById('dwModal').classList.add('hidden');
+    }
+    function resetDwForm() {
+      document.getElementById('dwBrand').value = woTopCompany();
+      document.getElementById('dwDrawing').value = '';
+      fillDwSizes(null);
+      setDwMode(null);
+      setDwBadge('', '新增模式');
+    }
+
+    // 後端錯誤的共同處理：密碼失效就請重新登入；舊版後端給清楚的提示
+    function dwShowError(r) {
+      if (handleAuthError(r)) { closeDwModal(); return; }
+      if (r && r.code === 'DUPLICATE') { showToast('圖號重複', false); setDwBadge('error', '圖號重複'); return; }
+      const old = /未知的操作指令|無效的 action/.test((r && r.message) || '');
+      showToast('失敗', false);
+      setDwBadge('error', old ? '後端還沒更新圖號管理功能' : ((r && r.message) || '失敗'));
+    }
+    async function dwPost(payload) {
+      if (authRole !== 'A' || !authPassword) { openLoginModal('圖號管理需要管理員密碼'); return null; }
+      if (dwBusy) return null;
+      dwBusy = true;
+      try {
+        return await invApiPost(Object.assign({ password: authPassword }, payload));
+      } catch (err) {
+        console.error(err);
+        showToast('失敗', false);
+        setDwBadge('error', '連線失敗，請檢查網路');
+        return null;
+      } finally {
+        dwBusy = false;
+      }
+    }
+
+    async function loadDrawing() {
+      const f = readDwForm();
+      if (!f.brand || !f.drawing_no) { setDwBadge('warn', '請輸入品牌和圖號'); return; }
+      setDwBadge('loading', '查詢中…');
+      const r = await dwPost({ action: 'getDrawing', brand: f.brand, drawing_no: f.drawing_no });
+      if (!r) return;
+      if (r.status === 'success' && r.data) {
+        document.getElementById('dwBrand').value = r.data.brand;
+        document.getElementById('dwDrawing').value = r.data.drawing_no;
+        fillDwSizes(r.data);
+        setDwMode({ brand: r.data.brand, drawing_no: r.data.drawing_no });
+        setDwBadge('success', '已載入，可修改或刪除');
+      } else if (r.code === 'NOT_FOUND') {
+        fillDwSizes(null);
+        setDwMode(null);
+        setDwBadge('warn', '找不到這個圖號，可以直接新增');
+      } else {
+        dwShowError(r);
+      }
+    }
+
+    async function saveDrawing(mode) {
+      const f = readDwForm();
+      if (!f.brand || !f.drawing_no) { setDwBadge('warn', '請輸入品牌和圖號'); return; }
+      const payload = Object.assign({ action: mode === 'update' ? 'updateDrawing' : 'addDrawing' }, f);
+      if (mode === 'update') {
+        if (!dwLoaded) return;
+        payload.original_brand = dwLoaded.brand;
+        payload.original_drawing_no = dwLoaded.drawing_no;
+      }
+      setDwBadge('loading', '儲存中…');
+      const r = await dwPost(payload);
+      if (!r) return;
+      if (r.status === 'success') {
+        showToast('成功', true);
+        setDwMode({ brand: r.data.brand, drawing_no: r.data.drawing_no });
+        setDwBadge('success', mode === 'update' ? '已儲存修改' : '已新增');
+        woRefreshCompanies(); // 新品牌會出現在品牌選單
+      } else {
+        dwShowError(r);
+      }
+    }
+
+    async function deleteDrawing() {
+      if (!dwLoaded) return;
+      if (!confirm(`確定要刪除 ${dwLoaded.brand} 的圖號 ${dwLoaded.drawing_no} 嗎？刪除後無法復原。`)) return;
+      setDwBadge('loading', '刪除中…');
+      const r = await dwPost({ action: 'deleteDrawing', brand: dwLoaded.brand, drawing_no: dwLoaded.drawing_no });
+      if (!r) return;
+      if (r.status === 'success') {
+        showToast('已刪除', true);
+        resetDwForm();
+        setDwBadge('success', '已刪除');
+        woRefreshCompanies();
+      } else {
+        dwShowError(r);
+      }
     }
 
     // ---------- 啟動：讀取這台裝置記住的身分 ----------
