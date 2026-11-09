@@ -404,7 +404,7 @@
       <div class="border-b border-gray-800 pb-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <h1 class="text-2xl font-bold text-gray-100">工作單</h1>
         <div class="flex items-center gap-2">
-          <label for="woCompany" class="text-xs font-medium text-gray-400 whitespace-nowrap">公司</label>
+          <label for="woCompany" class="text-xs font-medium text-gray-400 whitespace-nowrap">品牌</label>
           <select id="woCompany" onchange="onWoCompanyChange()"
                   class="bg-gray-950 border border-gray-700 text-gray-100 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-blue-500"></select>
         </div>
@@ -412,7 +412,7 @@
 
       <div class="bg-gray-900 border border-gray-800 rounded-xl p-5 space-y-4 shadow-xl">
         <div class="hidden sm:flex items-center gap-2 text-xs font-medium text-gray-400">
-          <span class="w-[4.5rem]">公司</span><span class="flex-1">圖號</span><span class="w-32 text-center">數量</span><span class="w-9"></span>
+          <span class="w-[4.5rem]">品牌</span><span class="flex-1">圖號</span><span class="w-32 text-center">數量</span><span class="w-9"></span>
         </div>
         <div id="woRows" class="space-y-2"></div>
         <button type="button" onclick="addWoRow(true)"
@@ -2756,7 +2756,7 @@
       try { localStorage.setItem(WO_STORE_VIEW[sec], v); } catch (e) {}
     }
 
-    // ---------- 公司選單 ----------
+    // ---------- 品牌選單 ----------
     function woLoadCompanyCache() {
       let list = [];
       try { list = JSON.parse(localStorage.getItem(WO_STORE_COMPANIES) || '[]'); } catch (e) { list = []; }
@@ -2788,11 +2788,11 @@
     function onWoCompanyChange() {
       const v = woTopCompany();
       try { localStorage.setItem(WO_STORE_COMPANY, v); } catch (e) {}
-      // 沒有單獨改過公司的列，跟著上面的公司走
+      // 沒有單獨改過品牌的列，跟著上面的品牌走
       document.querySelectorAll('#woRows .wo-co').forEach(sel => { if (sel.dataset.custom !== '1') sel.value = v; });
     }
 
-    // 第一次進工作單：放一列空白、載入公司清單（先用這台裝置記住的，背景再跟後端更新）
+    // 第一次進工作單：放一列空白、載入品牌清單（先用這台裝置記住的，背景再跟後端更新）
     let woInited = false;
     function initWorkOrder() {
       if (!woInited) {
@@ -2807,7 +2807,7 @@
       try {
         const r = await invApiPost({ action: 'getWorkOrder', password: authPassword, items: [] });
         if (r.status === 'success' && r.data && Array.isArray(r.data.companies) && r.data.companies.length) setWoCompanies(r.data.companies);
-      } catch (e) { /* 網路問題時用上次記住的公司清單 */ }
+      } catch (e) { /* 網路問題時用上次記住的品牌清單 */ }
     }
 
     // ---------- 輸入列 ----------
@@ -2950,7 +2950,7 @@
       return list.map(x => [x.size, x.total, x.sources.join('、')]);
     }
     const WO_MERGED_HEAD = ['尺寸', '總需求', '來源'];
-    const WO_DETAIL_HEAD = ['圖號', '公司', '數量', '位置', '尺寸', '每組用量', '需求數量'];
+    const WO_DETAIL_HEAD = ['圖號', '品牌', '數量', '位置', '尺寸', '每組用量', '需求數量'];
     // 明細一列一個位置
     function woDetailRows(d) {
       const out = [];
