@@ -723,7 +723,7 @@
           <div><label for="dwRDown" class="block text-xs font-medium text-gray-400 mb-1">R下</label>
             <input id="dwRDown" type="text" autocomplete="off" class="dw-size w-full bg-gray-950 border border-gray-700 text-gray-100 rounded-lg px-3 py-2 text-sm font-mono focus:outline-none focus:border-blue-500"></div>
         </div>
-        <p class="text-xs text-gray-500">尺寸照長*內*外，要 4 個寫 x4（例如 40*12*37.5x4）；不用管的位置留空白。</p>
+        <p class="text-xs text-gray-500">預設數量*2 自訂數量#n</p>
       </div>
       <div class="flex flex-col sm:flex-row gap-2">
         <button type="button" id="dwBtnAdd" onclick="saveDrawing('add')" class="flex-1 bg-green-600 hover:bg-green-500 text-gray-100 font-semibold py-2.5 rounded-lg transition shadow-md shadow-green-600/30">新增</button>
@@ -2998,10 +2998,10 @@
     }
 
     // ---------- 結果：資料整理（畫面和複製共用） ----------
-    // 尺寸統整用的 key：去掉後面的 x4／×4（每組用量），去空白、不分大小寫
+    // 尺寸顯示／統整用：去掉後面的 #4／＃4（每組用量），去空白、不分大小寫（後端也會去掉，這裡是保險）
     function woSizeText(size) {
       const s = String(size || '').trim();
-      const m = s.match(/^(.*?)\s*[xX×]\s*(\d+)\s*$/);
+      const m = s.match(/^(.*?)\s*[#＃]\s*(\d+)\s*$/);
       return (m ? m[1] : s).trim();
     }
     // 合併總表：所有圖號的所有位置，依尺寸加總需求數量（寫什麼就統計什麼，不比對資料庫）
@@ -3027,7 +3027,7 @@
       const out = [];
       d.details.forEach(g => {
         if (!g.lines.length) { out.push({ cells: [g.drawing, g.company, g.qty, '此圖號沒有需管理的零件', '', '', ''], empty: true }); return; }
-        g.lines.forEach(l => out.push({ cells: [g.drawing, g.company, g.qty, l.position, l.size, l.per_set, l.need] }));
+        g.lines.forEach(l => out.push({ cells: [g.drawing, g.company, g.qty, l.position, woSizeText(l.size), l.per_set, l.need] }));
       });
       return out;
     }
