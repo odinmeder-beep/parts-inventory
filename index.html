@@ -3025,8 +3025,9 @@
     function woDetailRows(d) {
       const out = [];
       d.details.forEach(g => {
-        if (!g.lines.length) { out.push({ cells: [g.drawing, g.company, g.qty, '', '', '', ''], empty: true }); return; }
-        g.lines.forEach(l => out.push({ cells: [g.drawing, g.company, g.qty, l.position, woSizeText(l.size), l.per_set, l.need] }));
+        const edit = { brand: g.company, drawing: g.drawing };
+        if (!g.lines.length) { out.push({ cells: [g.drawing, g.company, g.qty, '', '', '', ''], empty: true, edit }); return; }
+        g.lines.forEach(l => out.push({ cells: [g.drawing, g.company, g.qty, l.position, woSizeText(l.size), l.per_set, l.need], edit }));
       });
       return out;
     }
@@ -3080,11 +3081,17 @@
           if (opts.numCols && opts.numCols.includes(i)) cls += ' text-right';
           if (opts.nameCol === i) cls += ' text-gray-400';
           if (r.empty && i >= 3) return `<td class="${cls}"></td>`;
+          if (i === 0 && r.edit && authRole === 'A') {
+            return `<td class="${cls}"><button type="button" class="wo-edit-dw bg-transparent border-0 p-0 m-0 font-mono font-semibold text-inherit cursor-pointer hover:underline" title="點一下編輯這個圖號" data-brand="${invEsc(r.edit.brand)}" data-drawing="${invEsc(r.edit.drawing)}">${show(c)}</button></td>`;
+          }
           return `<td class="${cls}">${show(c)}</td>`;
         }).join('')}</tr>`;
       }).join('');
       wrap.innerHTML = `<table class="rv-table w-full text-sm text-gray-200 border-collapse"><thead><tr>${head.map((h, i) =>
         `<th class="${i === 0 ? 'rv-sticky ' : ''}px-3 py-2 text-left font-bold whitespace-nowrap bg-gray-800 border border-gray-700">${h}</th>`).join('')}</tr></thead><tbody>${body}</tbody></table>`;
+      wrap.querySelectorAll('.wo-edit-dw').forEach(el => {
+        el.addEventListener('click', () => openDwForEdit(el.dataset.brand, el.dataset.drawing));
+      });
       return wrap;
     }
 
@@ -3094,6 +3101,11 @@
       if (authRole !== 'A') return;
       dwFromWorkOrder = true;
       openDwModal({ brand, drawing });
+    }
+    function openDwForEdit(brand, drawing) {
+      if (authRole !== 'A') return;
+      dwFromWorkOrder = true;
+      openDwModal({ brand, drawing, load: true });
     }
     function woMissingChip(x) {
       const canAdd = authRole === 'A';
@@ -3212,7 +3224,12 @@
         if (prefill.drawing) document.getElementById('dwDrawing').value = woCleanDrawing(prefill.drawing);
         fillDwSizes(null);
         setDwMode(null);
-        setDwBadge('', '新增模式');
+        if (prefill.load) {
+          setDwBadge('loading', '查詢中…');
+          loadDrawing();
+        } else {
+          setDwBadge('', '新增模式');
+        }
       }
       document.getElementById('dwModal').classList.remove('hidden');
       const focusId = (prefill && prefill.drawing) ? 'dwFUp' : 'dwDrawing';
@@ -3309,7 +3326,7 @@
         setDwMode({ brand: r.data.brand, drawing_no: r.data.drawing_no });
         setDwBadge('success', mode === 'update' ? '已儲存修改' : '已新增');
         woRefreshCompanies(); // 新品牌會出現在品牌選單
-        if (mode !== 'update' && dwFromWorkOrder) {
+        if (dwFromWorkOrder) {
           dwFromWorkOrder = false;
           closeDwModal();
           generateWorkOrder();
@@ -3330,6 +3347,11 @@
         resetDwForm();
         setDwBadge('success', '已刪除');
         woRefreshCompanies();
+        if (dwFromWorkOrder) {
+          dwFromWorkOrder = false;
+          closeDwModal();
+          generateWorkOrder();
+        }
       } else {
         dwShowError(r);
       }
