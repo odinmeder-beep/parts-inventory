@@ -2909,7 +2909,7 @@
         <div class="flex items-center gap-2 ml-auto">
           <div class="flex items-stretch">
             <button type="button" class="wo-minus w-9 bg-gray-800 hover:bg-gray-700 text-gray-300 font-bold rounded-l-lg border border-gray-700 transition" title="減 1">−</button>
-            <input type="text" inputmode="numeric" pattern="[0-9]*" maxlength="5" value="0" autocomplete="off" class="wo-qty w-14 bg-gray-950 border-y border-gray-700 text-gray-100 text-center py-2 text-sm focus:outline-none focus:border-blue-500">
+            <input type="text" inputmode="numeric" pattern="[0-9]*" maxlength="5" value="" autocomplete="off" class="wo-qty w-14 bg-gray-950 border-y border-gray-700 text-gray-100 text-center py-2 text-sm focus:outline-none focus:border-blue-500">
             <button type="button" class="wo-plus w-9 bg-gray-800 hover:bg-gray-700 text-gray-300 font-bold rounded-r-lg border border-gray-700 transition" title="加 1">＋</button>
           </div>
           <button type="button" class="wo-del w-9 h-9 flex items-center justify-center rounded-lg text-gray-500 hover:text-red-400 hover:bg-gray-800 transition" title="刪除這一列">✕</button>
@@ -2919,12 +2919,12 @@
       const dw = row.querySelector('.wo-dw');
       const qty = row.querySelector('.wo-qty');
       sel.onchange = () => { sel.dataset.custom = sel.value === woTopCompany() ? '' : '1'; };
-      const fixQty = () => { const n = parseInt(woDigits(qty.value), 10); qty.value = Number.isFinite(n) && n >= 0 ? n : 0; };
+      const fixQty = () => { const n = parseInt(woDigits(qty.value), 10); qty.value = Number.isFinite(n) && n > 0 ? n : ''; };
       woBindIdInput(dw, row.querySelector('.wo-hint'));
-      // 數量：只收數字（擋 - e . + 等），空白先允許，離開欄位時補成 0；最小是 0
+      // 數量：只收數字（擋 - e . + 等）；預設空白，0 或空白都視為不計算
       qty.addEventListener('keydown', e => { if (e.key.length === 1 && !/[0-9０-９]/.test(e.key) && !e.ctrlKey && !e.metaKey) e.preventDefault(); });
       qty.addEventListener('input', () => { const v = woDigits(qty.value); if (v !== qty.value) qty.value = v; });
-      row.querySelector('.wo-minus').onclick = () => { fixQty(); qty.value = Math.max(0, Number(qty.value) - 1); };
+      row.querySelector('.wo-minus').onclick = () => { fixQty(); const n = Math.max(0, Number(qty.value) - 1); qty.value = n > 0 ? n : ''; };
       row.querySelector('.wo-plus').onclick = () => { fixQty(); qty.value = Number(qty.value) + 1; };
       qty.onchange = fixQty;
       qty.onblur = fixQty;
@@ -2938,7 +2938,7 @@
       };
       row.querySelector('.wo-del').onclick = () => {
         if (wrap.children.length > 1) { row.remove(); return; }
-        dw.value = ''; qty.value = 0; sel.value = woTopCompany(); sel.dataset.custom = '';
+        dw.value = ''; qty.value = ''; sel.value = woTopCompany(); sel.dataset.custom = '';
       };
       wrap.appendChild(row);
       if (focus) dw.focus();
