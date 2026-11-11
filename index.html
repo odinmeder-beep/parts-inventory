@@ -3205,8 +3205,21 @@
         brand: woCleanBrand(document.getElementById('dwBrand').value),
         drawing_no: woCleanDrawing(document.getElementById('dwDrawing').value)
       };
-      DW_FIELDS.forEach(([k, id]) => { out[k] = document.getElementById(id).value.trim(); });
+      DW_FIELDS.forEach(([k, id]) => { out[k] = dwSizeCode(document.getElementById(id).value.trim()); });
       return out;
+    }
+    // 尺寸代號：打 + 自動變「鐵」、打 / 自動變「偏」（全形也算）
+    function dwSizeCode(v) { return String(v).replace(/[+＋]/g, '鐵').replace(/[\/／]/g, '偏'); }
+    function bindDwSizeInput(el) {
+      el.addEventListener('input', e => {
+        if (e.isComposing) return;
+        const v = el.value, nv = dwSizeCode(v);
+        if (nv === v) return;
+        const pos = el.selectionStart;
+        el.value = nv;
+        try { el.setSelectionRange(pos, pos); } catch (_) {}
+      });
+      el.addEventListener('compositionend', () => { const nv = dwSizeCode(el.value); if (nv !== el.value) el.value = nv; });
     }
     function fillDwSizes(d) {
       DW_FIELDS.forEach(([k, id]) => { document.getElementById(id).value = (d && d[k]) || ''; });
@@ -3219,6 +3232,7 @@
         const hint = document.getElementById('dwIdHint');
         woBindBrandInput(document.getElementById('dwBrand'));
         woBindIdInput(document.getElementById('dwDrawing'), hint);
+        DW_FIELDS.forEach(([, id]) => bindDwSizeInput(document.getElementById(id)));
         document.getElementById('dwDrawing').addEventListener('keydown', e => { if (e.key === 'Enter' && !e.isComposing) { e.preventDefault(); loadDrawing(); } });
       }
       if (!woCompanies.length) woCompanies = woLoadCompanyCache();
