@@ -3237,7 +3237,8 @@
         }
       }
       document.getElementById('dwModal').classList.remove('hidden');
-      const focusId = (prefill && prefill.drawing) ? 'dwFUp' : 'dwDrawing';
+      // 從找不到的圖號點進來（新增模式）游標停在 R下；載入既有圖號停在 F上
+      const focusId = (prefill && prefill.drawing) ? (prefill.load ? 'dwFUp' : 'dwRDown') : 'dwDrawing';
       setTimeout(() => { const el = document.getElementById(focusId); if (el) el.focus(); }, 100);
     }
     function closeDwModal() {
