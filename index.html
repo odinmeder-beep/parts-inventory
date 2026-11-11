@@ -958,11 +958,11 @@
 
         let labelHtml = '';
         if (partNoText && nameText) {
-          labelHtml = `<span class="font-mono font-medium">${partNoText}</span><span class="text-[11px] opacity-80">(${nameText})</span>`;
+          labelHtml = `<span class="font-mono font-medium">${invEsc(partNoText)}</span><span class="text-[11px] opacity-80">(${invEsc(nameText)})</span>`;
         } else if (partNoText) {
-          labelHtml = `<span class="font-mono font-medium">${partNoText}</span>`;
+          labelHtml = `<span class="font-mono font-medium">${invEsc(partNoText)}</span>`;
         } else if (nameText) {
-          labelHtml = `<span class="font-medium">${nameText}</span>`;
+          labelHtml = `<span class="font-medium">${invEsc(nameText)}</span>`;
         } else {
           labelHtml = `<span class="text-gray-400">未命名配件</span>`;
         }
@@ -1106,11 +1106,11 @@
 
         let labelHtml = '';
         if (nameText && specDetailText) {
-          labelHtml = `<span class="font-medium">${nameText}</span><span class="text-[11px] opacity-80 font-mono">(${specDetailText})</span>`;
+          labelHtml = `<span class="font-medium">${invEsc(nameText)}</span><span class="text-[11px] opacity-80 font-mono">(${invEsc(specDetailText)})</span>`;
         } else if (nameText) {
-          labelHtml = `<span class="font-medium">${nameText}</span>`;
+          labelHtml = `<span class="font-medium">${invEsc(nameText)}</span>`;
         } else if (specDetailText) {
-          labelHtml = `<span class="font-mono font-medium">${specDetailText}</span>`;
+          labelHtml = `<span class="font-mono font-medium">${invEsc(specDetailText)}</span>`;
         } else {
           labelHtml = `<span class="text-gray-400">未命名配件</span>`;
         }
@@ -1299,35 +1299,35 @@
         card.innerHTML = `
           <div class="border-b border-gray-800 pb-3">
             <span class="text-xl font-semibold px-2 py-0.5 bg-blue-900/60 text-blue-300 border border-blue-700/50 rounded-md">
-              ${data.category || '未分類'}
+              ${invEsc(data.category || '未分類')}
             </span>
-            <h2 class="text-xl font-bold text-gray-100 mt-1">${index + 1}. ${data.name || '未命名配件'}</h2>
+            <h2 class="text-xl font-bold text-gray-100 mt-1">${index + 1}. ${invEsc(data.name || '未命名配件')}</h2>
           </div>
 
           <div class="grid grid-cols-2 gap-3 text-xl">
             <div class="bg-gray-950 p-2.5 rounded border border-gray-800">
               <span class="text-gray-400">料號</span>
-              <p class="font-mono font-semibold text-gray-100 mt-0.5">${data.part_no || '-'}</p>
+              <p class="font-mono font-semibold text-gray-100 mt-0.5">${invEsc(data.part_no || '-')}</p>
             </div>
 
             <div class="bg-gray-950 p-2.5 rounded border border-gray-800">
               <span class="text-gray-400">當前儲位</span>
-              <p class="font-mono font-extrabold text-gray-100 mt-0.5">${data.location_in || '無'}</p>
+              <p class="font-mono font-extrabold text-gray-100 mt-0.5">${invEsc(data.location_in || '無')}</p>
             </div>
 
             <div class="bg-gray-950 p-2.5 rounded border border-gray-800">
               <span class="text-gray-400">規格 (長*內*外)</span>
-              <p class="font-semibold text-gray-100 mt-0.5">${partSpec(data) || '-'}</p>
+              <p class="font-semibold text-gray-100 mt-0.5">${invEsc(partSpec(data) || '-')}</p>
             </div>
             <div class="bg-gray-950 p-2.5 rounded border border-gray-800">
               <span class="text-gray-400">組裝位置</span>
-              <p class="font-semibold text-gray-100 mt-0.5">${data.location_out || '無'}</p>
+              <p class="font-semibold text-gray-100 mt-0.5">${invEsc(data.location_out || '無')}</p>
             </div>
           </div>
 
           <div class="bg-gray-950 p-3 rounded border border-gray-800 space-y-1 text-xl text-gray-400">
-            <p><strong>詳細規格：</strong><span class="text-gray-100">${partSpecDetail(data) || '-'}</span></p>
-            <p><strong>備註說明：</strong><span class="text-gray-300">${data.notes || '無'}</span></p>
+            <p><strong>詳細規格：</strong><span class="text-gray-100">${invEsc(partSpecDetail(data) || '-')}</span></p>
+            <p><strong>備註說明：</strong><span class="text-gray-300">${invEsc(data.notes || '無')}</span></p>
           </div>
         `;
 
@@ -2083,7 +2083,7 @@
 
     // ======================================================================
     // ==================== 進銷存（QR 掃碼）模組 ====================
-    // 後端對應 Apps Script 動作：getStock / getMovements / getLowStock (GET)、addMovement (POST)
+    // 後端對應 Apps Script 動作：getStock / getMovements (GET，單一料號不必登入)；getLowStock / getHandlers / addMovement (POST，要帶密碼)
     // ======================================================================
     const INV_TYPES = {
       '進貨':   { color: 'green',  sign: '+', hint: '', qtyLabel: '進貨數量' },
@@ -2557,7 +2557,11 @@
       const box = document.getElementById('invLowResult');
       box.innerHTML = `<div class="text-center text-gray-400 py-6"><div class="inline-block animate-spin rounded-full h-8 w-8 border-4 border-gray-700 border-t-blue-500 mb-2"></div><p>計算中...</p></div>`;
       try {
-        const result = await invApiGet({ action: 'getLowStock' });
+        const result = await invApiPost({ action: 'getLowStock', password: authPassword });
+        if (handleAuthError(result)) {
+          box.innerHTML = `<div class="bg-red-950/40 border border-red-800/50 rounded-xl p-6 text-center text-red-400">❌ 請先登入</div>`;
+          return;
+        }
         if (result.status !== 'success') {
           box.innerHTML = `<div class="bg-red-950/40 border border-red-800/50 rounded-xl p-6 text-center text-red-400">❌ ${invEsc(result.message || '讀取失敗')}</div>`;
           return;
@@ -2676,10 +2680,11 @@
       el.classList.toggle('hidden', !msg);
     }
 
-    // 從後端讀名單（公開，不需要密碼）
+    // 從後端讀名單（要管理員或倉庫人員密碼；失敗就用這台裝置上次存的）
     async function refreshHandlers() {
       try {
-        const r = await invApiGet({ action: 'getHandlers' });
+        const r = await invApiPost({ action: 'getHandlers', password: authPassword });
+        if (handleAuthError(r)) { setHandlerStatus('⚠️ 請先登入'); return false; }
         if (r.status === 'success' && Array.isArray(r.data)) { setHandlers(r.data); setHandlerStatus(''); return true; }
       } catch (e) { /* 網路問題：繼續用這台裝置上次存的名單 */ }
       setHandlerStatus('⚠️ 無法連線，目前顯示的是這台裝置上次存的名單');
