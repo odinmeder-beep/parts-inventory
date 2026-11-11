@@ -3208,14 +3208,18 @@
       DW_FIELDS.forEach(([k, id]) => { out[k] = dwSizeCode(document.getElementById(id).value.trim()); });
       return out;
     }
-    // 尺寸代號：打 + 自動變「鐵」、打 / 自動變「偏」（全形也算）
-    function dwSizeCode(v) { return String(v).replace(/[+＋]/g, '鐵').replace(/[\/／]/g, '偏'); }
+    // 尺寸代號：打 + 自動變「鐵」、打 / 自動變「偏」（全形也算）；鐵／偏每格只留第一個，之後再打的會被擋掉
+    function dwSizeCode(v) {
+      let seen = false;
+      return String(v).replace(/[+＋]/g, '鐵').replace(/[\/／]/g, '偏')
+        .replace(/[鐵偏]/g, c => { if (seen) return ''; seen = true; return c; });
+    }
     function bindDwSizeInput(el) {
       el.addEventListener('input', e => {
         if (e.isComposing) return;
         const v = el.value, nv = dwSizeCode(v);
         if (nv === v) return;
-        const pos = el.selectionStart;
+        const pos = Math.max(0, el.selectionStart - (v.length - nv.length));
         el.value = nv;
         try { el.setSelectionRange(pos, pos); } catch (_) {}
       });
