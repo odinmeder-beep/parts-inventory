@@ -2421,7 +2421,7 @@
       const f = readInvForm();
       const partNo = invCurrentPart.part.part_no;
 
-      // 出入庫只有管理員（後端也會再檢查一次）
+      // 出入庫：網頁上只開放管理員（後端 A、B 都允許，並會再驗一次密碼）
       if (authRole !== 'A' || !authPassword) {
         closeInvConfirm();
         loginCallback = () => { if (authRole === 'A') openInvConfirm(); };
