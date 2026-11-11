@@ -129,6 +129,10 @@
           <button id="tabBtnSpec" onclick="switchSearchTab('spec')" class="px-3 py-1.5 rounded-md bg-blue-600 text-gray-100 transition">
             尺寸查詢
           </button>
+          <!-- 進階查詢：只有管理員看得到（applyRoleUI 控制） -->
+          <button id="tabBtnAdv" onclick="switchSearchTab('adv')" class="hidden px-3 py-1.5 rounded-md text-gray-400 hover:text-gray-100 transition">
+            進階查詢
+          </button>
         </div>
       </div>
 
@@ -209,6 +213,26 @@
           </button>
           <button onclick="clearInputs()" class="bg-gray-800 hover:bg-gray-700 text-gray-300 font-semibold px-4 py-2.5 rounded-lg transition">
             清除輸入
+          </button>
+        </div>
+      </div>
+
+      <!-- 🌟 搜尋卡片 4：進階查詢（條件產生器，只有管理員） -->
+      <div id="searchBoxAdv" class="hidden bg-gray-900 border border-gray-800 rounded-xl p-4 sm:p-5 space-y-4 shadow-xl">
+        <div id="advTopJoinWrap" class="hidden flex flex-wrap items-center gap-2 text-sm text-gray-400">
+          <span>群組之間：</span>
+          <div id="advTopJoin" class="flex bg-gray-950 p-1 rounded-lg border border-gray-800 text-xs font-semibold gap-1"></div>
+        </div>
+        <div id="advGroups" class="space-y-3"></div>
+        <button type="button" onclick="advAddGroup()" id="advBtnAddGroup"
+                class="w-full sm:w-auto bg-gray-800 hover:bg-gray-700 text-gray-300 text-sm font-semibold px-4 py-2 rounded-lg border border-gray-700 transition">＋ 新增群組</button>
+        <p id="advMsg" class="hidden text-sm text-red-400"></p>
+        <div class="flex flex-col sm:flex-row gap-2 pt-1">
+          <button type="button" onclick="advSearch()" class="flex-1 bg-blue-600 hover:bg-blue-500 text-gray-100 font-semibold py-2.5 rounded-lg transition shadow-lg shadow-blue-600/30">
+            進階查詢
+          </button>
+          <button type="button" onclick="advReset()" class="bg-gray-800 hover:bg-gray-700 text-gray-300 font-semibold px-4 py-2.5 rounded-lg transition">
+            清除
           </button>
         </div>
       </div>
@@ -758,15 +782,19 @@
       const boxPartNo = document.getElementById('searchBoxPartNo');
       const boxName = document.getElementById('searchBoxName');
       const boxSpec = document.getElementById('searchBoxSpec');
+      const boxAdv = document.getElementById('searchBoxAdv');
+      if (tab === 'adv' && authRole !== 'A') tab = 'spec'; // 進階查詢只有管理員能用
 
       const btnPartNo = document.getElementById('tabBtnPartNo');
       const btnName = document.getElementById('tabBtnName');
       const btnSpec = document.getElementById('tabBtnSpec');
+      const btnAdv = document.getElementById('tabBtnAdv');
 
       // 隱藏全部卡片
       boxPartNo.classList.add('hidden');
       boxName.classList.add('hidden');
       boxSpec.classList.add('hidden');
+      boxAdv.classList.add('hidden');
 
       // 重設按鈕樣式
       const defaultBtnClass = "px-3 py-1.5 rounded-md text-gray-400 hover:text-gray-100 transition";
@@ -775,6 +803,7 @@
       btnPartNo.className = defaultBtnClass;
       btnName.className = defaultBtnClass;
       btnSpec.className = defaultBtnClass;
+      btnAdv.className = defaultBtnClass + (authRole === 'A' ? '' : ' hidden');
 
       // 依選取項目開啟對應卡片與亮燈
       if (tab === 'partNo') {
@@ -786,6 +815,10 @@
       } else if (tab === 'spec') {
         boxSpec.classList.remove('hidden');
         btnSpec.className = activeBtnClass;
+      } else if (tab === 'adv') {
+        boxAdv.classList.remove('hidden');
+        btnAdv.className = activeBtnClass;
+        advRender();
       }
       clearTimeout(partNoSearchDebounceTimer);
       if (partNoSearchAbortController) partNoSearchAbortController.abort();
@@ -1183,6 +1216,7 @@
     const RV_ICON_CARD = `<path d="M19.9 13.5H4.1C2.6 13.5 2 14.14 2 15.73V19.77C2 21.36 2.6 22 4.1 22H19.9C21.4 22 22 21.36 22 19.77V15.73C22 14.14 21.4 13.5 19.9 13.5Z" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/><path d="M19.9 2H4.1C2.6 2 2 2.64 2 4.23V8.27C2 9.86 2.6 10.5 4.1 10.5H19.9C21.4 10.5 22 9.86 22 8.27V4.23C22 2.64 21.4 2 19.9 2Z" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>`;
     const RV_ICON_LIST = `<path d="M2 4C1.44772 4 1 4.44772 1 5C1 5.55228 1.44772 6 2 6C2.55228 6 3.0001 5.55228 3.0001 5C3.0001 4.44772 2.55228 4 2 4Z" fill="currentColor"/> <path d="M7 4.25C6.58579 4.25 6.25 4.58579 6.25 5C6.25 5.41421 6.58579 5.75 7 5.75H22C22.4142 5.75 22.75 5.41421 22.75 5C22.75 4.58579 22.4142 4.25 22 4.25H7Z" fill="currentColor"/> <path d="M7 11.25C6.58579 11.25 6.25 11.5858 6.25 12C6.25 12.4142 6.58579 12.75 7 12.75H22C22.4142 12.75 22.75 12.4142 22.75 12C22.75 11.5858 22.4142 11.25 22 11.25H7Z" fill="currentColor"/> <path d="M6.25 19C6.25 18.5858 6.58579 18.25 7 18.25H22C22.4142 18.25 22.75 18.5858 22.75 19C22.75 19.4142 22.4142 19.75 22 19.75H7C6.58579 19.75 6.25 19.4142 6.25 19Z" fill="currentColor"/> <path d="M1 12C1 11.4477 1.44772 11 2 11C2.55228 11 3.0001 11.4477 3.0001 12C3.0001 12.5523 2.55238 13 2.0001 13C1.44782 13 1 12.5523 1 12Z" fill="currentColor"/> <path d="M2 18C1.44772 18 1 18.4477 1 19C1 19.5523 1.44772 20 2 20C2.55228 20 3.0001 19.5523 3.0001 19C3.0001 18.4477 2.55228 18 2 18Z" fill="currentColor"/>`;
     let lastResultList = [];
+    let lastResultTotal = null; // 進階查詢的符合總筆數（其他查詢為 null）
     let resultSort = { col: null, dir: 1 };
     function getResultView() {
       try { return localStorage.getItem('resultView') === 'list' ? 'list' : 'card'; } catch (e) { return 'card'; }
@@ -1256,11 +1290,13 @@
     }
 
     // 渲染查詢結果列表
-    function renderResultList(dataList) {
+    function renderResultList(dataList, total) {
       hideAllStatus();
       const container = document.getElementById('resultContainer');
       container.innerHTML = '';
 
+      if (arguments.length >= 2) lastResultTotal = total;      // 進階查詢會帶總筆數
+      else if (dataList !== lastResultList) lastResultTotal = null; // 其他查詢；切換卡片／清單、排序時沿用
       lastResultList = dataList;
       const view = getResultView();
 
@@ -1269,7 +1305,9 @@
       countHeader.className = "flex items-center justify-between gap-3 mb-2";
       const countText = document.createElement('div');
       countText.className = "text-sm text-gray-400";
-      countText.innerText = `找到 ${dataList.length} 筆符合條件的配件資料：`;
+      countText.innerText = lastResultTotal !== null
+        ? `共 ${lastResultTotal} 筆` + (lastResultTotal > dataList.length ? `，只顯示前 ${dataList.length} 筆` : '')
+        : `找到 ${dataList.length} 筆符合條件的配件資料：`;
       countHeader.appendChild(countText);
       const toggle = document.createElement('div');
       toggle.className = "flex shrink-0 bg-gray-900 border border-gray-800 rounded-lg p-1 gap-1";
@@ -1466,6 +1504,270 @@
       }
     }
 
+    // ==================== 進階查詢（條件產生器，只有管理員；後端 advancedSearch） ====================
+    const ADV_FIELD_LIST = [
+      ['len_any', '長度（任一組）', 'num'], ['inner_any', '內徑（任一組）', 'num'], ['outer_any', '外徑（任一組）', 'num'],
+      ['length', '長度', 'num'], ['length2', '長度2', 'num'], ['inner_dia', '內徑', 'num'], ['inner_dia2', '內徑2', 'num'],
+      ['outer_dia', '外徑', 'num'], ['outer_dia2', '外徑2', 'num'],
+      ['part_no', '料號', 'text'], ['name', '名稱', 'text'], ['category', '分類', 'text'],
+      ['location_in', '當前儲位', 'text'], ['location_out', '組裝位置', 'text'], ['notes', '備註', 'text']
+    ];
+    const ADV_OP_LIST = {
+      num: [['eq', '='], ['ne', '≠'], ['gt', '>'], ['gte', '≥'], ['lt', '<'], ['lte', '≤'], ['between', '介於'], ['empty', '是空白'], ['notempty', '有值']],
+      text: [['contains', '包含'], ['notcontains', '不包含'], ['eq', '等於'], ['startswith', '開頭是'], ['empty', '是空白'], ['notempty', '有值']]
+    };
+    const ADV_MAX_GROUPS = 10, ADV_MAX_CONDS = 10;
+    let advState = null;
+    let advBusy = false;
+
+    function advFieldType(field) { const f = ADV_FIELD_LIST.find(x => x[0] === field); return f ? f[2] : 'num'; }
+    function advNewCond() { return { field: 'len_any', op: 'eq', value: '', value2: '' }; }
+    function advNewGroup() { return { join: 'and', conds: [advNewCond()] }; }
+    function advInitState() { advState = { join: 'and', groups: [advNewGroup()] }; }
+    function advNoValue(op) { return op === 'empty' || op === 'notempty'; }
+
+    // 數字欄只留數字和一個小數點（全形數字、全形句點也會轉成半形）
+    function advCleanNum(v) {
+      let dot = false;
+      return String(v || '').replace(/[\uFF10-\uFF19\uFF0E]/g, ch => String.fromCharCode(ch.charCodeAt(0) - 0xFEE0))
+        .replace(/[^0-9.]/g, '')
+        .replace(/\./g, () => { if (dot) return ''; dot = true; return '.'; });
+    }
+
+    // 把畫面狀態整理成送給後端的 query：缺值的條件列略過，沒有條件的群組也略過
+    function advBuildQuery(state) {
+      const groups = [];
+      (state.groups || []).forEach(g => {
+        const conds = [];
+        (g.conds || []).forEach(c => {
+          const type = advFieldType(c.field);
+          const v = String(c.value || '').trim(), v2 = String(c.value2 || '').trim();
+          if (advNoValue(c.op)) { conds.push({ field: c.field, op: c.op }); return; }
+          if (type === 'num') {
+            const ok = s => /^\d+(\.\d*)?$|^\.\d+$/.test(s);
+            if (!ok(v)) return;
+            if (c.op === 'between') { if (!ok(v2)) return; conds.push({ field: c.field, op: c.op, value: v, value2: v2 }); return; }
+            conds.push({ field: c.field, op: c.op, value: v });
+          } else {
+            if (!v.replace(/\s+/g, '')) return;
+            conds.push({ field: c.field, op: c.op, value: v });
+          }
+        });
+        if (conds.length) groups.push({ join: g.join === 'or' ? 'or' : 'and', conds });
+      });
+      return groups.length ? { join: state.join === 'or' ? 'or' : 'and', groups } : null;
+    }
+
+    // 「且／或」切換鈕
+    function advJoinToggle(current, onPick) {
+      const wrap = document.createElement('div');
+      wrap.className = 'flex bg-gray-950 p-1 rounded-lg border border-gray-800 text-xs font-semibold gap-1';
+      [['and', '且'], ['or', '或']].forEach(([k, label]) => {
+        const b = document.createElement('button');
+        b.type = 'button';
+        b.textContent = label;
+        b.className = 'px-3 py-1 rounded-md transition ' + (current === k ? 'bg-blue-600 text-gray-100' : 'text-gray-400 hover:text-gray-100');
+        b.onclick = () => onPick(k);
+        wrap.appendChild(b);
+      });
+      return wrap;
+    }
+
+    function advSelect(options, value, cls) {
+      const sel = document.createElement('select');
+      sel.className = cls;
+      options.forEach(([k, label]) => {
+        const o = document.createElement('option');
+        o.value = k; o.textContent = label;
+        if (k === value) o.selected = true;
+        sel.appendChild(o);
+      });
+      sel.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); advSearch(); } });
+      return sel;
+    }
+
+    function advInput(type, value, onChange) {
+      const inp = document.createElement('input');
+      inp.type = 'text';
+      inp.autocomplete = 'off';
+      if (type === 'num') inp.inputMode = 'decimal';
+      inp.value = value || '';
+      inp.className = 'w-full min-w-0 bg-gray-950 border border-gray-700 text-gray-100 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-blue-500';
+      inp.addEventListener('input', e => {
+        if (type === 'num' && !e.isComposing) {
+          const nv = advCleanNum(inp.value);
+          if (nv !== inp.value) inp.value = nv;
+        }
+        onChange(inp.value);
+      });
+      if (type === 'num') inp.addEventListener('compositionend', () => { inp.value = advCleanNum(inp.value); onChange(inp.value); });
+      inp.addEventListener('keydown', e => { if (e.key === 'Enter' && !e.isComposing) { e.preventDefault(); advSearch(); } });
+      return inp;
+    }
+
+    function advRender() {
+      if (!advState) advInitState();
+      const box = document.getElementById('advGroups');
+      box.innerHTML = '';
+      const st = advState;
+      const selCls = 'bg-gray-950 border border-gray-700 text-gray-100 rounded-lg px-2 py-2 text-sm focus:outline-none focus:border-blue-500';
+
+      const topWrap = document.getElementById('advTopJoinWrap');
+      topWrap.classList.toggle('hidden', st.groups.length < 2);
+      const topJoin = document.getElementById('advTopJoin');
+      topJoin.replaceWith(Object.assign(advJoinToggle(st.join, k => { st.join = k; advRender(); }), { id: 'advTopJoin' }));
+      document.getElementById('advBtnAddGroup').classList.toggle('hidden', st.groups.length >= ADV_MAX_GROUPS);
+
+      st.groups.forEach((g, gi) => {
+        if (gi > 0) {
+          const sep = document.createElement('div');
+          sep.className = 'flex items-center gap-2 text-xs font-bold text-blue-300';
+          sep.innerHTML = '<div class="flex-1 border-t border-gray-800"></div><span></span><div class="flex-1 border-t border-gray-800"></div>';
+          sep.querySelector('span').textContent = st.join === 'or' ? '或' : '且';
+          box.appendChild(sep);
+        }
+        const card = document.createElement('div');
+        card.className = 'bg-gray-950/60 border border-gray-800 rounded-lg p-3 space-y-2';
+
+        const head = document.createElement('div');
+        head.className = 'flex flex-wrap items-center justify-between gap-2';
+        const title = document.createElement('div');
+        title.className = 'flex flex-wrap items-center gap-2 text-sm text-gray-300 font-semibold';
+        const t = document.createElement('span');
+        t.textContent = `群組 ${gi + 1}`;
+        title.appendChild(t);
+        if (g.conds.length > 1) {
+          const lab = document.createElement('span');
+          lab.className = 'text-xs text-gray-500 font-normal';
+          lab.textContent = '條件之間：';
+          title.appendChild(lab);
+          title.appendChild(advJoinToggle(g.join, k => { g.join = k; advRender(); }));
+        }
+        head.appendChild(title);
+        if (st.groups.length > 1) {
+          const del = document.createElement('button');
+          del.type = 'button';
+          del.textContent = '刪除群組';
+          del.className = 'text-xs text-gray-400 hover:text-red-400 px-2 py-1 rounded transition';
+          del.onclick = () => { st.groups.splice(gi, 1); advRender(); };
+          head.appendChild(del);
+        }
+        card.appendChild(head);
+
+        g.conds.forEach((c, ci) => {
+          const type = advFieldType(c.field);
+          const row = document.createElement('div');
+          row.className = 'flex flex-col sm:flex-row sm:items-center gap-2' + (ci > 0 ? ' pt-2 border-t border-gray-800/70 sm:border-t-0 sm:pt-0' : '');
+
+          const fSel = advSelect(ADV_FIELD_LIST.map(f => [f[0], f[1]]), c.field, selCls + ' w-full sm:w-40 shrink-0');
+          fSel.onchange = () => {
+            const newType = advFieldType(fSel.value);
+            if (newType !== type) { c.op = newType === 'num' ? 'eq' : 'contains'; c.value = ''; c.value2 = ''; }
+            c.field = fSel.value;
+            advRender();
+          };
+          row.appendChild(fSel);
+
+          const line = document.createElement('div');
+          line.className = 'flex items-center gap-2 flex-1 min-w-0';
+          const oSel = advSelect(ADV_OP_LIST[type], c.op, selCls + ' w-24 shrink-0');
+          oSel.onchange = () => { c.op = oSel.value; advRender(); };
+          line.appendChild(oSel);
+
+          if (!advNoValue(c.op)) {
+            line.appendChild(advInput(type, c.value, v => { c.value = v; }));
+            if (c.op === 'between') {
+              const til = document.createElement('span');
+              til.className = 'text-gray-500 text-sm shrink-0';
+              til.textContent = '到';
+              line.appendChild(til);
+              line.appendChild(advInput(type, c.value2, v => { c.value2 = v; }));
+            }
+          } else {
+            const sp = document.createElement('div');
+            sp.className = 'flex-1';
+            line.appendChild(sp);
+          }
+
+          const del = document.createElement('button');
+          del.type = 'button';
+          del.title = '刪除這個條件';
+          del.setAttribute('aria-label', '刪除這個條件');
+          del.textContent = '✕';
+          del.className = 'shrink-0 w-9 h-9 rounded-lg text-gray-400 hover:text-red-400 hover:bg-gray-800 transition disabled:opacity-30 disabled:hover:text-gray-400 disabled:hover:bg-transparent';
+          del.disabled = st.groups.length === 1 && g.conds.length === 1;
+          del.onclick = () => {
+            g.conds.splice(ci, 1);
+            if (!g.conds.length) st.groups.splice(gi, 1);
+            if (!st.groups.length) advInitState();
+            advRender();
+          };
+          line.appendChild(del);
+          row.appendChild(line);
+          card.appendChild(row);
+        });
+
+        if (g.conds.length < ADV_MAX_CONDS) {
+          const add = document.createElement('button');
+          add.type = 'button';
+          add.textContent = '＋ 新增條件';
+          add.className = 'text-xs font-semibold text-blue-400 hover:text-blue-300 px-1 py-1 transition';
+          add.onclick = () => { g.conds.push(advNewCond()); advRender(); };
+          card.appendChild(add);
+        }
+        box.appendChild(card);
+      });
+    }
+
+    function advAddGroup() {
+      if (!advState) advInitState();
+      if (advState.groups.length >= ADV_MAX_GROUPS) return;
+      advState.groups.push(advNewGroup());
+      advRender();
+    }
+
+    function advSetMsg(msg) {
+      const el = document.getElementById('advMsg');
+      el.textContent = msg || '';
+      el.classList.toggle('hidden', !msg);
+    }
+
+    function advReset() {
+      advInitState();
+      advRender();
+      advSetMsg('');
+      hideAllStatus();
+    }
+
+    async function advSearch() {
+      if (authRole !== 'A' || !authPassword) { openLoginModal('進階查詢需要管理員密碼'); return; }
+      if (advBusy) return;
+      const query = advBuildQuery(advState || { groups: [] });
+      if (!query) { advSetMsg('請至少輸入一個條件'); return; }
+      advSetMsg('');
+      advBusy = true;
+      showLoading();
+      try {
+        const r = await invApiPost({ action: 'advancedSearch', password: authPassword, query });
+        if (r && r.status === 'success') {
+          const list = Array.isArray(r.data) ? r.data : [];
+          if (list.length) renderResultList(list, typeof r.total === 'number' ? r.total : list.length);
+          else showNotFound();
+        } else {
+          hideAllStatus();
+          if (handleAuthError(r)) return;
+          const old = /未知的操作指令|無效的 action/.test((r && r.message) || '');
+          advSetMsg(old ? '後端還沒更新進階查詢功能' : ((r && r.message) || '查詢失敗'));
+        }
+      } catch (err) {
+        console.error(err);
+        hideAllStatus();
+        advSetMsg('連線失敗，請檢查網路');
+      } finally {
+        advBusy = false;
+      }
+    }
+
     // ==================== 身分（角色）與登入 ====================
     // A 管理員：全部功能；B 倉庫人員：查詢＋出入庫；C 現場人員（未登入）：只能查詢
     // 真正的權限檢查在後端；這裡只負責顯示／隱藏功能。
@@ -1513,6 +1815,8 @@
       document.getElementById('nav-wo').classList.toggle('hidden', !canWorkOrder);
       document.getElementById('woBtnDrawingMgr').classList.toggle('hidden', !isAdmin); // 圖號管理：只有管理員
       if (!isAdmin) closeDwModal();
+      document.getElementById('tabBtnAdv').classList.toggle('hidden', !isAdmin); // 進階查詢：只有管理員
+      if (!isAdmin && !document.getElementById('searchBoxAdv').classList.contains('hidden')) switchSearchTab('spec');
       document.getElementById('addBtnWrap').classList.toggle('hidden', !canEditParts);
       const editBtn = document.getElementById('btnEditExist');
       if (editBtn && !isEditMode) editBtn.classList.toggle('hidden', !canEditParts);
