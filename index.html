@@ -47,6 +47,7 @@
     .rv-table .rv-sticky { position: sticky; left: 0; z-index: 1; box-shadow: 1px 0 0 #374151; }
     .rv-table th.rv-sticky { z-index: 2; }
     .rv-table .rv-name { min-width: 8rem; max-width: 14rem; }
+    .rv-table .rv-notes { min-width: 10rem; max-width: 20rem; }
     .rv-table .rv-idx { width: 3rem; }
     @media (max-width: 767px) { .rv-table .rv-idx { display: none; } }
 </style>
@@ -85,10 +86,6 @@
         <a href="#" id="nav-spec" onclick="event.preventDefault(); switchView('search')"
            class="flex items-center space-x-3 px-3 py-2.5 rounded-lg bg-blue-600 text-gray-100 font-medium transition cursor-default">
           <span>配件查詢</span>
-        </a>
-        <a href="#" id="nav-rd" onclick="event.preventDefault(); switchView('returns')"
-           class="flex items-center space-x-3 px-3 py-2.5 rounded-lg text-gray-400 hover:bg-gray-800 hover:text-gray-100 font-medium transition">
-          <span>回廠日期</span>
         </a>
         <a href="#" id="nav-inv" onclick="event.preventDefault(); switchView('inventory')"
            class="hidden flex items-center space-x-3 px-3 py-2.5 rounded-lg text-gray-400 hover:bg-gray-800 hover:text-gray-100 font-medium transition">
@@ -267,6 +264,7 @@
           <button id="invTabBtnScan" onclick="switchInvTab('scan')" class="px-3 py-1.5 rounded-md bg-blue-600 text-gray-100 transition">出入庫</button>
           <button id="invTabBtnLookup" onclick="switchInvTab('lookup')" class="px-3 py-1.5 rounded-md text-gray-400 hover:text-gray-100 transition">庫存異動查詢</button>
           <button id="invTabBtnLow" onclick="switchInvTab('low')" class="px-3 py-1.5 rounded-md text-gray-400 hover:text-gray-100 transition">低庫存清單</button>
+          <button id="invTabBtnRd" onclick="switchInvTab('rd')" class="px-3 py-1.5 rounded-md text-gray-400 hover:text-gray-100 transition">回廠日期</button>
         </div>
       </div>
 
@@ -426,6 +424,58 @@
         </div>
         <div id="invLowResult" class="space-y-2"></div>
       </div>
+      <!-- 🌟 子頁 4：回廠日期（管理員、倉庫人員） -->
+      <div id="invBoxReturns" class="hidden space-y-6">
+        <!-- 新增（管理員、倉庫人員） -->
+        <div id="rdAddCard" class="hidden bg-gray-900 border border-gray-800 rounded-xl p-5 space-y-4 shadow-xl">
+          <h2 class="text-sm font-semibold text-gray-300">新增回廠日期</h2>
+          <div>
+            <label for="rdPartNo" class="block text-xs font-medium text-gray-400 mb-1">料號</label>
+            <input type="text" id="rdPartNo" autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="輸入完整料號"
+                   class="w-full bg-gray-950 border border-gray-700 text-gray-100 placeholder-gray-500 rounded-lg px-3 py-2 text-sm font-mono focus:outline-none focus:border-blue-500">
+            <div id="rdPartInfo" class="hidden mt-2 rounded-lg border px-3 py-2 text-sm"></div>
+          </div>
+          <div class="grid grid-cols-2 gap-3">
+            <div>
+              <label for="rdDate" class="block text-xs font-medium text-gray-400 mb-1">回廠日期</label>
+              <input type="date" id="rdDate" class="w-full bg-gray-950 border border-gray-700 text-gray-100 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-blue-500 [color-scheme:dark]">
+            </div>
+            <div>
+              <label for="rdNotes" class="block text-xs font-medium text-gray-400 mb-1">備註（選填）</label>
+              <input type="text" id="rdNotes" maxlength="200" autocomplete="off"
+                     class="w-full bg-gray-950 border border-gray-700 text-gray-100 placeholder-gray-500 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-blue-500">
+            </div>
+          </div>
+          <button id="rdBtnSave" type="button" onclick="saveReturnDate()" disabled
+                  class="w-full bg-green-600 hover:bg-green-500 text-gray-100 font-semibold py-2.5 rounded-lg transition shadow-lg shadow-green-600/30 opacity-50 cursor-not-allowed">儲存</button>
+        </div>
+
+        <!-- 查詢（所有人） -->
+        <div class="bg-gray-900 border border-gray-800 rounded-xl p-5 space-y-4 shadow-xl">
+          <div>
+            <label for="rdQKeyword" class="block text-xs font-medium text-gray-400 mb-1">料號或名稱</label>
+            <input type="text" id="rdQKeyword" autocomplete="off" spellcheck="false" placeholder="不填＝全部"
+                   onkeydown="if(event.key === 'Enter' && !event.isComposing){ event.preventDefault(); loadReturnDates(); }"
+                   class="w-full bg-gray-950 border border-gray-700 text-gray-100 placeholder-gray-500 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-blue-500">
+          </div>
+          <div class="grid grid-cols-2 gap-3">
+            <div>
+              <label for="rdQFrom" class="block text-xs font-medium text-gray-400 mb-1">開始日期</label>
+              <input type="date" id="rdQFrom" class="w-full bg-gray-950 border border-gray-700 text-gray-100 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-blue-500 [color-scheme:dark]">
+            </div>
+            <div>
+              <label for="rdQTo" class="block text-xs font-medium text-gray-400 mb-1">結束日期</label>
+              <input type="date" id="rdQTo" class="w-full bg-gray-950 border border-gray-700 text-gray-100 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-blue-500 [color-scheme:dark]">
+            </div>
+          </div>
+          <div class="flex gap-2">
+            <button id="rdBtnLoad" type="button" onclick="loadReturnDates()" class="flex-1 bg-blue-600 hover:bg-blue-500 text-gray-100 font-semibold py-2.5 rounded-lg transition shadow-lg shadow-blue-600/30">查詢</button>
+            <button type="button" onclick="clearReturnQuery()" class="bg-gray-800 hover:bg-gray-700 text-gray-300 font-semibold px-4 py-2.5 rounded-lg transition">清除</button>
+          </div>
+          <p class="text-xs text-gray-500"><span class="text-red-400">紅色</span>＝已過回廠日期，<span class="text-amber-400">黃色</span>＝7 天內</p>
+        </div>
+        <div id="rdResult" class="space-y-3"></div>
+      </div>
     </div>
 
     <!-- ==================== 工作單（圖號 → 需要的零件）＋紀錄＋統計 ==================== -->
@@ -546,62 +596,6 @@
         </div>
         <div id="wsResult" class="space-y-3"></div>
       </div>
-    </div>
-    <!-- ==================== 回廠日期（查詢：所有人；新增／刪除：管理員、倉庫人員） ==================== -->
-    <div id="viewReturns" class="hidden max-w-3xl mx-auto space-y-6">
-      <div class="border-b border-gray-800 pb-4">
-        <h1 class="text-2xl font-bold text-gray-100">回廠日期</h1>
-      </div>
-
-      <!-- 新增（管理員、倉庫人員） -->
-      <div id="rdAddCard" class="hidden bg-gray-900 border border-gray-800 rounded-xl p-5 space-y-4 shadow-xl">
-        <h2 class="text-sm font-semibold text-gray-300">新增回廠日期</h2>
-        <div>
-          <label for="rdPartNo" class="block text-xs font-medium text-gray-400 mb-1">料號</label>
-          <input type="text" id="rdPartNo" autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="輸入完整料號"
-                 class="w-full bg-gray-950 border border-gray-700 text-gray-100 placeholder-gray-500 rounded-lg px-3 py-2 text-sm font-mono focus:outline-none focus:border-blue-500">
-          <div id="rdPartInfo" class="hidden mt-2 rounded-lg border px-3 py-2 text-sm"></div>
-        </div>
-        <div class="grid grid-cols-2 gap-3">
-          <div>
-            <label for="rdDate" class="block text-xs font-medium text-gray-400 mb-1">回廠日期</label>
-            <input type="date" id="rdDate" class="w-full bg-gray-950 border border-gray-700 text-gray-100 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-blue-500 [color-scheme:dark]">
-          </div>
-          <div>
-            <label for="rdNotes" class="block text-xs font-medium text-gray-400 mb-1">備註（選填）</label>
-            <input type="text" id="rdNotes" maxlength="200" autocomplete="off"
-                   class="w-full bg-gray-950 border border-gray-700 text-gray-100 placeholder-gray-500 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-blue-500">
-          </div>
-        </div>
-        <button id="rdBtnSave" type="button" onclick="saveReturnDate()" disabled
-                class="w-full bg-green-600 hover:bg-green-500 text-gray-100 font-semibold py-2.5 rounded-lg transition shadow-lg shadow-green-600/30 opacity-50 cursor-not-allowed">儲存</button>
-      </div>
-
-      <!-- 查詢（所有人） -->
-      <div class="bg-gray-900 border border-gray-800 rounded-xl p-5 space-y-4 shadow-xl">
-        <div>
-          <label for="rdQKeyword" class="block text-xs font-medium text-gray-400 mb-1">料號或名稱</label>
-          <input type="text" id="rdQKeyword" autocomplete="off" spellcheck="false" placeholder="不填＝全部"
-                 onkeydown="if(event.key === 'Enter' && !event.isComposing){ event.preventDefault(); loadReturnDates(); }"
-                 class="w-full bg-gray-950 border border-gray-700 text-gray-100 placeholder-gray-500 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-blue-500">
-        </div>
-        <div class="grid grid-cols-2 gap-3">
-          <div>
-            <label for="rdQFrom" class="block text-xs font-medium text-gray-400 mb-1">開始日期</label>
-            <input type="date" id="rdQFrom" class="w-full bg-gray-950 border border-gray-700 text-gray-100 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-blue-500 [color-scheme:dark]">
-          </div>
-          <div>
-            <label for="rdQTo" class="block text-xs font-medium text-gray-400 mb-1">結束日期</label>
-            <input type="date" id="rdQTo" class="w-full bg-gray-950 border border-gray-700 text-gray-100 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-blue-500 [color-scheme:dark]">
-          </div>
-        </div>
-        <div class="flex gap-2">
-          <button id="rdBtnLoad" type="button" onclick="loadReturnDates()" class="flex-1 bg-blue-600 hover:bg-blue-500 text-gray-100 font-semibold py-2.5 rounded-lg transition shadow-lg shadow-blue-600/30">查詢</button>
-          <button type="button" onclick="clearReturnQuery()" class="bg-gray-800 hover:bg-gray-700 text-gray-300 font-semibold px-4 py-2.5 rounded-lg transition">清除</button>
-        </div>
-        <p class="text-xs text-gray-500"><span class="text-red-400">紅色</span>＝已過回廠日期，<span class="text-amber-400">黃色</span>＝7 天內</p>
-      </div>
-      <div id="rdResult" class="space-y-3"></div>
     </div>
   </main>
 
@@ -1372,17 +1366,23 @@
       try { localStorage.setItem('resultView', v); } catch (e) {}
     }
 
-    // 清單模式：像 Excel 的表格（料號固定在左邊，可排序、點列展開詳細）
+    // 清單模式：像 Excel 的表格（料號固定在左邊，可排序；詳細規格、備註直接顯示）
     function buildResultTable(dataList) {
+      const canQuick = authRole === 'A' || authRole === 'B'; // 點料號編輯、點回廠日期新增：只有管理員、倉庫人員
       const cols = [
         { key: 'idx', label: '序號', get: (d, i) => i + 1, th: 'rv-idx', td: 'rv-idx text-gray-500 text-right' },
-        { key: 'part_no', label: '料號', get: d => d.part_no, th: 'rv-sticky', td: 'rv-sticky font-mono font-semibold' },
+        { key: 'part_no', label: '料號', get: d => d.part_no, th: 'rv-sticky', td: 'rv-sticky font-mono font-semibold',
+          html: canQuick ? d => d.part_no ? `<button type="button" data-act="edit" title="點一下進入編輯" class="text-blue-300 hover:text-blue-200 underline decoration-dotted underline-offset-4">${invEsc(d.part_no)}</button>` : '' : null },
         { key: 'name', label: '名稱', get: d => d.name, th: '', td: 'rv-name' },
         { key: 'spec', label: '規格（長*內*外）', get: d => partSpec(d), th: '', td: '' },
         { key: 'location_in', label: '當前儲位', get: d => d.location_in, th: '', td: 'font-mono' },
         { key: 'location_out', label: '組裝位置', get: d => d.location_out, th: '', td: '' },
         { key: 'category', label: '分類', get: d => d.category, th: '', td: '' },
-        { key: 'return_dates', label: '回廠日期', get: d => (Array.isArray(d.return_dates) && d.return_dates[0] ? d.return_dates[0].date : ''), th: '', td: '', html: d => rdChipsHTML(d.return_dates, true) }
+        { key: 'spec_detail', label: '詳細規格', get: d => partSpecDetail(d), th: '', td: '' },
+        { key: 'notes', label: '備註說明', get: d => d.notes, th: '', td: 'rv-notes' },
+        { key: 'return_dates', label: '回廠日期', get: d => (Array.isArray(d.return_dates) && d.return_dates[0] ? d.return_dates[0].date : ''), th: '', td: '', html: d => canQuick && d.part_no
+          ? `<button type="button" data-act="rd" title="點一下新增回廠日期" class="inline-flex items-center gap-1.5 hover:opacity-80">${rdChipsHTML(d.return_dates, true)}<span class="px-1.5 rounded border border-gray-600 text-xs text-gray-400">＋</span></button>`
+          : rdChipsHTML(d.return_dates, true) }
       ];
       const show = v => (v === undefined || v === null || String(v).trim() === '') ? '-' : invEsc(v);
 
@@ -1409,20 +1409,16 @@
       const tbody = document.createElement('tbody');
       rows.forEach(({ d, i }, n) => {
         const tr = document.createElement('tr');
-        tr.className = 'rv-row cursor-pointer ' + (n % 2 ? 'rv-odd' : 'rv-even');
-        tr.innerHTML = cols.map(c => `<td class="${c.td} px-3 py-2 border border-gray-800 ${c.key === 'name' ? '' : 'whitespace-nowrap'}">${c.html ? (c.html(d) || '-') : show(c.get(d, i))}</td>`).join('');
-        tr.onclick = () => {
-          const next = tr.nextElementSibling;
-          const opened = next && next.classList.contains('rv-detail');
-          tbody.querySelectorAll('.rv-detail').forEach(el => el.remove());
-          if (opened) return;
-          const dt = document.createElement('tr');
-          dt.className = 'rv-detail';
-          dt.innerHTML = `<td colspan="${cols.length}" class="px-3 py-2 border border-gray-800 bg-gray-950 text-gray-400">
-            <p><strong>詳細規格：</strong><span class="text-gray-100">${show(partSpecDetail(d))}</span></p>
-            <p><strong>備註說明：</strong><span class="text-gray-300">${d.notes ? invEsc(d.notes) : '無'}</span></p></td>`;
-          tr.after(dt);
-        };
+        tr.className = 'rv-row ' + (n % 2 ? 'rv-odd' : 'rv-even');
+        tr.innerHTML = cols.map(c => `<td class="${c.td} px-3 py-2 border border-gray-800 ${(c.key === 'name' || c.key === 'notes') ? '' : 'whitespace-nowrap'}">${c.html ? (c.html(d) || '-') : show(c.get(d, i))}</td>`).join('');
+        if (canQuick) {
+          tr.addEventListener('click', e => {
+            const b = e.target.closest('[data-act]');
+            if (!b) return;
+            if (b.dataset.act === 'edit') quickEditPart(d.part_no);
+            else if (b.dataset.act === 'rd') quickAddReturnDate(d.part_no);
+          });
+        }
         tbody.appendChild(tr);
       });
       table.appendChild(tbody);
@@ -1651,6 +1647,35 @@
       } else {
         enterEditMode();
       }
+    }
+
+    // ==================== 清單快捷（管理員、倉庫人員）：點料號→編輯、點回廠日期→新增 ====================
+    async function quickEditPart(partNo) {
+      if (authRole !== 'A' && authRole !== 'B') return;
+      if (!partNo) return;
+      if (isEditMode && !document.getElementById('addModal').classList.contains('hidden')) {
+        alert('目前正在編輯其他配件，請先儲存或取消。');
+        return;
+      }
+      openAddModal();
+      const input = document.getElementById('existPartNoInput');
+      input.value = partNo;
+      await fetchExistingData(partNo);
+      const loaded = document.getElementById('existPartNo').value.trim();
+      if (loaded && loaded.toLowerCase() === String(partNo).trim().toLowerCase() && !isEditMode) {
+        editActionType = 'update';
+        enterEditMode();
+      }
+    }
+    function quickAddReturnDate(partNo) {
+      if (authRole !== 'A' && authRole !== 'B') return;
+      if (!partNo) return;
+      switchView('returns');
+      document.getElementById('rdPartNo').value = partNo;
+      rdLookupNow();
+      const card = document.getElementById('rdAddCard');
+      if (card) card.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      setTimeout(() => { const dt = document.getElementById('rdDate'); if (dt) dt.focus(); }, 300);
     }
 
     // ==================== 進階查詢（條件產生器，只有管理員；後端 advancedSearch） ====================
@@ -1948,7 +1973,7 @@
     // 依照身分顯示／隱藏功能
     function applyRoleUI() {
       const loggedIn = authRole === 'A' || authRole === 'B';
-      const canMove = authRole === 'A';          // 出入庫管理：只有管理員
+      const canMove = authRole === 'A' || authRole === 'B'; // 出入庫管理：管理員（全部分頁）、倉庫人員（只有「回廠日期」分頁）
       const canEditParts = loggedIn;             // 新增／修改配件資料：倉庫人員和管理員
       const isAdmin = authRole === 'A';
       const canWorkOrder = authRole === 'A';     // 工作單（產生／儲存）：只有管理員看得到（後端允許 A、B 產生）
@@ -1956,6 +1981,8 @@
       if (!canMove && !document.getElementById('viewInventory').classList.contains('hidden')) switchView('search');
       if (!canWoLog && !document.getElementById('viewWorkOrder').classList.contains('hidden')) switchView('search');
       woApplyRoleTabs(); // 倉庫人員只看得到「紀錄」「統計」分頁
+      if (canMove && !document.getElementById('viewInventory').classList.contains('hidden') && authRole !== 'A') switchInvTab('rd'); // 倉庫人員只留「回廠日期」
+      invApplyRoleTabs();
       const roleLabel = document.getElementById('roleNameLabel');
       roleLabel.textContent = loggedIn ? ROLE_LABELS[authRole] : '';
       roleLabel.classList.toggle('hidden', !loggedIn);          // 未登入時標題下方不顯示任何字
@@ -2589,17 +2616,20 @@
 
     // ---------- 主畫面切換（配件查詢 / 進銷存 / 工作單） ----------
     function switchView(view) {
-      if (view === 'inventory' && authRole !== 'A') view = 'search'; // 出入庫管理只有管理員能用
+      let invTab = null;
+      if (view === 'returns') { view = 'inventory'; invTab = 'rd'; } // 回廠日期已收進出入庫管理
+      if (view === 'inventory' && authRole !== 'A' && authRole !== 'B') view = 'search'; // 出入庫管理：管理員、倉庫人員（倉庫人員只有回廠日期）
+      if (view === 'inventory' && authRole === 'B') invTab = 'rd';
       if (view === 'workorder' && authRole !== 'A' && authRole !== 'B') view = 'search'; // 工作單頁：管理員；倉庫人員只看紀錄、統計
-      const navs = { search: 'nav-spec', inventory: 'nav-inv', workorder: 'nav-wo', returns: 'nav-rd' };
-      const views = { search: 'viewSearch', inventory: 'viewInventory', workorder: 'viewWorkOrder', returns: 'viewReturns' };
+      const navs = { search: 'nav-spec', inventory: 'nav-inv', workorder: 'nav-wo' };
+      const views = { search: 'viewSearch', inventory: 'viewInventory', workorder: 'viewWorkOrder' };
       const activeNav = 'flex items-center space-x-3 px-3 py-2.5 rounded-lg bg-blue-600 text-gray-100 font-medium transition cursor-default';
       const idleNav = 'flex items-center space-x-3 px-3 py-2.5 rounded-lg text-gray-400 hover:bg-gray-800 hover:text-gray-100 font-medium transition cursor-pointer';
       Object.keys(views).forEach(k => {
         document.getElementById(views[k]).classList.toggle('hidden', k !== view);
         document.getElementById(navs[k]).className = k === view ? activeNav : idleNav;
       });
-      if (view === 'inventory') {
+      if (view === 'inventory' && authRole === 'A') {
         const h = document.getElementById('invHandler');
         if (h && !h.value) h.value = localStorage.getItem('inv_handler') || '';
         refreshHandlers(); // 進入出入庫頁時更新經手人名單（失敗就用這台裝置上次存的）
@@ -2607,13 +2637,14 @@
         stopInvScanner();
       }
       if (view === 'workorder') initWorkOrder();
-      if (view === 'returns') initReturns();
-      document.getElementById('nav-inv').classList.toggle('hidden', authRole !== 'A'); // 依身分決定是否顯示「出入庫管理」
+      if (view === 'inventory') { invApplyRoleTabs(); if (invTab) switchInvTab(invTab); }
+      document.getElementById('nav-inv').classList.toggle('hidden', authRole !== 'A' && authRole !== 'B'); // 依身分決定是否顯示「出入庫管理」
       document.getElementById('nav-wo').classList.toggle('hidden', authRole !== 'A' && authRole !== 'B');  // 依身分決定是否顯示「工作單」
     }
 
     function switchInvTab(tab) {
-      const map = { scan: ['invBoxScan', 'invTabBtnScan'], lookup: ['invBoxLookup', 'invTabBtnLookup'], low: ['invBoxLow', 'invTabBtnLow'] };
+      if (authRole !== 'A') tab = 'rd'; // 倉庫人員只有「回廠日期」分頁
+      const map = { scan: ['invBoxScan', 'invTabBtnScan'], lookup: ['invBoxLookup', 'invTabBtnLookup'], low: ['invBoxLow', 'invTabBtnLow'], rd: ['invBoxReturns', 'invTabBtnRd'] };
       const defaultBtnClass = "px-3 py-1.5 rounded-md text-gray-400 hover:text-gray-100 transition";
       const activeBtnClass = "px-3 py-1.5 rounded-md bg-blue-600 text-gray-100 transition";
       Object.keys(map).forEach(k => {
@@ -2622,6 +2653,16 @@
       });
       if (tab !== 'scan') stopInvScanner();
       if (tab === 'low') loadLowStock();
+      if (tab === 'rd') initReturns();
+      invApplyRoleTabs();
+    }
+
+    // 倉庫人員只看得到「回廠日期」分頁，其餘出入庫功能只有管理員
+    function invApplyRoleTabs() {
+      ['invTabBtnScan', 'invTabBtnLookup', 'invTabBtnLow'].forEach(id => {
+        const b = document.getElementById(id);
+        if (b) b.classList.toggle('hidden', authRole !== 'A');
+      });
     }
 
     // ---------- API 呼叫 ----------
