@@ -141,7 +141,7 @@
       <div id="searchBoxPartNo" class="hidden bg-gray-900 border border-gray-800 rounded-xl p-5 space-y-4 shadow-xl">
         <div>
           <label class="block text-xs font-medium text-gray-400 mb-1">料號</label>
-          <input type="text" id="inputPartNo" placeholder="完整或部分料號" 
+          <input type="text" id="inputPartNo" 
                  oninput="handlePartNoInput()"
                  onkeydown="if(event.key === 'Enter'){ event.preventDefault(); handleSearch('part_no'); }"
                  class="w-full bg-gray-950 border border-gray-700 text-gray-100 placeholder-gray-500 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-blue-500">
@@ -164,7 +164,7 @@
       <div id="searchBoxName" class="hidden bg-gray-900 border border-gray-800 rounded-xl p-5 space-y-4 shadow-xl">
         <div>
           <label class="block text-xs font-medium text-gray-400 mb-1">名稱</label>
-          <input type="text" id="inputName" placeholder="輸入名稱" 
+          <input type="text" id="inputName" 
                  onkeydown="if(event.key === 'Enter'){ event.preventDefault(); handleSearch('name'); }"
                  class="w-full bg-gray-950 border border-gray-700 text-gray-100 placeholder-gray-500 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-blue-500">
         </div>
@@ -500,7 +500,7 @@
             </div>
             <div>
               <label for="woOrderName" class="block text-xs font-medium text-gray-400 mb-1">單名</label>
-              <input type="text" id="woOrderName" maxlength="30" autocomplete="off" placeholder="例：英A、BCNA"
+              <input type="text" id="woOrderName" maxlength="30" autocomplete="off"
                      class="w-full bg-gray-950 border border-gray-700 text-gray-100 placeholder-gray-500 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-blue-500">
             </div>
           </div>
@@ -553,13 +553,13 @@
             </div>
             <div>
               <label for="wlName" class="block text-xs font-medium text-gray-400 mb-1">單名</label>
-              <input type="text" id="wlName" maxlength="30" autocomplete="off" placeholder="不填＝全部"
+              <input type="text" id="wlName" maxlength="30" autocomplete="off"
                      onkeydown="if(event.key === 'Enter' && !event.isComposing){ event.preventDefault(); loadWorkOrderLog(); }"
                      class="w-full bg-gray-950 border border-gray-700 text-gray-100 placeholder-gray-500 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-blue-500">
             </div>
             <div>
               <label for="wlSize" class="block text-xs font-medium text-gray-400 mb-1">尺寸</label>
-              <input type="text" id="wlSize" maxlength="40" autocomplete="off" spellcheck="false" placeholder="不填＝全部"
+              <input type="text" id="wlSize" maxlength="40" autocomplete="off" spellcheck="false"
                      onkeydown="if(event.key === 'Enter' && !event.isComposing){ event.preventDefault(); loadWorkOrderLog(); }"
                      class="w-full bg-gray-950 border border-gray-700 text-gray-100 placeholder-gray-500 rounded-lg px-3 py-2 text-sm font-mono focus:outline-none focus:border-blue-500">
             </div>
@@ -626,7 +626,7 @@
             </label>
             <div class="flex gap-2">
               <div class="relative flex-1">
-                <input type="text" id="existPartNoInput" placeholder="輸入料號，例: SA07-2211"
+                <input type="text" id="existPartNoInput"
                        oninput="handleExistPartNoInput(this.value)"
                        onkeydown="if(event.key === 'Enter'){ event.preventDefault(); triggerExistSearch(); }"
                        class="w-full bg-gray-900 border border-blue-500/50 focus:border-blue-500 text-gray-100 placeholder-gray-500 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500">
@@ -788,7 +788,7 @@
 
       <div class="space-y-1.5">
         <label class="block text-xs font-semibold text-gray-300">密碼</label>
-        <input type="password" id="adminPasswordInput" placeholder="請輸入密碼"
+        <input type="password" id="adminPasswordInput"
                onkeydown="if(event.key === 'Enter'){ event.preventDefault(); verifyAdminPassword(); }"
                class="w-full bg-gray-950 border border-gray-700 focus:border-amber-500 text-gray-100 placeholder-gray-500 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-amber-500">
         <p id="passwordErrorMsg" class="hidden text-xs text-red-400 pt-1">❌ 密碼錯誤，請重新輸入！</p>
@@ -1371,7 +1371,7 @@
         { key: 'spec_detail', label: '詳細規格', get: d => partSpecDetail(d), th: '', td: '' },
         { key: 'notes', label: '備註說明', get: d => d.notes, th: '', td: 'rv-notes' },
         { key: 'return_dates', label: '回廠日期', get: d => (Array.isArray(d.return_dates) && d.return_dates[0] ? d.return_dates[0].date : ''), th: '', td: '', html: d => canQuick && d.part_no
-          ? `<button type="button" data-act="rd" title="點一下新增回廠日期" class="inline-flex items-center gap-1.5 hover:opacity-80">${rdChipsHTML(d.return_dates, true)}<span class="px-1.5 rounded border border-gray-600 text-xs text-gray-400">＋</span></button>`
+          ? `<button type="button" data-act="rd" title="點一下新增回廠日期" class="inline-flex items-center hover:opacity-80">${rdChipsHTML(d.return_dates, true) || '<span class="text-gray-500 px-1">-</span>'}</button>`
           : rdChipsHTML(d.return_dates, true) }
       ];
       const show = v => (v === undefined || v === null || String(v).trim() === '') ? '-' : invEsc(v);
@@ -3356,10 +3356,13 @@
         box.addEventListener('click', e => { if (e.target.closest('button')) dirty(); });
         const name = document.getElementById('woOrderName');
         name.addEventListener('blur', () => { name.value = woCleanOrderName(name.value); });
+        onComboSetup('woOrderName', true);   // 單名：下拉選單＋可直接輸入新單名
+        onComboSetup('wlName', false);       // 紀錄查詢的單名：下拉選單（不填＝全部）
         woUpdateSaveBtn();
       }
       woApplyRoleTabs();
       woRefreshCompanies();
+      refreshOrderNames();
     }
     async function woRefreshCompanies() {
       if (authRole !== 'A' || !authPassword) return;
@@ -3732,6 +3735,84 @@
     }
     // WL-FRONT-END
 
+    // ---------- 單名下拉選單（名單＝工作單紀錄裡用過的單名＋這台裝置新增的；輸入新單名就會加入） ----------
+    const ORDER_NAME_CACHE_KEY = 'wo_order_names';
+    let woOrderNames = [];
+    try { woOrderNames = JSON.parse(localStorage.getItem(ORDER_NAME_CACHE_KEY) || '[]').filter(n => typeof n === 'string' && n); } catch (e) { woOrderNames = []; }
+    function saveOrderNameCache() { try { localStorage.setItem(ORDER_NAME_CACHE_KEY, JSON.stringify(woOrderNames.slice(0, 300))); } catch (e) { /* 忽略 */ } }
+    function addOrderName(n) {
+      n = woCleanOrderName(n);
+      if (!n) return;
+      woOrderNames = [n].concat(woOrderNames.filter(x => x.toLowerCase() !== n.toLowerCase()));
+      saveOrderNameCache();
+    }
+    // 從工作單紀錄抓最近用過的單名（管理員、倉庫人員；失敗就用這台裝置上次存的）
+    async function refreshOrderNames() {
+      if ((authRole !== 'A' && authRole !== 'B') || !authPassword) return;
+      try {
+        const r = await invApiPost({ action: 'getWorkOrders', password: authPassword });
+        if (r.status !== 'success' || !Array.isArray(r.data)) return;
+        const seen = new Set(), list = [];
+        r.data.concat(woOrderNames.map(n => ({ order_name: n }))).forEach(o => {
+          const n = woCleanOrderName(o.order_name);
+          if (n && !seen.has(n.toLowerCase())) { seen.add(n.toLowerCase()); list.push(n); }
+        });
+        woOrderNames = list;
+        saveOrderNameCache();
+      } catch (e) { /* 網路問題：用上次存的 */ }
+    }
+    // 把一般輸入框變成「下拉選單＋可輸入」：右邊 ▼ 展開；打字會篩選；allowAdd＝名單沒有時顯示「新增」
+    function onComboSetup(inputId, allowAdd) {
+      const input = document.getElementById(inputId);
+      if (!input || input.dataset.combo) return;
+      input.dataset.combo = '1';
+      const wrap = document.createElement('div');
+      wrap.className = 'relative';
+      input.parentNode.insertBefore(wrap, input);
+      wrap.appendChild(input);
+      input.classList.remove('px-3'); input.classList.add('pl-3', 'pr-10');
+      const tg = document.createElement('button');
+      tg.type = 'button'; tg.textContent = '▼'; tg.setAttribute('aria-label', '展開單名名單');
+      tg.className = 'absolute inset-y-0 right-0 w-10 flex items-center justify-center text-gray-400 hover:text-gray-100 transition';
+      const menu = document.createElement('div');
+      menu.className = 'hidden absolute z-30 left-0 right-0 mt-1 max-h-56 overflow-y-auto bg-gray-900 border border-gray-700 rounded-lg shadow-lg';
+      wrap.appendChild(tg); wrap.appendChild(menu);
+      let filter = false;
+      const close = () => menu.classList.add('hidden');
+      const pick = n => { input.value = n; close(); input.dispatchEvent(new Event('change')); };
+      const item = (text, cls, onClick) => {
+        const b = document.createElement('button');
+        b.type = 'button';
+        b.className = 'block w-full text-left px-3 py-2 text-sm hover:bg-gray-800 truncate ' + cls;
+        b.textContent = text;
+        b.addEventListener('mousedown', e => e.preventDefault()); // 避免輸入框先失去焦點
+        b.addEventListener('click', onClick);
+        menu.appendChild(b);
+      };
+      const render = () => {
+        const cur = woCleanOrderName(input.value);
+        const q = filter ? cur.toLowerCase() : '';
+        const list = q ? woOrderNames.filter(n => n.toLowerCase().includes(q)) : woOrderNames;
+        menu.innerHTML = '';
+        if (allowAdd && cur && !woOrderNames.some(n => n.toLowerCase() === cur.toLowerCase())) {
+          item(`＋ 新增「${cur}」`, 'text-blue-300', () => { addOrderName(cur); pick(cur); });
+        }
+        list.forEach(n => item(n, 'text-gray-100' + (n === cur ? ' bg-gray-800' : ''), () => pick(n)));
+        if (!menu.children.length) {
+          const p = document.createElement('p');
+          p.className = 'px-3 py-2 text-sm text-gray-500';
+          p.textContent = allowAdd ? '還沒有單名，直接輸入就能新增' : '名單裡沒有符合的單名';
+          menu.appendChild(p);
+        }
+      };
+      const open = f => { filter = !!f; menu.classList.remove('hidden'); render(); };
+      input.addEventListener('focus', () => open(false));
+      input.addEventListener('input', () => open(true));
+      input.addEventListener('keydown', e => { if (e.key === 'Escape') close(); });
+      tg.addEventListener('click', () => { if (menu.classList.contains('hidden')) { open(false); input.focus(); } else close(); });
+      document.addEventListener('pointerdown', e => { if (!wrap.contains(e.target)) close(); });
+    }
+
     // ---------- 工作單：儲存 ----------
     // 剛產生（或清掉）結果：重新允許儲存、換新的 request_id
     function woSetFresh() {
@@ -3778,8 +3859,7 @@
       if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) { showInvToast('請選擇日期', 'warn'); document.getElementById('woDate').focus(); return; }
       if (!name) { showInvToast('請輸入單名', 'warn'); nameEl.focus(); return; }
       if (/^[=+\-@]/.test(name)) { showInvToast('單名不能用 = + - @ 開頭', 'warn'); nameEl.focus(); return; }
-      const sum = totals.reduce((t, x) => t + (Number(x.total) || 0), 0);
-      if (!allowDup && !confirm(`確定要儲存到工作單紀錄嗎？\n\n日期：${date}\n單名：${name}\n${totals.length} 種尺寸，共 ${sum} 個\n\n（不會扣庫存）`)) return;
+      if (!allowDup && !confirm(`日期：${date}\n單名：${name}`)) return; // 確認框只顯示日期、單名
       woSaving = true;
       woUpdateSaveBtn();
       let again = false;
@@ -3790,6 +3870,7 @@
           request_id: woReqId + (allowDup ? '-dup' : ''), allow_duplicate: !!allowDup
         });
         if (r.status === 'success') {
+          addOrderName(name);
           woSavedId = (r.data && r.data.order_id) || 'saved';
           showInvToast('✅ ' + (r.message || '已儲存'), 'success');
         } else if (r.code === 'DUPLICATE' && !allowDup) {
