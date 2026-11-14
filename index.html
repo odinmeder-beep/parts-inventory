@@ -851,13 +851,11 @@
         <div class="flex items-center justify-end gap-2 border-b border-gray-800 pb-3">
           <div id="dwBadge" class="shrink-0 text-xs px-2.5 py-0.5 rounded-full border bg-gray-800 text-gray-400 border-gray-700">新增模式</div>
         </div>
-        <div class="grid grid-cols-[6rem_1fr_auto] gap-2 items-end">
+        <div class="grid grid-cols-[7.5rem_1fr_auto] gap-2 items-end">
           <div>
-            <label for="dwBrandSel" class="block text-xs font-medium text-gray-400 mb-1">品牌</label>
-            <select id="dwBrandSel" onchange="onDwBrandChange()"
-                    class="w-full bg-gray-950 border border-gray-700 text-gray-100 rounded-lg px-1.5 py-2 text-sm font-mono focus:outline-none focus:border-blue-500"></select>
-            <input id="dwBrand" type="text" autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="新品牌"
-                   class="hidden mt-1 w-full bg-gray-950 border border-gray-700 text-gray-100 placeholder-gray-500 rounded-lg px-2 py-2 text-sm font-mono focus:outline-none focus:border-blue-500">
+            <label for="dwBrand" class="block text-xs font-medium text-gray-400 mb-1">品牌</label>
+            <input id="dwBrand" type="text" autocomplete="off" autocapitalize="characters" spellcheck="false"
+                   class="w-full bg-gray-950 border border-gray-700 text-gray-100 placeholder-gray-500 rounded-lg px-2 py-2 text-sm font-mono focus:outline-none focus:border-blue-500">
           </div>
           <div>
             <label for="dwDrawing" class="block text-xs font-medium text-gray-400 mb-1">圖號</label>
@@ -3762,7 +3760,13 @@
       } catch (e) { /* 網路問題：用上次存的 */ }
     }
     // 把一般輸入框變成「下拉選單＋可輸入」：右邊 ▼ 展開；打字會篩選；allowAdd＝名單沒有時顯示「新增」
-    function onComboSetup(inputId, allowAdd) {
+    // opts（不給就是單名）：getList 名單、onAdd 新增、clean 整理輸入、noun 名稱、compact 窄欄位
+    function onComboSetup(inputId, allowAdd, opts) {
+      opts = opts || {};
+      const getList = opts.getList || (() => woOrderNames);
+      const onAdd = opts.onAdd || addOrderName;
+      const clean = opts.clean || woCleanOrderName;
+      const noun = opts.noun || '單名';
       const input = document.getElementById(inputId);
       if (!input || input.dataset.combo) return;
       input.dataset.combo = '1';
@@ -3770,12 +3774,13 @@
       wrap.className = 'relative';
       input.parentNode.insertBefore(wrap, input);
       wrap.appendChild(input);
-      input.classList.remove('px-3'); input.classList.add('pl-3', 'pr-10');
+      if (opts.compact) { input.classList.remove('px-2', 'px-3'); input.classList.add('pl-2', 'pr-7'); }
+      else { input.classList.remove('px-3'); input.classList.add('pl-3', 'pr-10'); }
       const tg = document.createElement('button');
-      tg.type = 'button'; tg.textContent = '▼'; tg.setAttribute('aria-label', '展開單名名單');
-      tg.className = 'absolute inset-y-0 right-0 w-10 flex items-center justify-center text-gray-400 hover:text-gray-100 transition';
+      tg.type = 'button'; tg.textContent = '▼'; tg.setAttribute('aria-label', `展開${noun}名單`);
+      tg.className = 'absolute inset-y-0 right-0 ' + (opts.compact ? 'w-7 text-xs' : 'w-10') + ' flex items-center justify-center text-gray-400 hover:text-gray-100 transition';
       const menu = document.createElement('div');
-      menu.className = 'hidden absolute z-30 left-0 right-0 mt-1 max-h-56 overflow-y-auto bg-gray-900 border border-gray-700 rounded-lg shadow-lg';
+      menu.className = 'hidden absolute z-30 left-0 mt-1 max-h-56 overflow-y-auto bg-gray-900 border border-gray-700 rounded-lg shadow-lg ' + (opts.compact ? 'min-w-[10rem]' : 'right-0');
       wrap.appendChild(tg); wrap.appendChild(menu);
       let filter = false;
       const close = () => menu.classList.add('hidden');
@@ -3790,18 +3795,19 @@
         menu.appendChild(b);
       };
       const render = () => {
-        const cur = woCleanOrderName(input.value);
+        const all = getList();
+        const cur = clean(input.value);
         const q = filter ? cur.toLowerCase() : '';
-        const list = q ? woOrderNames.filter(n => n.toLowerCase().includes(q)) : woOrderNames;
+        const list = q ? all.filter(n => n.toLowerCase().includes(q)) : all;
         menu.innerHTML = '';
-        if (allowAdd && cur && !woOrderNames.some(n => n.toLowerCase() === cur.toLowerCase())) {
-          item(`＋ 新增「${cur}」`, 'text-blue-300', () => { addOrderName(cur); pick(cur); });
+        if (allowAdd && cur && !all.some(n => n.toLowerCase() === cur.toLowerCase())) {
+          item(`＋ 新增「${cur}」`, 'text-blue-300', () => { onAdd(cur); pick(cur); });
         }
         list.forEach(n => item(n, 'text-gray-100' + (n === cur ? ' bg-gray-800' : ''), () => pick(n)));
         if (!menu.children.length) {
           const p = document.createElement('p');
           p.className = 'px-3 py-2 text-sm text-gray-500';
-          p.textContent = allowAdd ? '還沒有單名，直接輸入就能新增' : '名單裡沒有符合的單名';
+          p.textContent = allowAdd ? `還沒有${noun}，直接輸入就能新增` : `名單裡沒有符合的${noun}`;
           menu.appendChild(p);
         }
       };
@@ -4125,12 +4131,29 @@
       DW_FIELDS.forEach(([k, id]) => { document.getElementById(id).value = (d && d[k]) || ''; });
     }
 
+    // 圖號管理的品牌名單＝圖號對照裡的品牌（woCompanies）＋這台裝置新增過的（還沒存進圖號對照的）
+    const DW_BRAND_CACHE_KEY = 'brand_names';
+    function dwLoadAddedBrands() {
+      try { return woNormCompanies(JSON.parse(localStorage.getItem(DW_BRAND_CACHE_KEY) || '[]')); } catch (e) { return []; }
+    }
+    function dwBrandList() {
+      return woNormCompanies(woCompanies.concat(dwLoadAddedBrands())).sort((a, b) => a.localeCompare(b, 'zh-Hant', { numeric: true }));
+    }
+    function addDwBrand(v) {
+      v = woCleanBrand(v);
+      if (!v) return;
+      const list = dwLoadAddedBrands().filter(x => x !== v);
+      list.unshift(v);
+      try { localStorage.setItem(DW_BRAND_CACHE_KEY, JSON.stringify(list.slice(0, 100))); } catch (e) { /* 忽略 */ }
+    }
+
     function openDwModal(prefill) {
       if (authRole !== 'A') return;
       if (!dwBound) {
         dwBound = true;
         const hint = document.getElementById('dwIdHint');
         woBindBrandInput(document.getElementById('dwBrand'));
+        onComboSetup('dwBrand', true, { getList: dwBrandList, onAdd: addDwBrand, clean: woCleanBrand, noun: '品牌', compact: true });
         woBindIdInput(document.getElementById('dwDrawing'), hint);
         DW_FIELDS.forEach(([, id]) => bindDwSizeInput(document.getElementById(id)));
         document.getElementById('dwDrawing').addEventListener('keydown', e => { if (e.key === 'Enter' && !e.isComposing) { e.preventDefault(); loadDrawing(); } });
@@ -4158,23 +4181,9 @@
     function closeDwModal() {
       document.getElementById('dwModal').classList.add('hidden');
     }
-    // 品牌：下拉選現有品牌；選「＋新品牌」才出現輸入框
+    // 品牌：下拉選單＋可直接輸入（onComboSetup）；這裡只負責帶入值
     function setDwBrand(v) {
-      v = woCleanBrand(v);
-      const list = woCompanies.slice();
-      if (v && !list.includes(v)) list.push(v);
-      const sel = document.getElementById('dwBrandSel');
-      sel.innerHTML = list.map(c => `<option value="${invEsc(c)}">${invEsc(c)}</option>`).join('') + '<option value="__new__">＋新品牌</option>';
-      sel.value = v || list[0] || '__new__';
-      onDwBrandChange();
-    }
-    function onDwBrandChange() {
-      const v = document.getElementById('dwBrandSel').value;
-      const input = document.getElementById('dwBrand');
-      const isNew = v === '__new__';
-      input.classList.toggle('hidden', !isNew);
-      input.value = isNew ? '' : v;
-      if (isNew) input.focus();
+      document.getElementById('dwBrand').value = woCleanBrand(v);
     }
     function resetDwForm() {
       setDwBrand(woTopCompany());
@@ -4245,6 +4254,7 @@
         showToast('成功', true);
         setDwMode({ brand: r.data.brand, drawing_no: r.data.drawing_no });
         setDwBadge('success', mode === 'update' ? '已儲存修改' : '已新增');
+        addDwBrand(r.data.brand);
         woRefreshCompanies(); // 新品牌會出現在品牌選單
         if (dwFromWorkOrder) {
           dwFromWorkOrder = false;
