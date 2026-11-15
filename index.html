@@ -3982,24 +3982,30 @@
       if (!orders.length) { box.innerHTML = wlEmptyHTML('這個條件沒有紀錄'); return; }
       const head = document.createElement('p');
       head.className = 'text-sm text-gray-400';
-      head.textContent = total > orders.length ? `共 ${total} 張，先顯示最新的 ${orders.length} 張（請縮小日期範圍）` : `共 ${orders.length} 張`;
-      box.appendChild(head);
       const sk = sizeQ ? sizeQ.toLowerCase() : '';
+      // 有輸入尺寸：每張單只列出符合的尺寸（比對方式跟後端一樣：去空白、不分大小寫、包含就算）
+      const wlHit = it => woToHalf(String(it.size)).replace(/\s+/g, '').toLowerCase().indexOf(sk) !== -1;
+      const shownOf = o => { const all = Array.isArray(o.items) ? o.items : []; return sk ? all.filter(wlHit) : all; };
+      let headText = total > orders.length ? `共 ${total} 張，先顯示最新的 ${orders.length} 張（請縮小日期範圍）` : `共 ${orders.length} 張`;
+      if (sk) headText += `，只列出尺寸含「${sizeQ}」的，合計 ${orders.reduce((a, o) => a + shownOf(o).reduce((b, it) => b + (Number(it.qty) || 0), 0), 0)} 個`;
+      head.textContent = headText;
+      box.appendChild(head);
       orders.forEach((o, n) => {
         const card = document.createElement('details');
         card.className = 'bg-gray-900 border border-gray-800 rounded-xl shadow-xl group';
         if (orders.length <= 3) card.open = true;
-        const items = Array.isArray(o.items) ? o.items : [];
+        const allItems = Array.isArray(o.items) ? o.items : [];
+        const items = shownOf(o);
+        const shownTotal = sk ? items.reduce((b, it) => b + (Number(it.qty) || 0), 0) : o.total;
         const rows = items.map((it, i) => {
-          const hit = sk && String(it.size).toLowerCase().indexOf(sk) !== -1;
-          return `<tr class="rv-row ${i % 2 ? 'rv-odd' : 'rv-even'}"><td class="px-3 py-1.5 border border-gray-800 font-mono whitespace-nowrap ${hit ? 'text-amber-300 font-semibold' : ''}">${invEsc(it.size)}</td><td class="px-3 py-1.5 border border-gray-800 text-right">${invEsc(it.qty)}</td></tr>`;
+          return `<tr class="rv-row ${i % 2 ? 'rv-odd' : 'rv-even'}"><td class="px-3 py-1.5 border border-gray-800 font-mono whitespace-nowrap">${invEsc(it.size)}</td><td class="px-3 py-1.5 border border-gray-800 text-right">${invEsc(it.qty)}</td></tr>`;
         }).join('');
         card.innerHTML = `
           <summary class="cursor-pointer select-none list-none px-4 py-3 flex flex-wrap items-center gap-x-3 gap-y-1">
             <span class="text-gray-500 group-open:rotate-90 transition-transform">▶</span>
             <span class="font-mono text-sm text-gray-300">${invEsc(o.date)}</span>
             <span class="font-bold text-gray-100">${invEsc(o.order_name)}</span>
-            <span class="text-sm text-gray-400">${items.length} 種尺寸，共 ${invEsc(o.total)} 個</span>
+            <span class="text-sm text-gray-400">${sk ? `符合 ${items.length} 種尺寸，共 ${invEsc(shownTotal)} 個` : `${items.length} 種尺寸，共 ${invEsc(o.total)} 個`}</span>
           </summary>
           <div class="px-4 pb-4 space-y-3">
             <div class="flex flex-wrap items-center justify-between gap-2">
@@ -4018,14 +4024,15 @@
           </div>`;
         card.querySelector('.wl-copy').addEventListener('click', () => woCopy(woToTSV(null, items.map(it => [it.size, it.qty]))));
         const del = card.querySelector('.wl-del');
-        if (del) del.addEventListener('click', () => deleteWorkOrderLog(o));
+        if (del) del.addEventListener('click', () => deleteWorkOrderLog(o, allItems.length));
         box.appendChild(card);
       });
     }
-    async function deleteWorkOrderLog(o) {
+    async function deleteWorkOrderLog(o, sizeCount) {
       if (authRole !== 'A') return;
-      if (!confirm(`確定要刪除 ${o.date}「${o.order_name}」這整張單嗎？刪除後無法復原。`)) return;
-      const r = await wlPost({ action: 'deleteWorkOrder', order_id: o.order_id }, null, () => deleteWorkOrderLog(o));
+      const n = sizeCount || (Array.isArray(o.items) ? o.items.length : 0);
+      if (!confirm(`確定要刪除 ${o.date}「${o.order_name}」這整張單嗎？會連同單裡全部 ${n} 種尺寸（共 ${o.total} 個）一起刪除，無法復原。`)) return;
+      const r = await wlPost({ action: 'deleteWorkOrder', order_id: o.order_id }, null, () => deleteWorkOrderLog(o, sizeCount));
       if (!r) return;
       showToast('已刪除', true);
       loadWorkOrderLog();
