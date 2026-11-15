@@ -486,6 +486,7 @@
           <button id="woTabBtnForm" onclick="switchWoTab('form')" class="px-3 py-1.5 rounded-md bg-blue-600 text-gray-100 transition">工作單</button>
           <button id="woTabBtnLog" onclick="switchWoTab('log')" class="px-3 py-1.5 rounded-md text-gray-400 hover:text-gray-100 transition">紀錄</button>
           <button id="woTabBtnStats" onclick="switchWoTab('stats')" class="px-3 py-1.5 rounded-md text-gray-400 hover:text-gray-100 transition">統計</button>
+          <button id="woTabBtnAnalysis" onclick="switchWoTab('analysis')" class="px-3 py-1.5 rounded-md text-gray-400 hover:text-gray-100 transition">分析</button>
         </div>
       </div>
 
@@ -585,6 +586,35 @@
           <button id="wsBtnLoad" onclick="loadWorkOrderStats()" class="w-full bg-blue-600 hover:bg-blue-500 text-gray-100 font-semibold py-2.5 rounded-lg transition shadow-lg shadow-blue-600/30">統計</button>
         </div>
         <div id="wsResult" class="space-y-3"></div>
+      </div>
+
+      <!-- 🌟 子頁 4：分析（圖表） -->
+      <div id="woBoxAnalysis" class="hidden space-y-4">
+        <div class="bg-gray-900 border border-gray-800 rounded-xl p-5 space-y-4 shadow-xl">
+          <div class="flex flex-wrap gap-2 text-xs font-semibold">
+            <button type="button" onclick="setWaPreset(6)" class="wa-preset px-3 py-1.5 rounded-md bg-gray-800 text-gray-300 hover:text-gray-100 border border-gray-700 transition">近 6 個月</button>
+            <button type="button" onclick="setWaPreset(12)" class="wa-preset px-3 py-1.5 rounded-md bg-gray-800 text-gray-300 hover:text-gray-100 border border-gray-700 transition">近 12 個月</button>
+            <button type="button" onclick="setWaPreset('year')" class="wa-preset px-3 py-1.5 rounded-md bg-gray-800 text-gray-300 hover:text-gray-100 border border-gray-700 transition">今年</button>
+          </div>
+          <div class="grid grid-cols-2 gap-3">
+            <div>
+              <label for="waFrom" class="block text-xs font-medium text-gray-400 mb-1">開始日期</label>
+              <input type="date" id="waFrom" class="w-full bg-gray-950 border border-gray-700 text-gray-100 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-blue-500 [color-scheme:dark]">
+            </div>
+            <div>
+              <label for="waTo" class="block text-xs font-medium text-gray-400 mb-1">結束日期</label>
+              <input type="date" id="waTo" class="w-full bg-gray-950 border border-gray-700 text-gray-100 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-blue-500 [color-scheme:dark]">
+            </div>
+            <div class="col-span-2">
+              <label for="waName" class="block text-xs font-medium text-gray-400 mb-1">單名（不填＝全部）</label>
+              <input type="text" id="waName" maxlength="30" autocomplete="off"
+                     onkeydown="if(event.key === 'Enter' && !event.isComposing){ event.preventDefault(); loadWorkOrderAnalysis(); }"
+                     class="w-full bg-gray-950 border border-gray-700 text-gray-100 placeholder-gray-500 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-blue-500">
+            </div>
+          </div>
+          <button id="waBtnLoad" onclick="loadWorkOrderAnalysis()" class="w-full bg-blue-600 hover:bg-blue-500 text-gray-100 font-semibold py-2.5 rounded-lg transition shadow-lg shadow-blue-600/30">分析</button>
+        </div>
+        <div id="waResult" class="space-y-4"></div>
       </div>
     </div>
   </main>
@@ -3356,6 +3386,8 @@
         name.addEventListener('blur', () => { name.value = woCleanOrderName(name.value); });
         onComboSetup('woOrderName', true);   // 單名：下拉選單＋可直接輸入新單名
         onComboSetup('wlName', false);       // 紀錄查詢的單名：下拉選單（不填＝全部）
+        setWaPreset(6, true);                // 分析：預設近 6 個月
+        onComboSetup('waName', false);       // 分析的單名：下拉選單（不填＝全部）
         woUpdateSaveBtn();
       }
       woApplyRoleTabs();
@@ -3814,7 +3846,9 @@
       const open = f => { filter = !!f; menu.classList.remove('hidden'); render(); };
       input.addEventListener('focus', () => open(false));
       input.addEventListener('input', () => open(true));
-      input.addEventListener('keydown', e => { if (e.key === 'Escape') close(); });
+      input.addEventListener('keydown', e => { if (e.key === 'Escape' || e.key === 'Enter') close(); });
+      input.addEventListener('blur', close);                   // 離開輸入框就收起來，避免蓋住下面的按鈕
+      tg.addEventListener('mousedown', e => e.preventDefault()); // 按 ▼ 時不要讓輸入框失去焦點
       tg.addEventListener('click', () => { if (menu.classList.contains('hidden')) { open(false); input.focus(); } else close(); });
       document.addEventListener('pointerdown', e => { if (!wrap.contains(e.target)) close(); });
     }
@@ -3910,7 +3944,7 @@
     function rdIsRendered(id) { const el = document.getElementById(id); return !!(el && el.childElementCount); }
     function switchWoTab(tab, noLoad) {
       if (tab === 'form' && authRole !== 'A') tab = 'log';
-      const map = { form: ['woBoxForm', 'woTabBtnForm'], log: ['woBoxLog', 'woTabBtnLog'], stats: ['woBoxStats', 'woTabBtnStats'] };
+      const map = { form: ['woBoxForm', 'woTabBtnForm'], log: ['woBoxLog', 'woTabBtnLog'], stats: ['woBoxStats', 'woTabBtnStats'], analysis: ['woBoxAnalysis', 'woTabBtnAnalysis'] };
       const defaultBtnClass = 'px-3 py-1.5 rounded-md text-gray-400 hover:text-gray-100 transition';
       const activeBtnClass = 'px-3 py-1.5 rounded-md bg-blue-600 text-gray-100 transition';
       Object.keys(map).forEach(k => {
@@ -3921,6 +3955,7 @@
       if (noLoad) return;
       if (tab === 'log' && !document.getElementById('wlResult').childElementCount) loadWorkOrderLog();
       if (tab === 'stats' && !document.getElementById('wsResult').childElementCount) loadWorkOrderStats();
+      if (tab === 'analysis' && !document.getElementById('waResult').childElementCount) loadWorkOrderAnalysis();
     }
 
     // 紀錄／統計共用：送出查詢（要管理員）
@@ -4037,6 +4072,194 @@
       showToast('已刪除', true);
       loadWorkOrderLog();
       document.getElementById('wsResult').innerHTML = ''; // 統計要重算
+      waClear();                                           // 分析也要重算
+    }
+
+    // ---------- 分析（圖表）----------
+    // 資料：先抓 getWorkOrders（最多 200 張）。區間內超過 200 張時，每月、尺寸、數字卡改用 workOrderStats（不限張數），
+    // 單名占比只能用最新 200 張算，畫面會註明。有篩單名又超過 200 張時，全部只算最新 200 張並提示縮小日期。
+    const WA_CHART_SRC = 'https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js';
+    const WA_COLORS = ['#3b82f6', '#22c55e', '#f59e0b', '#ef4444', '#a855f7', '#06b6d4', '#ec4899', '#84cc16', '#f97316', '#64748b'];
+    let waBusy = false, waData = null, waCharts = {}, waChartLoad = null;
+    function waLoadChartJs() {
+      if (window.Chart) return Promise.resolve(true);
+      if (waChartLoad) return waChartLoad;
+      waChartLoad = new Promise(resolve => {
+        const sc = document.createElement('script');
+        sc.src = WA_CHART_SRC;
+        sc.onload = () => resolve(!!window.Chart);
+        sc.onerror = () => { waChartLoad = null; resolve(false); };
+        document.head.appendChild(sc);
+      });
+      return waChartLoad;
+    }
+    function setWaPreset(n, noLoad) {
+      const today = woToday();
+      const y = Number(today.slice(0, 4)), m = Number(today.slice(5, 7));
+      const p = v => String(v).padStart(2, '0');
+      let from;
+      if (n === 'year') from = `${y}-01-01`;
+      else { let fy = y, fm = m - (n - 1); while (fm < 1) { fm += 12; fy--; } from = `${fy}-${p(fm)}-01`; }
+      document.getElementById('waFrom').value = from;
+      document.getElementById('waTo').value = today;
+      if (!noLoad) loadWorkOrderAnalysis();
+    }
+    function waMonths(from, to) {
+      const out = [];
+      let y = Number(from.slice(0, 4)), m = Number(from.slice(5, 7));
+      const ey = Number(to.slice(0, 4)), em = Number(to.slice(5, 7));
+      while ((y < ey || (y === ey && m <= em)) && out.length <= 36) { out.push(`${y}-${String(m).padStart(2, '0')}`); m++; if (m > 12) { m = 1; y++; } }
+      return out;
+    }
+    function waSizeKey(v) { return woToHalf(String(v)).replace(/\s+/g, '').toLowerCase(); }
+    // 從工作單（含 items）算出圖表要的資料
+    function waFromOrders(orders, months) {
+      const monthTotals = months.map(() => 0), sizeMap = {}, sizes = [], nameMap = {}, names = [];
+      let total = 0;
+      orders.forEach(o => {
+        const mi = months.indexOf(String(o.date || '').slice(0, 7));
+        const nm = o.order_name || '-';
+        if (!nameMap[nm]) { nameMap[nm] = { name: nm, total: 0, count: 0 }; names.push(nameMap[nm]); }
+        nameMap[nm].count++;
+        (Array.isArray(o.items) ? o.items : []).forEach(it => {
+          const q = Number(it.qty) || 0, k = waSizeKey(it.size);
+          if (!sizeMap[k]) { sizeMap[k] = { size: it.size, total: 0, months: {} }; sizes.push(sizeMap[k]); }
+          sizeMap[k].total += q;
+          if (mi >= 0) { monthTotals[mi] += q; sizeMap[k].months[months[mi]] = (sizeMap[k].months[months[mi]] || 0) + q; }
+          nameMap[nm].total += q;
+          total += q;
+        });
+      });
+      return { monthTotals, sizes, names, total, orderCount: orders.length };
+    }
+    async function loadWorkOrderAnalysis() {
+      if (waBusy) return;
+      const from = document.getElementById('waFrom').value, to = document.getElementById('waTo').value;
+      if (!from || !to) { showInvToast('請選擇開始和結束日期', 'warn'); return; }
+      if (from > to) { showInvToast('開始日期不能晚於結束日期', 'warn'); return; }
+      const months = waMonths(from, to);
+      if (months.length > 36) { showInvToast('區間最多 36 個月', 'warn'); return; }
+      const name = woCleanOrderName(document.getElementById('waName').value);
+      const box = document.getElementById('waResult');
+      waBusy = true;
+      box.innerHTML = wlLoadingHTML('正在分析...');
+      try {
+        const [r, hasChart] = await Promise.all([
+          wlPost({ action: 'getWorkOrders', from, to, order_name: name }, 'waBtnLoad', loadWorkOrderAnalysis),
+          waLoadChartJs()
+        ]);
+        if (!r) { box.innerHTML = ''; return; }
+        const orders = Array.isArray(r.data) ? r.data : [];
+        const totalOrders = Number(r.total) || orders.length;
+        const capped = totalOrders > orders.length;
+        let d = waFromOrders(orders, months), note = '';
+        if (capped && !name) {
+          const st = await wlPost({ action: 'workOrderStats', from, to }, 'waBtnLoad', loadWorkOrderAnalysis);
+          if (st && st.data && Array.isArray(st.data.sizes)) {
+            const names = d.names;
+            d = {
+              monthTotals: months.map(mo => st.data.sizes.reduce((a, x) => a + (Number(x.months && x.months[mo]) || 0), 0)),
+              sizes: st.data.sizes.map(x => ({ size: x.size, total: Number(x.total) || 0, months: x.months || {} })),
+              names, total: Number(st.data.grand_total) || 0, orderCount: Number(st.data.order_count) || totalOrders
+            };
+            note = `區間內有 ${totalOrders} 張單，「各單名用量占比」只用最新 ${orders.length} 張計算，其他圖表是全部的資料。`;
+          } else {
+            note = `區間內有 ${totalOrders} 張單，以下只分析最新 ${orders.length} 張，請縮小日期範圍。`;
+          }
+        } else if (capped) {
+          note = `符合的有 ${totalOrders} 張單，以下只分析最新 ${orders.length} 張，請縮小日期範圍。`;
+        }
+        d.sizes.sort((a, b) => b.total - a.total || String(a.size).localeCompare(String(b.size), 'zh-Hant', { numeric: true }));
+        d.names.sort((a, b) => b.total - a.total);
+        waData = Object.assign(d, { from, to, months, name, note, hasChart });
+        renderWorkOrderAnalysis();
+      } finally {
+        waBusy = false;
+      }
+    }
+    function waClear() {
+      Object.values(waCharts).forEach(c => { try { c.destroy(); } catch (e) {} });
+      waCharts = {};
+      waData = null;
+      const box = document.getElementById('waResult');
+      if (box) box.innerHTML = '';
+    }
+    function waCard(label, value) {
+      return `<div class="bg-gray-900 border border-gray-800 rounded-xl p-4"><p class="text-xs text-gray-400">${invEsc(label)}</p><p class="text-2xl font-bold text-gray-100 mt-1">${invEsc(value)}</p></div>`;
+    }
+    function waSection(id, title, sub, h) {
+      return `<div class="bg-gray-900 border border-gray-800 rounded-xl p-4 shadow-xl">
+        <h2 class="text-base font-bold text-gray-100">${title}</h2>${sub ? `<p class="text-xs text-gray-400 mb-2">${sub}</p>` : ''}
+        <div class="relative w-full" style="height:${h}px"><canvas id="${id}"></canvas></div></div>`;
+    }
+    function renderWorkOrderAnalysis() {
+      const d = waData;
+      Object.values(waCharts).forEach(c => { try { c.destroy(); } catch (e) {} });
+      waCharts = {};
+      const box = document.getElementById('waResult');
+      box.innerHTML = '';
+      if (!d) return;
+      if (!d.orderCount || !d.total) { box.innerHTML = wlEmptyHTML(d.name ? `這段期間沒有「${d.name}」的工作單紀錄` : '這段期間沒有工作單紀錄'); return; }
+      const avg = Math.round(d.total / d.months.length * 10) / 10;
+      const top = d.sizes.slice(0, 10);
+      const sizeOpts = d.sizes.map((x, i) => `<option value="${i}">${invEsc(x.size)}（${x.total}）</option>`).join('');
+      box.innerHTML = `
+        ${d.note ? `<div class="bg-amber-950/40 border border-amber-800/50 rounded-xl px-4 py-3 text-sm text-amber-300">${invEsc(d.note)}</div>` : ''}
+        <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
+          ${waCard('工作單數', d.orderCount)}${waCard('總件數', d.total)}${waCard('月平均', avg)}${waCard('尺寸種類', d.sizes.length)}
+        </div>
+        <p class="text-xs text-gray-500">${invEsc(d.from)} ～ ${invEsc(d.to)}，共 ${d.months.length} 個月${d.name ? `，單名含「${invEsc(d.name)}」` : ''}</p>
+        ${d.hasChart ? '' : '<div class="bg-red-950/40 border border-red-800/50 rounded-xl px-4 py-3 text-sm text-red-300">圖表元件載入失敗（請檢查網路後重新分析），先顯示數字。</div>'}
+        ${waSection('waChartMonth', '每月總用量', '', 240)}
+        ${waSection('waChartTop', '用量最多的尺寸（前 10）', '點長條可以看該尺寸的每月趨勢', Math.max(160, top.length * 30 + 40))}
+        ${waSection('waChartName', '各單名用量占比', d.names.length > 8 ? '前 8 名，其餘併入「其他」' : '', 260)}
+        <div class="bg-gray-900 border border-gray-800 rounded-xl p-4 shadow-xl">
+          <div class="flex flex-wrap items-center justify-between gap-2 mb-2">
+            <h2 class="text-base font-bold text-gray-100">單一尺寸每月趨勢</h2>
+            <select id="waSizeSel" class="bg-gray-950 border border-gray-700 text-gray-100 rounded-lg px-2 py-1.5 text-sm font-mono max-w-full focus:outline-none focus:border-blue-500">${sizeOpts}</select>
+          </div>
+          <div class="relative w-full" style="height:220px"><canvas id="waChartSize"></canvas></div>
+        </div>`;
+      document.getElementById('waSizeSel').addEventListener('change', e => waDrawSize(Number(e.target.value)));
+      if (!d.hasChart || !window.Chart) return;
+      Chart.defaults.color = '#9ca3af';
+      Chart.defaults.borderColor = '#1f2937';
+      const labels = d.months.map(wsMonthLabel);
+      const base = { responsive: true, maintainAspectRatio: false, animation: false };
+      waCharts.month = new Chart(document.getElementById('waChartMonth'), {
+        type: 'bar',
+        data: { labels, datasets: [{ label: '用量', data: d.monthTotals, backgroundColor: '#3b82f6', borderRadius: 4 }] },
+        options: Object.assign({}, base, { plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true, ticks: { precision: 0 } } } })
+      });
+      waCharts.top = new Chart(document.getElementById('waChartTop'), {
+        type: 'bar',
+        data: { labels: top.map(x => x.size), datasets: [{ label: '用量', data: top.map(x => x.total), backgroundColor: '#22c55e', borderRadius: 4 }] },
+        options: Object.assign({}, base, {
+          indexAxis: 'y', plugins: { legend: { display: false } }, scales: { x: { beginAtZero: true, ticks: { precision: 0 } } },
+          onClick: (e, els) => { if (els && els.length) { const i = els[0].index; document.getElementById('waSizeSel').value = String(i); waDrawSize(i); } }
+        })
+      });
+      const nm = d.names.slice(0, 8).map(x => ({ label: x.name, v: x.total }));
+      const rest = d.names.slice(8).reduce((a, x) => a + x.total, 0);
+      if (rest) nm.push({ label: '其他', v: rest });
+      waCharts.name = new Chart(document.getElementById('waChartName'), {
+        type: 'doughnut',
+        data: { labels: nm.map(x => x.label), datasets: [{ data: nm.map(x => x.v), backgroundColor: nm.map((_, i) => WA_COLORS[i % WA_COLORS.length]), borderColor: '#111827' }] },
+        options: Object.assign({}, base, { plugins: { legend: { position: 'right', labels: { boxWidth: 12 } } } })
+      });
+      waDrawSize(0);
+    }
+    function waDrawSize(i) {
+      const d = waData;
+      if (!d || !d.sizes[i] || !window.Chart || !d.hasChart) return;
+      const x = d.sizes[i];
+      const data = d.months.map(mo => Number(x.months[mo]) || 0);
+      if (waCharts.size) { try { waCharts.size.destroy(); } catch (e) {} }
+      waCharts.size = new Chart(document.getElementById('waChartSize'), {
+        type: 'line',
+        data: { labels: d.months.map(wsMonthLabel), datasets: [{ label: x.size, data, borderColor: '#f59e0b', backgroundColor: 'rgba(245,158,11,0.2)', fill: true, tension: 0.25, pointRadius: 3 }] },
+        options: { responsive: true, maintainAspectRatio: false, animation: false, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true, ticks: { precision: 0 } } } }
+      });
     }
 
     // ---------- 統計 ----------
