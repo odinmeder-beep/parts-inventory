@@ -155,7 +155,7 @@
             查詢料號
           </button>
           <button onclick="clearInputs()" class="bg-gray-800 hover:bg-gray-700 text-gray-300 font-semibold px-4 py-2.5 rounded-lg transition">
-            清除輸入
+            清除
           </button>
         </div>
       </div>
@@ -174,7 +174,7 @@
             查詢名稱
           </button>
           <button onclick="clearInputs()" class="bg-gray-800 hover:bg-gray-700 text-gray-300 font-semibold px-4 py-2.5 rounded-lg transition">
-            清除輸入
+            清除
           </button>
         </div>
       </div>
@@ -213,7 +213,7 @@
             查詢尺寸
           </button>
           <button onclick="clearInputs()" class="bg-gray-800 hover:bg-gray-700 text-gray-300 font-semibold px-4 py-2.5 rounded-lg transition">
-            清除輸入
+            清除
           </button>
         </div>
       </div>
@@ -241,7 +241,7 @@
       <!-- 狀態提示：讀取中 -->
       <div id="loading" class="hidden text-center text-gray-400 py-8">
         <div class="inline-block animate-spin rounded-full h-8 w-8 border-4 border-gray-700 border-t-blue-500 mb-2"></div>
-        <p>正在搜尋符合條件的配件資料...</p>
+        <p>正在搜尋符合條件的配件資料…</p>
       </div>
 
       <!-- 狀態提示：無結果 -->
@@ -301,7 +301,7 @@
         <!-- 讀取中 -->
         <div id="invScanLoading" class="hidden text-center text-gray-400 py-6">
           <div class="inline-block animate-spin rounded-full h-8 w-8 border-4 border-gray-700 border-t-blue-500 mb-2"></div>
-          <p>正在讀取配件與庫存資料...</p>
+          <p>正在讀取配件與庫存資料…</p>
         </div>
 
         <!-- 掃到的配件確認 + 異動表單 -->
@@ -397,7 +397,7 @@
 
         <!-- 本次作業紀錄（本機） -->
         <div id="invSessionLogWrap" class="hidden bg-gray-900 border border-gray-800 rounded-xl p-5 space-y-2 shadow-xl">
-          <h4 class="text-xs font-semibold text-gray-400">本次已送出</h4>
+          <h4 class="text-xs font-semibold text-gray-400">本次已儲存</h4>
           <div id="invSessionLog" class="space-y-1.5 text-sm"></div>
         </div>
       </div>
@@ -528,13 +528,13 @@
             <button id="woBtnGenerate" onclick="generateWorkOrder()" class="flex-1 bg-blue-600 hover:bg-blue-500 text-gray-100 font-semibold py-2.5 rounded-lg transition shadow-lg shadow-blue-600/30">產生工作單</button>
             <button id="woBtnSave" type="button" onclick="saveWorkOrderLog()" disabled title="請先產生工作單"
                     class="hidden flex-1 bg-green-600 hover:bg-green-500 text-gray-100 font-semibold py-2.5 rounded-lg transition shadow-lg shadow-green-600/30 opacity-50 cursor-not-allowed">儲存</button>
-            <button onclick="clearWorkOrder()" class="bg-gray-800 hover:bg-gray-700 text-gray-300 font-semibold px-4 py-2.5 rounded-lg transition">清除輸入</button>
+            <button onclick="clearWorkOrder()" class="bg-gray-800 hover:bg-gray-700 text-gray-300 font-semibold px-4 py-2.5 rounded-lg transition">清除</button>
           </div>
         </div>
 
         <div id="woLoading" class="hidden text-center text-gray-400 py-8">
           <div class="inline-block animate-spin rounded-full h-8 w-8 border-4 border-gray-700 border-t-blue-500 mb-2"></div>
-          <p>正在產生工作單...</p>
+          <p>正在產生工作單…</p>
         </div>
 
         <div id="woResult" class="space-y-6"></div>
@@ -844,7 +844,7 @@
       <div id="invConfirmBody" class="bg-gray-950 border border-gray-800 rounded-lg p-4 space-y-1.5 text-sm text-gray-300"></div>
       <div class="flex gap-2 pt-2">
         <button type="button" onclick="closeInvConfirm()" class="flex-1 bg-gray-800 hover:bg-gray-700 text-gray-300 text-sm font-semibold py-2.5 rounded-lg transition">返回修改</button>
-        <button id="invBtnConfirmSend" type="button" onclick="submitInvMovement()" class="flex-1 bg-green-600 hover:bg-green-500 text-gray-100 text-sm font-semibold py-2.5 rounded-lg transition shadow-md shadow-green-600/30">確認送出</button>
+        <button id="invBtnConfirmSend" type="button" onclick="submitInvMovement()" class="flex-1 bg-green-600 hover:bg-green-500 text-gray-100 text-sm font-semibold py-2.5 rounded-lg transition shadow-md shadow-green-600/30">儲存</button>
       </div>
     </div>
   </div>
@@ -909,7 +909,7 @@
       </div>
       <div class="flex flex-col sm:flex-row gap-2">
         <button type="button" id="dwBtnAdd" onclick="saveDrawing('add')" class="flex-1 bg-green-600 hover:bg-green-500 text-gray-100 font-semibold py-2.5 rounded-lg transition shadow-md shadow-green-600/30">新增</button>
-        <button type="button" id="dwBtnSave" onclick="saveDrawing('update')" class="hidden flex-1 bg-green-600 hover:bg-green-500 text-gray-100 font-semibold py-2.5 rounded-lg transition shadow-md shadow-green-600/30">儲存修改</button>
+        <button type="button" id="dwBtnSave" onclick="saveDrawing('update')" class="hidden flex-1 bg-green-600 hover:bg-green-500 text-gray-100 font-semibold py-2.5 rounded-lg transition shadow-md shadow-green-600/30">儲存</button>
         <button type="button" id="dwBtnDelete" onclick="deleteDrawing()" class="hidden bg-red-600 hover:bg-red-500 text-gray-100 font-semibold px-4 py-2.5 rounded-lg transition shadow-md shadow-red-600/30">刪除</button>
         <button type="button" onclick="resetDwForm()" class="bg-gray-800 hover:bg-gray-700 text-gray-300 font-semibold px-4 py-2.5 rounded-lg transition">清除</button>
       </div>
@@ -921,6 +921,183 @@
 
   <!-- ==================== JavaScript 邏輯 ==================== -->
   <script>
+    // ==================== 共用：頁面內提示、確認框、處理中（取代瀏覽器內建 alert / confirm） ====================
+    // uiToast(訊息, 'success'|'error'|'warn'|'info')：畫面下方的提示，幾秒後自動消失，可以同時疊好幾個
+    function uiToast(msg, type, ms) {
+      let wrap = document.getElementById('uiToastWrap');
+      if (!wrap) {
+        wrap = document.createElement('div');
+        wrap.id = 'uiToastWrap';
+        wrap.className = 'fixed bottom-4 left-1/2 -translate-x-1/2 z-[90] flex flex-col items-center gap-2 w-max max-w-[92vw] pointer-events-none';
+        wrap.setAttribute('role', 'status');
+        wrap.setAttribute('aria-live', 'polite');
+        document.body.appendChild(wrap);
+      }
+      const color = type === 'error' ? 'bg-red-600' : type === 'warn' ? 'bg-amber-600' : type === 'info' ? 'bg-gray-800 border border-gray-700' : 'bg-green-600';
+      const t = document.createElement('div');
+      t.className = `ui-toast ${color} text-gray-100 px-4 py-2.5 rounded-lg text-sm font-semibold shadow-2xl whitespace-pre-line text-center transition-opacity duration-200`;
+      t.dataset.type = type || 'success';
+      t.textContent = String(msg == null ? '' : msg);
+      wrap.appendChild(t);
+      while (wrap.children.length > 3) wrap.firstChild.remove();
+      const life = ms || (t.textContent.length > 30 ? 4500 : 2800);
+      setTimeout(() => { t.style.opacity = '0'; setTimeout(() => t.remove(), 220); }, life);
+    }
+    // 取代 alert：錯誤用紅色，其他提醒用黃色
+    function uiAlert(msg) {
+      uiToast(msg, /❌|失敗|無法|錯誤/.test(String(msg)) ? 'error' : 'warn');
+    }
+    // uiConfirm(訊息, { okText, cancelText, danger, title }) → Promise<boolean>；Esc＝取消、Enter＝確認
+    let uiConfirmClose = null;
+    function uiConfirm(message, opts) {
+      opts = opts || {};
+      if (uiConfirmClose) uiConfirmClose(false); // 同時只開一個
+      return new Promise(resolve => {
+        const prevFocus = document.activeElement;
+        const ov = document.createElement('div');
+        ov.id = 'uiConfirm';
+        ov.className = 'fixed inset-0 z-[85] bg-black/75 backdrop-blur-sm flex items-center justify-center p-4';
+        ov.setAttribute('role', 'dialog');
+        ov.setAttribute('aria-modal', 'true');
+        const okCls = opts.danger
+          ? 'bg-red-600 hover:bg-red-500 shadow-md shadow-red-600/30'
+          : 'bg-green-600 hover:bg-green-500 shadow-md shadow-green-600/30';
+        ov.innerHTML = `
+          <div class="bg-gray-900 border border-gray-800 rounded-2xl w-full max-w-sm p-5 space-y-4 shadow-2xl">
+            ${opts.title ? `<h3 class="text-base font-bold text-gray-100">${invEsc(opts.title)}</h3>` : ''}
+            <p class="ui-confirm-msg text-sm text-gray-100 whitespace-pre-line leading-relaxed"></p>
+            <div class="flex justify-end gap-2 pt-1">
+              <button type="button" class="ui-cancel bg-gray-800 hover:bg-gray-700 text-gray-300 hover:text-gray-100 font-semibold px-4 py-2 rounded-lg border border-gray-700 transition text-sm">${invEsc(opts.cancelText || '取消')}</button>
+              <button type="button" class="ui-ok ${okCls} text-gray-100 font-semibold px-4 py-2 rounded-lg transition text-sm">${invEsc(opts.okText || (opts.danger ? '刪除' : '確定'))}</button>
+            </div>
+          </div>`;
+        ov.querySelector('.ui-confirm-msg').textContent = String(message == null ? '' : message);
+        const done = v => {
+          if (!ov.isConnected) return;
+          document.removeEventListener('keydown', onKey, true);
+          ov.remove();
+          uiConfirmClose = null;
+          try { if (prevFocus && prevFocus.focus) prevFocus.focus(); } catch (e) {}
+          resolve(v);
+        };
+        const onKey = e => {
+          if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); done(false); }
+          else if (e.key === 'Enter' && !e.isComposing) {
+            if (document.activeElement && document.activeElement.classList.contains('ui-cancel')) return; // 焦點在「取消」就照按鈕
+            e.preventDefault(); e.stopPropagation(); done(true);
+          }
+        };
+        ov.querySelector('.ui-ok').addEventListener('click', () => done(true));
+        ov.querySelector('.ui-cancel').addEventListener('click', () => done(false));
+        ov.addEventListener('mousedown', e => { if (e.target === ov) done(false); });
+        document.addEventListener('keydown', onKey, true);
+        document.body.appendChild(ov);
+        uiConfirmClose = done;
+        setTimeout(() => { const b = ov.querySelector('.ui-ok'); if (b) b.focus(); }, 30);
+      });
+    }
+    // 按鈕進入「處理中…」：鎖住、顯示轉圈；回傳還原函式。已經在處理中就回傳 null（防止連按）
+    function uiBusy(btn, text) {
+      if (!btn) return () => {};
+      if (btn.dataset.busy === '1') return null;
+      const html = btn.innerHTML, wasDisabled = btn.disabled;
+      btn.dataset.busy = '1';
+      btn.disabled = true;
+      btn.setAttribute('aria-busy', 'true');
+      btn.innerHTML = `<span class="inline-flex items-center justify-center gap-1.5"><span class="inline-block animate-spin rounded-full h-3.5 w-3.5 border-2 border-gray-100 border-t-transparent"></span><span>${invEsc(text || '處理中…')}</span></span>`;
+      return () => {
+        btn.innerHTML = html;
+        btn.disabled = wasDisabled;
+        btn.removeAttribute('aria-busy');
+        delete btn.dataset.busy;
+      };
+    }
+    // 包住一個會寫入後端的動作：處理中鎖住按鈕，完成（不論成功失敗）就還原
+    async function withBusy(btn, fn, text) {
+      const restore = uiBusy(btn, text);
+      if (restore === null) return undefined;
+      try { return await fn(); } finally { restore(); }
+    }
+    // 表格欄位標題點一下排序（再點一次反過來），▲▼ 表示目前排序；空白和「-」排最後
+    function uiSortable(table) {
+      if (!table || !table.tHead || !table.tBodies[0]) return;
+      const ths = [...table.tHead.rows[0].cells];
+      let col = -1, dir = 1;
+      const key = td => {
+        const t = (td ? td.textContent : '').trim();
+        return t === '-' ? '' : t;
+      };
+      ths.forEach((th, i) => {
+        if (!th.textContent.trim()) return;
+        th.classList.add('cursor-pointer', 'select-none');
+        th.title = '點一下排序';
+        const ind = document.createElement('span');
+        ind.className = 'ui-sort text-blue-400';
+        th.appendChild(ind);
+        th.addEventListener('click', () => {
+          dir = col === i ? -dir : 1;
+          col = i;
+          ths.forEach((h, j) => { const s = h.querySelector('.ui-sort'); if (s) s.textContent = j === col ? (dir > 0 ? ' ▲' : ' ▼') : ''; });
+          const tb = table.tBodies[0];
+          const rows = [...tb.rows];
+          rows.sort((a, b) => {
+            const va = key(a.cells[i]), vb = key(b.cells[i]);
+            if (!va && vb) return 1;
+            if (va && !vb) return -1;
+            const na = Number(va.replace(/,/g, '')), nb = Number(vb.replace(/,/g, ''));
+            if (va && vb && isFinite(na) && isFinite(nb)) return (na - nb) * dir;
+            return va.localeCompare(vb, 'zh-Hant', { numeric: true }) * dir;
+          });
+          rows.forEach((r, n) => {
+            if (r.classList.contains('rv-odd') || r.classList.contains('rv-even')) {
+              r.classList.toggle('rv-odd', n % 2 === 1);
+              r.classList.toggle('rv-even', n % 2 === 0);
+            }
+            tb.appendChild(r);
+          });
+        });
+      });
+    }
+
+    // 查詢條件的日期欄按 Enter 直接查詢
+    function uiBindEnterKeys() {
+      const map = { wlFrom: () => loadWorkOrderLog(), wlTo: () => loadWorkOrderLog(), wsFrom: () => loadWorkOrderStats(), wsTo: () => loadWorkOrderStats(),
+        waFrom: () => loadWorkOrderAnalysis(), waTo: () => loadWorkOrderAnalysis(), rdQFrom: () => loadReturnDates(), rdQTo: () => loadReturnDates() };
+      Object.keys(map).forEach(id => {
+        const el = document.getElementById(id);
+        if (el && !el.dataset.enterBound) {
+          el.dataset.enterBound = '1';
+          el.addEventListener('keydown', e => { if (e.key === 'Enter' && !e.isComposing) { e.preventDefault(); map[id](); } });
+        }
+      });
+    }
+    // ---------- 記住上次的畫面（主畫面、工作單分頁、出入庫分頁、查詢方式、分析區間）；不記密碼和輸入中的資料 ----------
+    const UI_STATE_KEY = 'ui_state';
+    let uiStateLock = 0;   // 身分改變時系統自動切換畫面，不要覆蓋使用者的選擇
+    let uiRestoring = false;
+    function uiLoadState() {
+      try { const o = JSON.parse(localStorage.getItem(UI_STATE_KEY) || '{}'); return o && typeof o === 'object' ? o : {}; } catch (e) { return {}; }
+    }
+    function uiSaveState(k, v) {
+      if (uiStateLock > 0 || uiRestoring) return;
+      const o = uiLoadState();
+      o[k] = v;
+      try { localStorage.setItem(UI_STATE_KEY, JSON.stringify(o)); } catch (e) { /* 忽略 */ }
+    }
+    // 依目前身分還原；沒有權限的畫面各個切換函式會自己退回預設
+    function uiRestoreState() {
+      const o = uiLoadState();
+      uiRestoring = true;
+      try {
+        if (['partNo', 'name', 'spec', 'adv'].includes(o.searchTab)) switchSearchTab(o.searchTab);
+        if (['search', 'inventory', 'workorder'].includes(o.view)) switchView(o.view);
+        const cur = ['search', 'inventory', 'workorder'].find(k => !document.getElementById({ search: 'viewSearch', inventory: 'viewInventory', workorder: 'viewWorkOrder' }[k]).classList.contains('hidden'));
+        if (cur === 'workorder' && ['form', 'log', 'stats', 'analysis'].includes(o.woTab)) switchWoTab(o.woTab);
+        if (cur === 'inventory' && ['scan', 'lookup', 'low', 'rd'].includes(o.invTab)) switchInvTab(o.invTab);
+      } catch (e) { console.error(e); }
+      uiRestoring = false;
+    }
+
     // 規格文字由長度／內徑／外徑欄位組出來（取代試算表 K、L 欄的 TEXTJOIN，空的格子會跳過）
     function joinSpec(values) {
       return values.map(v => String(v ?? '').trim()).filter(v => v !== '').join('*');
@@ -938,6 +1115,7 @@
 
     // 切換三個搜尋頁籤
     function switchSearchTab(tab) {
+      uiSaveState('searchTab', tab);
       const boxPartNo = document.getElementById('searchBoxPartNo');
       const boxName = document.getElementById('searchBoxName');
       const boxSpec = document.getElementById('searchBoxSpec');
@@ -993,10 +1171,10 @@
       let keyword = '';
       if (type === 'part_no') {
         keyword = document.getElementById('inputPartNo').value.trim();
-        if (!keyword) { alert('請輸入料號關鍵字！'); return; }
+        if (!keyword) { uiAlert('請輸入料號關鍵字！'); return; }
       } else if (type === 'name') {
         keyword = document.getElementById('inputName').value.trim();
-        if (!keyword) { alert('請輸入名稱關鍵字！'); return; }
+        if (!keyword) { uiAlert('請輸入名稱關鍵字！'); return; }
       }
 
       showLoading();
@@ -1018,7 +1196,7 @@
           }
         }
       } catch (err) {
-        alert('連線失敗，請確認網路或 API 設定');
+        uiAlert('連線失敗，請確認網路或 API 設定');
         hideAllStatus();
       }
     }
@@ -1030,7 +1208,7 @@
       const outer = document.getElementById('inputOuter').value.trim();
 
       if (!length && !inner && !outer) {
-        alert('請至少輸入一項尺寸數據（長度、內徑或外徑）！');
+        uiAlert('請至少輸入一項尺寸數據（長度、內徑或外徑）！');
         return;
       }
 
@@ -1049,7 +1227,7 @@
           hideSpecSuggestions();
         }
       } catch (err) {
-        alert('連線失敗，請確認網路或 API 設定');
+        uiAlert('連線失敗，請確認網路或 API 設定');
         hideAllStatus();
       }
     }
@@ -1192,7 +1370,7 @@
       container.innerHTML = `
         <span class="text-xs text-blue-400 flex items-center gap-1.5 py-0.5">
           <span class="inline-block animate-spin rounded-full h-3 w-3 border-2 border-blue-400 border-t-transparent"></span>
-          <span>正在搜尋相似料號...</span>
+          <span>正在搜尋相似料號…</span>
         </span>
       `;
       container.classList.remove('hidden');
@@ -1347,7 +1525,7 @@
       container.innerHTML = `
         <span class="text-xs text-blue-400 flex items-center gap-1.5 py-0.5">
           <span class="inline-block animate-spin rounded-full h-3 w-3 border-2 border-blue-400 border-t-transparent"></span>
-          <span>正在搜尋相符尺寸...</span>
+          <span>正在搜尋相符尺寸…</span>
         </span>
       `;
       container.classList.remove('hidden');
@@ -1376,7 +1554,7 @@
     const RV_ICON_LIST = `<path d="M2 4C1.44772 4 1 4.44772 1 5C1 5.55228 1.44772 6 2 6C2.55228 6 3.0001 5.55228 3.0001 5C3.0001 4.44772 2.55228 4 2 4Z" fill="currentColor"/> <path d="M7 4.25C6.58579 4.25 6.25 4.58579 6.25 5C6.25 5.41421 6.58579 5.75 7 5.75H22C22.4142 5.75 22.75 5.41421 22.75 5C22.75 4.58579 22.4142 4.25 22 4.25H7Z" fill="currentColor"/> <path d="M7 11.25C6.58579 11.25 6.25 11.5858 6.25 12C6.25 12.4142 6.58579 12.75 7 12.75H22C22.4142 12.75 22.75 12.4142 22.75 12C22.75 11.5858 22.4142 11.25 22 11.25H7Z" fill="currentColor"/> <path d="M6.25 19C6.25 18.5858 6.58579 18.25 7 18.25H22C22.4142 18.25 22.75 18.5858 22.75 19C22.75 19.4142 22.4142 19.75 22 19.75H7C6.58579 19.75 6.25 19.4142 6.25 19Z" fill="currentColor"/> <path d="M1 12C1 11.4477 1.44772 11 2 11C2.55228 11 3.0001 11.4477 3.0001 12C3.0001 12.5523 2.55238 13 2.0001 13C1.44782 13 1 12.5523 1 12Z" fill="currentColor"/> <path d="M2 18C1.44772 18 1 18.4477 1 19C1 19.5523 1.44772 20 2 20C2.55228 20 3.0001 19.5523 3.0001 19C3.0001 18.4477 2.55228 18 2 18Z" fill="currentColor"/>`;
     let lastResultList = [];
     let lastResultTotal = null; // 進階查詢的符合總筆數（其他查詢為 null）
-    let resultSort = { col: null, dir: 1 };
+    let resultSort = (() => { try { const o = JSON.parse(localStorage.getItem('ui_state') || '{}').resultSort; return o && typeof o.col === 'string' && (o.dir === 1 || o.dir === -1) ? o : { col: null, dir: 1 }; } catch (e) { return { col: null, dir: 1 }; } })(); // 記住清單排序
     function getResultView() {
       try { return localStorage.getItem('resultView') === 'list' ? 'list' : 'card'; } catch (e) { return 'card'; }
     }
@@ -1444,6 +1622,7 @@
         th.onclick = () => {
           const k = th.dataset.col;
           resultSort = resultSort.col === k ? { col: k, dir: -resultSort.dir } : { col: k, dir: 1 };
+          uiSaveState('resultSort', resultSort);
           renderResultList(lastResultList);
         };
       });
@@ -1561,9 +1740,9 @@
       }, 100);
     }
 
-    function closeAddModal() {
+    async function closeAddModal() {
       if (isEditMode) {
-        if (!confirm('您目前正在編輯資料且尚未儲存，確定要關閉嗎？未儲存的變更將會遺失。')) {
+        if (!(await uiConfirm('您目前正在編輯資料且尚未儲存，確定要關閉嗎？未儲存的變更將會遺失。', { okText: '關閉', danger: true }))) {
           return;
         }
         cancelExistingDataEdit();
@@ -1641,7 +1820,7 @@
 
       // 兩者皆空時提示
       if (!loadedPartNo && !inputPartNo) {
-        alert('請先在輸入框輸入料號！若查無此料號，可直接點選此按鈕新增資料。');
+        uiAlert('請先在輸入框輸入料號！若查無此料號，可直接點選此按鈕新增資料。');
         const input = document.getElementById('existPartNoInput');
         if (input) input.focus();
         return;
@@ -1659,7 +1838,7 @@
       if (authRole !== 'A' && authRole !== 'B') {
         loginCallback = () => {
           if (authRole === 'A' || authRole === 'B') enterEditMode();
-          else alert('目前身分沒有新增或修改配件資料的權限，需要倉庫人員或管理員密碼。');
+          else uiAlert('目前身分沒有新增或修改配件資料的權限，需要倉庫人員或管理員密碼。');
         };
         openLoginModal('新增或修改配件資料需要倉庫人員或管理員密碼');
       } else {
@@ -1672,7 +1851,7 @@
       if (authRole !== 'A' && authRole !== 'B') return;
       if (!partNo) return;
       if (isEditMode && !document.getElementById('addModal').classList.contains('hidden')) {
-        alert('目前正在編輯其他配件，請先儲存或取消。');
+        uiAlert('目前正在編輯其他配件，請先儲存或取消。');
         return;
       }
       openAddModal();
@@ -1990,6 +2169,10 @@
 
     // 依照身分顯示／隱藏功能
     function applyRoleUI() {
+      uiStateLock++;
+      try { applyRoleUIInner(); } finally { uiStateLock--; }
+    }
+    function applyRoleUIInner() {
       const loggedIn = authRole === 'A' || authRole === 'B';
       const canMove = authRole === 'A' || authRole === 'B'; // 出入庫管理：管理員（全部分頁）、倉庫人員（只有「回廠日期」分頁）
       const canEditParts = loggedIn;             // 新增／修改配件資料：倉庫人員和管理員
@@ -2107,7 +2290,7 @@
       }
 
       submitBtn.disabled = true;
-      submitBtn.innerText = '登入中...';
+      submitBtn.innerText = '登入中…';
       errMsg.classList.add('hidden');
 
       try {
@@ -2119,6 +2302,7 @@
           closePasswordModal();
           showInvToast('✅ 已登入：' + ROLE_LABELS[result.role], 'success');
           if (cb) cb();
+          else uiRestoreState(); // 重新登入：依新身分還原上次的畫面
         } else {
           errMsg.innerText = '❌ ' + (result.message || '密碼錯誤，請重新輸入！');
           errMsg.classList.remove('hidden');
@@ -2275,7 +2459,7 @@
       const newName = document.getElementById('existName').value.trim();
 
       if (!newPartNo) {
-        alert('料號為必填欄位，不能為空！');
+        uiAlert('料號為必填欄位，不能為空！');
         document.getElementById('existPartNo').focus();
         return;
       }
@@ -2289,9 +2473,9 @@
       const originalSaveHtml = saveBtn.innerHTML;
       saveBtn.innerHTML = `
         <div class="inline-block animate-spin rounded-full h-3.5 w-3.5 border-2 border-white border-t-transparent mr-1"></div>
-        <span>${isAdding ? '新增中...' : '儲存中...'}</span>
+        <span>處理中…</span>
       `;
-      updateBadge('loading', isAdding ? '新增配件資料中...' : '儲存修改中...');
+      updateBadge('loading', isAdding ? '新增配件資料中…' : '儲存修改中…');
 
       const itemData = {
         part_no: newPartNo,
@@ -2355,7 +2539,7 @@
         } else {
           const isDup = result.code === 'DUPLICATE' || /已存在於資料庫/.test(result.message || '');
           showToast(isDup ? '料號重複' : '失敗', false);
-          updateBadge('error', isDup ? '❌ 料號重複，未寫入' : '❌ 操作失敗');
+          updateBadge('error', isDup ? '❌ 料號重複，未儲存' : '❌ 操作失敗');
           if (handleAuthError(result)) {
             cancelExistingDataEdit();
           }
@@ -2387,7 +2571,7 @@
       clearTimeout(existSearchDebounceTimer);
       // 輸入滿 2 個字元以上即開始防抖查詢
       if (val.trim().length >= 2) {
-        updateBadge('typing', '輸入中...');
+        updateBadge('typing', '輸入中…');
         existSearchDebounceTimer = setTimeout(() => {
           fetchExistingData(val.trim());
         }, 400);
@@ -2401,7 +2585,7 @@
       clearTimeout(existSearchDebounceTimer);
       const val = document.getElementById('existPartNoInput').value.trim();
       if (!val) {
-        alert('請先輸入要查詢的料號！');
+        uiAlert('請先輸入要查詢的料號！');
         return;
       }
       fetchExistingData(val);
@@ -2410,7 +2594,7 @@
     // 向 API 查詢現有資料並自動代入
     async function fetchExistingData(keyword) {
       if (!keyword) return;
-      updateBadge('loading', '查詢中...');
+      updateBadge('loading', '查詢中…');
 
       try {
         const url = `${API_URL}?action=searchKeyword&keyword=${encodeURIComponent(keyword)}&type=part_no`;
@@ -2615,7 +2799,7 @@
       const d = new Date(t);
       if (isNaN(d.getTime())) return String(t);
       const p = n => String(n).padStart(2, '0');
-      return `${d.getMonth() + 1}/${p(d.getDate())} ${p(d.getHours())}:${p(d.getMinutes())}`;
+      return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())} ${p(d.getHours())}:${p(d.getMinutes())}`;
     }
 
     function invNewId() {
@@ -2623,17 +2807,15 @@
       return 'id-' + Date.now() + '-' + Math.random().toString(36).slice(2, 10);
     }
 
+    // 出入庫等頁面的提示：統一用畫面下方的 uiToast
     function showInvToast(msg, type) {
-      const el = document.getElementById('invToast');
-      el.innerText = msg;
-      el.className = 'fixed bottom-4 left-1/2 -translate-x-1/2 z-[70] px-4 py-2.5 rounded-lg text-sm font-semibold shadow-2xl ' +
-        (type === 'error' ? 'bg-red-600 text-gray-100' : type === 'warn' ? 'bg-amber-600 text-gray-100' : 'bg-green-600 text-gray-100');
-      clearTimeout(showInvToast._t);
-      showInvToast._t = setTimeout(() => el.classList.add('hidden'), 2800);
+      uiToast(msg, type === 'error' ? 'error' : type === 'warn' ? 'warn' : type === 'info' ? 'info' : 'success');
     }
 
     // ---------- 主畫面切換（配件查詢 / 進銷存 / 工作單） ----------
     function switchView(view) {
+      uiSaveState('view', view === 'returns' ? 'inventory' : view);
+      if (view === 'returns') uiSaveState('invTab', 'rd');
       let invTab = null;
       if (view === 'returns') { view = 'inventory'; invTab = 'rd'; } // 回廠日期已收進出入庫管理
       if (view === 'inventory' && authRole !== 'A' && authRole !== 'B') view = 'search'; // 出入庫管理：管理員、倉庫人員（倉庫人員只有回廠日期）
@@ -2661,6 +2843,7 @@
     }
 
     function switchInvTab(tab) {
+      uiSaveState('invTab', tab);
       if (authRole !== 'A') tab = 'rd'; // 倉庫人員只有「回廠日期」分頁
       const map = { scan: ['invBoxScan', 'invTabBtnScan'], lookup: ['invBoxLookup', 'invTabBtnLookup'], low: ['invBoxLow', 'invTabBtnLow'], rd: ['invBoxReturns', 'invTabBtnRd'] };
       const defaultBtnClass = "px-3 py-1.5 rounded-md text-gray-400 hover:text-gray-100 transition";
@@ -2702,7 +2885,7 @@
     // ---------- 相機掃描 ----------
     async function startInvScanner() {
       if (typeof Html5Qrcode === 'undefined') {
-        alert('掃碼元件載入失敗，請確認網路連線後重新整理頁面，或改用手動輸入料號。');
+        uiAlert('掃碼元件載入失敗，請確認網路連線後重新整理頁面，或改用手動輸入料號。');
         return;
       }
       if (invScannerRunning) {
@@ -2728,7 +2911,7 @@
         console.error('相機啟動失敗:', err);
         reader.classList.add('hidden');
         setInvScanStatus('error');
-        alert('無法開啟相機：請允許瀏覽器使用相機，並確認網頁是以 https 開啟。也可以改用下方手動輸入料號。');
+        uiAlert('無法開啟相機：請允許瀏覽器使用相機，並確認網頁是以 https 開啟。也可以改用下方手動輸入料號。');
       }
     }
 
@@ -2752,7 +2935,7 @@
       const base = 'text-xs px-2.5 py-0.5 rounded-full border ';
       const m = {
         idle:     ['', 'hidden'],
-        starting: ['相機啟動中...', 'bg-blue-950/80 text-blue-300 border-blue-700/60 animate-pulse'],
+        starting: ['相機啟動中…', 'bg-blue-950/80 text-blue-300 border-blue-700/60 animate-pulse'],
         scanning: ['掃描中，請對準 QR 碼', 'bg-green-950/80 text-green-300 border-green-700/60'],
         paused:   ['已讀取，暫停掃描', 'bg-amber-950/80 text-amber-300 border-amber-700/60'],
         error:    ['相機無法使用', 'bg-red-950/80 text-red-300 border-red-700/60']
@@ -2776,7 +2959,7 @@
 
     function invManualLookup() {
       const code = document.getElementById('invManualPartNo').value.trim();
-      if (!code) { alert('請輸入料號！'); return; }
+      if (!code) { uiAlert('請輸入料號！'); return; }
       loadInvPart(code);
     }
 
@@ -2801,7 +2984,7 @@
       } catch (err) {
         console.error(err);
         document.getElementById('invScanLoading').classList.add('hidden');
-        alert('連線失敗，請確認網路或 API 設定');
+        uiAlert('連線失敗，請確認網路或 API 設定');
         resumeInvScannerSoon();
       }
     }
@@ -2898,15 +3081,15 @@
     function openInvConfirm() {
       if (!invCurrentPart) return;
       const f = readInvForm();
-      if (f.qtyRaw === '' || !Number.isInteger(f.qty) || f.qty < 0) { alert('數量請輸入 0 以上的整數！'); return; }
-      if (invType !== '盤點調整' && f.qty === 0) { alert('數量不能是 0！'); return; }
-      if (!f.handler) { alert('請填寫經手人！'); document.getElementById('invHandler').focus(); return; }
+      if (f.qtyRaw === '' || !Number.isInteger(f.qty) || f.qty < 0) { uiAlert('數量請輸入 0 以上的整數！'); return; }
+      if (invType !== '盤點調整' && f.qty === 0) { uiAlert('數量不能是 0！'); return; }
+      if (!f.handler) { uiAlert('請填寫經手人！'); document.getElementById('invHandler').focus(); return; }
       if (invType === '出貨' && f.qty > Number(invCurrentPart.stock)) {
-        alert(`出貨數量 ${f.qty} 超過目前庫存 ${invCurrentPart.stock}，請確認！`);
+        uiAlert(`出貨數量 ${f.qty} 超過目前庫存 ${invCurrentPart.stock}，請確認！`);
         return;
       }
       if (invType === '盤點調整' && f.qty === Number(invCurrentPart.stock)) {
-        alert('實際盤點數量與系統庫存相同，不需要調整。');
+        uiAlert('實際盤點數量與系統庫存相同，不需要調整。');
         return;
       }
       localStorage.setItem('inv_handler', f.handler);
@@ -2949,21 +3132,21 @@
         return;
       }
       if (invType === '盤點調整' && authRole !== 'A') {
-        alert('盤點調整只有管理員可以使用。');
+        uiAlert('盤點調整只有管理員可以使用。');
         return;
       }
 
       // 60 秒內送出完全相同的內容，多確認一次
       const key = [partNo, invType, f.qty, f.handler, f.note].join('|');
       if (invLastSubmitted && invLastSubmitted.key === key && Date.now() - invLastSubmitted.time < INV_REPEAT_WARN_MS) {
-        if (!confirm('你剛剛才送出一筆一模一樣的異動，確定要再記一次嗎？')) return;
+        if (!(await uiConfirm('你剛剛才儲存一筆一模一樣的異動，確定要再記一次嗎？', { okText: '再記一次' }))) return;
       }
 
       invSubmitting = true;
       const btn = document.getElementById('invBtnConfirmSend');
       const originalHtml = btn.innerHTML;
       btn.disabled = true;
-      btn.innerHTML = `<div class="inline-block animate-spin rounded-full h-3.5 w-3.5 border-2 border-white border-t-transparent mr-1"></div><span>送出中...</span>`;
+      btn.innerHTML = `<div class="inline-block animate-spin rounded-full h-3.5 w-3.5 border-2 border-white border-t-transparent mr-1"></div><span>處理中…</span>`;
 
       const payload = {
         action: 'addMovement',
@@ -2989,7 +3172,7 @@
           resetInvMoveCard();
           if (d.handler_added) refreshHandlers(); // 新的經手人已由後端加入名單，重新讀取
         } else {
-          alert('❌ 送出失敗：' + (result.message || '未知錯誤'));
+          uiAlert('❌ 儲存失敗：' + (result.message || '未知錯誤'));
           if (handleAuthError(result)) closeInvConfirm();
           // 庫存已被其他人變動時，重新讀取最新數字
           if (result.code === 'STOCK_CHANGED' || result.code === 'INSUFFICIENT') {
@@ -2999,7 +3182,7 @@
         }
       } catch (err) {
         console.error(err);
-        alert('連線失敗，這筆可能沒有送出。請到「庫存異動查詢」確認後再重試。');
+        uiAlert('連線失敗，這筆可能沒有儲存成功。請到「庫存異動查詢」確認後再重試。');
       } finally {
         invSubmitting = false;
         btn.disabled = false;
@@ -3031,8 +3214,8 @@
     async function invLookup() {
       const partNo = document.getElementById('invLookupPartNo').value.trim();
       const box = document.getElementById('invLookupResult');
-      if (!partNo) { alert('請輸入料號！'); return; }
-      box.innerHTML = `<div class="text-center text-gray-400 py-6"><div class="inline-block animate-spin rounded-full h-8 w-8 border-4 border-gray-700 border-t-blue-500 mb-2"></div><p>查詢中...</p></div>`;
+      if (!partNo) { uiAlert('請輸入料號！'); return; }
+      box.innerHTML = `<div class="text-center text-gray-400 py-6"><div class="inline-block animate-spin rounded-full h-8 w-8 border-4 border-gray-700 border-t-blue-500 mb-2"></div><p>查詢中…</p></div>`;
       try {
         const result = await invApiGet({ action: 'getStock', part_no: partNo, limit: 30 });
         if (result.status !== 'success' || !result.data || !result.data.part) {
@@ -3068,14 +3251,14 @@
       } catch (err) {
         console.error(err);
         box.innerHTML = '';
-        alert('連線失敗，請確認網路或 API 設定');
+        uiAlert('連線失敗，請確認網路或 API 設定');
       }
     }
 
     // ---------- 低庫存清單 ----------
     async function loadLowStock() {
       const box = document.getElementById('invLowResult');
-      box.innerHTML = `<div class="text-center text-gray-400 py-6"><div class="inline-block animate-spin rounded-full h-8 w-8 border-4 border-gray-700 border-t-blue-500 mb-2"></div><p>計算中...</p></div>`;
+      box.innerHTML = `<div class="text-center text-gray-400 py-6"><div class="inline-block animate-spin rounded-full h-8 w-8 border-4 border-gray-700 border-t-blue-500 mb-2"></div><p>計算中…</p></div>`;
       try {
         const result = await invApiPost({ action: 'getLowStock', password: authPassword });
         if (handleAuthError(result)) {
@@ -3106,7 +3289,7 @@
       } catch (err) {
         console.error(err);
         box.innerHTML = '';
-        alert('連線失敗，請確認網路或 API 設定');
+        uiAlert('連線失敗，請確認網路或 API 設定');
       }
     }
 
@@ -3156,7 +3339,7 @@
       if (!list.length) {
         const p = document.createElement('p');
         p.className = 'px-3 py-2 text-sm text-gray-500';
-        p.textContent = invHandlers.length ? '名單裡沒有這個名字，送出後會自動加入' : '名單是空的，可以按「編輯名單」新增';
+        p.textContent = invHandlers.length ? '名單裡沒有這個名字，儲存後會自動加入' : '名單是空的，可以按「編輯名單」新增';
         menu.appendChild(p);
         return;
       }
@@ -3265,8 +3448,8 @@
     async function addHandlerName() {
       const input = document.getElementById('handlerNewName');
       const name = input.value.trim();
-      if (!name) { alert('請輸入名字！'); input.focus(); return; }
-      if (name.length > HANDLER_MAX_LEN) { alert('名字最多 ' + HANDLER_MAX_LEN + ' 個字！'); input.focus(); return; }
+      if (!name) { uiAlert('請輸入名字！'); input.focus(); return; }
+      if (name.length > HANDLER_MAX_LEN) { uiAlert('名字最多 ' + HANDLER_MAX_LEN + ' 個字！'); input.focus(); return; }
       if (authRole !== 'A' || !authPassword) {
         loginCallback = () => { openHandlerModal(); };
         openLoginModal('新增經手人需要管理員密碼');
@@ -3274,7 +3457,7 @@
       }
       const btn = document.getElementById('handlerBtnAdd');
       btn.disabled = true;
-      btn.innerText = '新增中...';
+      btn.innerText = '處理中…';
       try {
         const r = await invApiPost({ action: 'addHandler', name, password: authPassword });
         if (r.status === 'success') {
@@ -3282,12 +3465,12 @@
           input.value = '';
           showInvToast((r.added ? '✅ ' : '') + (r.message || '已新增'), r.added ? 'success' : 'warn');
         } else {
-          alert('❌ 新增失敗：' + (r.message || '未知錯誤'));
+          uiAlert('❌ 新增失敗：' + (r.message || '未知錯誤'));
           handleAuthError(r);
         }
       } catch (err) {
         console.error(err);
-        alert('連線失敗，請檢查網路後再試一次。');
+        uiAlert('連線失敗，請檢查網路後再試一次。');
       } finally {
         btn.disabled = false;
         btn.innerText = '新增';
@@ -3296,22 +3479,22 @@
 
     // 刪除名字：只有管理員（後端會再檢查密碼）
     async function removeHandlerName(name, btn) {
-      if (authRole !== 'A' || !authPassword) { alert('只有管理員可以刪除名單裡的名字。'); return; }
-      if (!confirm(`確定要把「${name}」從經手人名單刪除嗎？\n（已經記錄的異動不會受影響）`)) return;
-      if (btn) { btn.disabled = true; btn.innerText = '刪除中...'; }
+      if (authRole !== 'A' || !authPassword) { uiAlert('只有管理員可以刪除名單裡的名字。'); return; }
+      if (!(await uiConfirm(`確定要把「${name}」從經手人名單刪除嗎？\n（已經記錄的異動不會受影響）`, { danger: true }))) return;
+      if (btn) { btn.disabled = true; btn.innerText = '處理中…'; }
       try {
         const r = await invApiPost({ action: 'removeHandler', name, password: authPassword });
         if (r.status === 'success') {
           if (Array.isArray(r.data)) setHandlers(r.data);
           showInvToast(r.removed ? '已刪除：' + name : (r.message || '名單裡沒有這個名字'), r.removed ? 'success' : 'warn');
         } else {
-          alert('❌ 刪除失敗：' + (r.message || '未知錯誤'));
+          uiAlert('❌ 刪除失敗：' + (r.message || '未知錯誤'));
           handleAuthError(r);
           renderHandlerModalList();
         }
       } catch (err) {
         console.error(err);
-        alert('連線失敗，請檢查網路後再試一次。');
+        uiAlert('連線失敗，請檢查網路後再試一次。');
         renderHandlerModalList();
       }
     }
@@ -3386,7 +3569,7 @@
         name.addEventListener('blur', () => { name.value = woCleanOrderName(name.value); });
         onComboSetup('woOrderName', true);   // 單名：下拉選單＋可直接輸入新單名
         onComboSetup('wlName', false);       // 紀錄查詢的單名：下拉選單（不填＝全部）
-        setWaPreset(6, true);                // 分析：預設近 6 個月
+        { const wp = uiLoadState().waPreset; setWaPreset([6, 12, 'year'].includes(wp) ? wp : 6, true); } // 分析：預設近 6 個月（記住上次選的）
         onComboSetup('waName', false);       // 分析的單名：下拉選單（不填＝全部）
         woUpdateSaveBtn();
       }
@@ -3646,6 +3829,7 @@
       wrap.querySelectorAll('.wo-edit-dw').forEach(el => {
         el.addEventListener('click', () => openDwForEdit(el.dataset.brand, el.dataset.drawing));
       });
+      if (opts.sortable) uiSortable(wrap.querySelector('table'));
       return wrap;
     }
 
@@ -3716,7 +3900,7 @@
         e.textContent = '沒有需要統計的尺寸。';
         sec1.appendChild(e);
       } else {
-        sec1.appendChild(woTable(WO_MERGED_HEAD, mRows, { nameCol: 2, numCols: [1] }));
+        sec1.appendChild(woTable(WO_MERGED_HEAD, mRows, { nameCol: 2, numCols: [1], sortable: true }));
       }
       box.appendChild(sec1);
 
@@ -3758,7 +3942,7 @@
       else out.sort((a, b) => b.total - a.total || a.size.localeCompare(b.size, 'zh-Hant', { numeric: true }));
       return out;
     }
-    function wsMonthLabel(ym) { return `${ym.slice(0, 4)}/${Number(ym.slice(5, 7))}`; }
+    function wsMonthLabel(ym) { return String(ym).slice(0, 7); } // 一律 YYYY-MM
     // 統計表的列（畫面和複製共用）
     function wsRows(stats, by) {
       return wsSortSizes(stats.sizes, by).map(s => [s.size, s.total, s.avg].concat(stats.months.map(m => s.months[m] || 0)));
@@ -3877,7 +4061,7 @@
       btn.disabled = !has || woDirty || !!woSavedId || woSaving;
       btn.classList.toggle('opacity-50', btn.disabled);
       btn.classList.toggle('cursor-not-allowed', btn.disabled);
-      btn.textContent = woSaving ? '儲存中…' : woSavedId ? '已儲存' : '儲存';
+      btn.textContent = woSaving ? '處理中…' : woSavedId ? '已儲存' : '儲存';
       btn.title = !has ? '請先產生工作單' : woDirty ? '輸入改過了，請先重新產生工作單' : woSavedId ? '這張已經存進紀錄' : '存到工作單紀錄（不扣庫存）';
     }
 
@@ -3899,7 +4083,7 @@
       if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) { showInvToast('請選擇日期', 'warn'); document.getElementById('woDate').focus(); return; }
       if (!name) { showInvToast('請輸入單名', 'warn'); nameEl.focus(); return; }
       if (/^[=+\-@]/.test(name)) { showInvToast('單名不能用 = + - @ 開頭', 'warn'); nameEl.focus(); return; }
-      if (!allowDup && !confirm(`日期：${date}\n單名：${name}`)) return; // 確認框只顯示日期、單名
+      if (!allowDup && !(await uiConfirm(`日期：${date}\n單名：${name}`, { okText: '儲存' }))) return; // 確認框只顯示日期、單名
       woSaving = true;
       woUpdateSaveBtn();
       let again = false;
@@ -3914,7 +4098,7 @@
           woSavedId = (r.data && r.data.order_id) || 'saved';
           showInvToast('✅ ' + (r.message || '已儲存'), 'success');
         } else if (r.code === 'DUPLICATE' && !allowDup) {
-          again = confirm(`${r.message}，還要再存一張嗎？`);
+          again = await uiConfirm(`${r.message}，還要再存一張嗎？`, { okText: '再存一張' });
         } else if (!handleAuthError(r)) {
           const old = /未知的操作指令|無效的 action/.test(r.message || '');
           showInvToast(old ? '❌ 後端還沒更新工作單紀錄功能，請稍後再試' : '❌ ' + (r.message || '儲存失敗'), 'error');
@@ -3943,6 +4127,7 @@
     }
     function rdIsRendered(id) { const el = document.getElementById(id); return !!(el && el.childElementCount); }
     function switchWoTab(tab, noLoad) {
+      if (!noLoad) uiSaveState('woTab', tab);
       if (tab === 'form' && authRole !== 'A') tab = 'log';
       const map = { form: ['woBoxForm', 'woTabBtnForm'], log: ['woBoxLog', 'woTabBtnLog'], stats: ['woBoxStats', 'woTabBtnStats'], analysis: ['woBoxAnalysis', 'woTabBtnAnalysis'] };
       const defaultBtnClass = 'px-3 py-1.5 rounded-md text-gray-400 hover:text-gray-100 transition';
@@ -3999,7 +4184,7 @@
       if (from && to && from > to) { showInvToast('開始日期不能晚於結束日期', 'warn'); return; }
       const box = document.getElementById('wlResult');
       wlBusy = true;
-      box.innerHTML = wlLoadingHTML('正在讀取紀錄...');
+      box.innerHTML = wlLoadingHTML('正在讀取紀錄…');
       const sizeQ = woNormSize(document.getElementById('wlSize').value);
       try {
         const r = await wlPost({ action: 'getWorkOrders', from, to,
@@ -4057,17 +4242,18 @@
               </tr></thead><tbody>${rows}</tbody></table>
             </div>
           </div>`;
+        uiSortable(card.querySelector('table'));
         card.querySelector('.wl-copy').addEventListener('click', () => woCopy(woToTSV(null, items.map(it => [it.size, it.qty]))));
         const del = card.querySelector('.wl-del');
-        if (del) del.addEventListener('click', () => deleteWorkOrderLog(o, allItems.length));
+        if (del) del.addEventListener('click', () => deleteWorkOrderLog(o, allItems.length, del));
         box.appendChild(card);
       });
     }
-    async function deleteWorkOrderLog(o, sizeCount) {
+    async function deleteWorkOrderLog(o, sizeCount, btn) {
       if (authRole !== 'A') return;
       const n = sizeCount || (Array.isArray(o.items) ? o.items.length : 0);
-      if (!confirm(`確定要刪除 ${o.date}「${o.order_name}」這整張單嗎？會連同單裡全部 ${n} 種尺寸（共 ${o.total} 個）一起刪除，無法復原。`)) return;
-      const r = await wlPost({ action: 'deleteWorkOrder', order_id: o.order_id }, null, () => deleteWorkOrderLog(o, sizeCount));
+      if (!(await uiConfirm(`確定要刪除 ${o.date}「${o.order_name}」這整張單嗎？會連同單裡全部 ${n} 種尺寸（共 ${o.total} 個）一起刪除，無法復原。`, { danger: true }))) return;
+      const r = await withBusy(btn, () => wlPost({ action: 'deleteWorkOrder', order_id: o.order_id }, null, () => deleteWorkOrderLog(o, sizeCount, btn)));
       if (!r) return;
       showToast('已刪除', true);
       loadWorkOrderLog();
@@ -4094,6 +4280,7 @@
       return waChartLoad;
     }
     function setWaPreset(n, noLoad) {
+      if (!noLoad) uiSaveState('waPreset', n);
       const today = woToday();
       const y = Number(today.slice(0, 4)), m = Number(today.slice(5, 7));
       const p = v => String(v).padStart(2, '0');
@@ -4142,7 +4329,7 @@
       const name = woCleanOrderName(document.getElementById('waName').value);
       const box = document.getElementById('waResult');
       waBusy = true;
-      box.innerHTML = wlLoadingHTML('正在分析...');
+      box.innerHTML = wlLoadingHTML('正在分析…');
       try {
         const [r, hasChart] = await Promise.all([
           wlPost({ action: 'getWorkOrders', from, to, order_name: name }, 'waBtnLoad', loadWorkOrderAnalysis),
@@ -4271,7 +4458,7 @@
       if (from > to) { showInvToast('開始日期不能晚於結束日期', 'warn'); return; }
       const box = document.getElementById('wsResult');
       wsBusy = true;
-      box.innerHTML = wlLoadingHTML('正在統計...');
+      box.innerHTML = wlLoadingHTML('正在統計…');
       try {
         const r = await wlPost({ action: 'workOrderStats', from, to }, 'wsBtnLoad', loadWorkOrderStats);
         if (!r || !r.data) { box.innerHTML = ''; return; }
@@ -4306,7 +4493,7 @@
       });
       sec.appendChild(bar);
       const numCols = head.map((_, i) => i).filter(i => i > 0);
-      sec.appendChild(woTable(head, rows.map(r => r.map((v, i) => i >= 3 && v === 0 ? '' : v)), { numCols }));
+      sec.appendChild(woTable(head, rows.map(r => r.map((v, i) => i >= 3 && v === 0 ? '' : v)), { numCols, sortable: true }));
       box.appendChild(sec);
     }
 
@@ -4477,8 +4664,8 @@
         payload.original_brand = dwLoaded.brand;
         payload.original_drawing_no = dwLoaded.drawing_no;
       }
-      setDwBadge('loading', '儲存中…');
-      const r = await dwPost(payload);
+      setDwBadge('loading', '處理中…');
+      const r = await withBusy(document.getElementById(mode === 'update' ? 'dwBtnSave' : 'dwBtnAdd'), () => dwPost(payload));
       if (!r) return;
       if (r.status === 'success') {
         showToast('成功', true);
@@ -4498,9 +4685,9 @@
 
     async function deleteDrawing() {
       if (!dwLoaded) return;
-      if (!confirm(`確定要刪除 ${dwLoaded.brand} 的圖號 ${dwLoaded.drawing_no} 嗎？刪除後無法復原。`)) return;
-      setDwBadge('loading', '刪除中…');
-      const r = await dwPost({ action: 'deleteDrawing', brand: dwLoaded.brand, drawing_no: dwLoaded.drawing_no });
+      if (!(await uiConfirm(`確定要刪除 ${dwLoaded.brand} 的圖號 ${dwLoaded.drawing_no} 嗎？刪除後無法復原。`, { danger: true }))) return;
+      setDwBadge('loading', '處理中…');
+      const r = await withBusy(document.getElementById('dwBtnDelete'), () => dwPost({ action: 'deleteDrawing', brand: dwLoaded.brand, drawing_no: dwLoaded.drawing_no }));
       if (!r) return;
       if (r.status === 'success') {
         showToast('已刪除', true);
@@ -4637,7 +4824,7 @@
       btn.disabled = !ok;
       btn.classList.toggle('opacity-50', !ok);
       btn.classList.toggle('cursor-not-allowed', !ok);
-      btn.textContent = rdSaving ? '儲存中…' : '儲存';
+      btn.textContent = rdSaving ? '處理中…' : '儲存';
       btn.title = !rdFound ? '請先輸入正確的料號' : ok ? '' : '請選擇回廠日期';
     }
     async function saveReturnDate() {
@@ -4690,7 +4877,7 @@
       if (from && to && from > to) { showInvToast('開始日期不能晚於結束日期', 'warn'); return; }
       const box = document.getElementById('rdResult');
       rdBusy = true;
-      box.innerHTML = wlLoadingHTML('正在讀取回廠日期...');
+      box.innerHTML = wlLoadingHTML('正在讀取回廠日期…');
       try {
         const r = await invApiGet({ action: 'getReturnDates', keyword: document.getElementById('rdQKeyword').value.trim(), from, to });
         if (r.status === 'success') {
@@ -4736,14 +4923,16 @@
           ${canDel ? `<td class="px-3 py-2 border border-gray-800 whitespace-nowrap"><button type="button" data-i="${n}" class="rd-del bg-red-600 hover:bg-red-500 text-gray-100 text-xs font-semibold px-2.5 py-1 rounded-md transition">刪除</button></td>` : ''}
         </tr>`).join('');
       wrap.innerHTML = `<table class="rv-table w-full text-sm text-gray-200 border-collapse"><thead><tr>${th('回廠日期')}${th('料號')}${th('名稱')}${th('規格（長*內*外）')}${th('當前儲位')}${th('備註')}${canDel ? th('') : ''}</tr></thead><tbody>${rows}</tbody></table>`;
-      wrap.querySelectorAll('.rd-del').forEach(b => b.addEventListener('click', () => deleteReturnDate(list[Number(b.dataset.i)])));
+      wrap.querySelectorAll('.rd-del').forEach(b => b.addEventListener('click', () => deleteReturnDate(list[Number(b.dataset.i)], b)));
+      uiSortable(wrap.querySelector('table'));
       box.appendChild(wrap);
     }
-    async function deleteReturnDate(r) {
+    async function deleteReturnDate(r, btn) {
       if (!r || (authRole !== 'A' && authRole !== 'B') || !authPassword) return;
-      if (!confirm(`確定要刪除 ${r.part_no} 的回廠日期 ${r.return_date} 嗎？刪除後無法復原。`)) return;
+      if (!(await uiConfirm(`確定要刪除 ${r.part_no} 的回廠日期 ${r.return_date} 嗎？刪除後無法復原。`, { danger: true }))) return;
       try {
-        const res = await invApiPost({ action: 'deleteReturnDate', password: authPassword, id: r.id });
+        const res = await withBusy(btn, () => invApiPost({ action: 'deleteReturnDate', password: authPassword, id: r.id }));
+        if (!res) return;
         if (res.status === 'success') { showToast('已刪除', true); loadReturnDates(); }
         else if (!handleAuthError(res)) showInvToast('❌ ' + (res.message || '刪除失敗'), 'error');
       } catch (err) {
@@ -4756,6 +4945,8 @@
     loadHandlerCache();
     loadAuth();
     applyRoleUI();
+    uiRestoreState();   // 還原上次的畫面（依目前身分）
+    uiBindEnterKeys();
     revalidateAuth();
   </script>
 </body>
