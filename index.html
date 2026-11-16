@@ -4826,6 +4826,16 @@
         if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) { showErr('請選擇回廠日期'); ov.querySelector('#rdqDate').focus(); return; }
         if (/^[=+\-@]/.test(notes)) { showErr('備註不能用 = + - @ 開頭'); notesEl.focus(); return; }
         showErr('');
+        // 同一料號已有回廠日期：同一天直接擋（後端也會擋）；別天先確認再寫入
+        const existing = (Array.isArray(part.return_dates) ? part.return_dates : []).map(r => String(r.date || '')).filter(Boolean);
+        if (existing.includes(date)) { showErr(`${part.part_no} 在 ${date} 已經有回廠日期`); ov.querySelector('#rdqDate').focus(); return; }
+        if (existing.length) {
+          if (confirming) return;
+          confirming = true;
+          const yes = await uiConfirm(`${part.part_no} 已經有回廠日期：${existing.join('、')}，確定要再新增 ${date} 嗎？`, { okText: '新增', title: '料號已有回廠日期' });
+          confirming = false;
+          if (!yes || !ov.isConnected) return;
+        }
         try {
           const r = await withBusy(saveBtn, () => invApiPost({ action: 'addReturnDate', password: authPassword, part_no: part.part_no, return_date: date, notes, request_id: reqId }));
           if (!r) return;
@@ -4844,7 +4854,9 @@
           showErr('❌ 連線失敗，請檢查網路後再試一次');
         }
       };
+      let confirming = false;
       const onKey = e => {
+        if (confirming || document.getElementById('uiConfirm')) return; // 確認框開著時，Esc／Enter 交給確認框
         if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); close(); }
         else if (e.key === 'Enter' && !e.isComposing) {
           if (document.activeElement && document.activeElement.classList.contains('rdq-cancel')) return;
