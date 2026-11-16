@@ -443,30 +443,6 @@
       </div>
       <!-- 🌟 子頁 4：回廠日期（管理員、倉庫人員） -->
       <div id="invBoxReturns" class="hidden space-y-6">
-        <!-- 新增（管理員、倉庫人員） -->
-        <div id="rdAddCard" class="hidden bg-gray-900 border border-gray-800 rounded-xl p-5 space-y-4 shadow-xl">
-          <h2 class="text-sm font-semibold text-gray-300">新增回廠日期</h2>
-          <div>
-            <label for="rdPartNo" class="block text-xs font-medium text-gray-400 mb-1">料號</label>
-            <input type="text" id="rdPartNo" autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="輸入完整料號"
-                   class="w-full bg-gray-950 border border-gray-700 text-gray-100 placeholder-gray-500 rounded-lg px-3 py-2 text-sm font-mono focus:outline-none focus:border-blue-500">
-            <div id="rdPartInfo" class="hidden mt-2 rounded-lg border px-3 py-2 text-sm"></div>
-          </div>
-          <div class="grid grid-cols-2 gap-3">
-            <div>
-              <label for="rdDate" class="block text-xs font-medium text-gray-400 mb-1">回廠日期</label>
-              <input type="date" id="rdDate" class="w-full bg-gray-950 border border-gray-700 text-gray-100 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-blue-500 [color-scheme:dark]">
-            </div>
-            <div>
-              <label for="rdNotes" class="block text-xs font-medium text-gray-400 mb-1">備註（選填）</label>
-              <input type="text" id="rdNotes" maxlength="200" autocomplete="off"
-                     class="w-full bg-gray-950 border border-gray-700 text-gray-100 placeholder-gray-500 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-blue-500">
-            </div>
-          </div>
-          <button id="rdBtnSave" type="button" onclick="saveReturnDate()" disabled
-                  class="w-full bg-green-600 hover:bg-green-500 text-gray-100 font-semibold py-2.5 rounded-lg transition shadow-lg shadow-green-600/30 opacity-50 cursor-not-allowed">儲存</button>
-        </div>
-
         <!-- 查詢（所有人） -->
         <div class="bg-gray-900 border border-gray-800 rounded-xl p-5 space-y-4 shadow-xl">
           <div>
@@ -4906,122 +4882,15 @@
       });
     }
 
-    let rdInited = false, rdFound = null, rdLookupTimer = null, rdLookupCtrl = null, rdSaving = false, rdBusy = false, rdReqId = '';
+    let rdBusy = false;
     let rdLastList = null;
     function initReturns() {
-      if (!rdInited) {
-        rdInited = true;
-        rdReqId = invNewId();
-        const pn = document.getElementById('rdPartNo');
-        pn.addEventListener('input', e => { if (!e.isComposing) rdScheduleLookup(); });
-        pn.addEventListener('compositionend', rdScheduleLookup);
-        pn.addEventListener('keydown', e => { if (e.key === 'Enter' && !e.isComposing) { e.preventDefault(); rdLookupNow(); } });
-        document.getElementById('rdDate').addEventListener('input', rdUpdateSaveBtn);
-        document.getElementById('rdDate').addEventListener('change', rdUpdateSaveBtn);
-      }
       rdApplyRole(authRole === 'A' || authRole === 'B');
       loadReturnDates();
     }
+    // 新增回廠日期已改到配件查詢（小視窗）；這裡只讓刪除鈕跟著身分
     function rdApplyRole(canWrite) {
-      const card = document.getElementById('rdAddCard');
-      if (!card) return;
-      card.classList.toggle('hidden', !canWrite);
-      if (rdLastList) renderReturnDates(rdLastList.data, rdLastList.total); // 刪除鈕跟著身分
-    }
-
-    // ---------- 新增：輸入料號馬上帶出名稱、尺寸 ----------
-    function rdSetInfo(type, html) {
-      const box = document.getElementById('rdPartInfo');
-      box.className = 'mt-2 rounded-lg border px-3 py-2 text-sm ' + ({
-        ok: 'bg-green-950/40 border-green-800/50 text-gray-200',
-        bad: 'bg-red-950/40 border-red-800/50 text-red-300',
-        loading: 'bg-gray-950 border-gray-800 text-gray-400'
-      }[type] || 'hidden');
-      box.innerHTML = html || '';
-    }
-    function rdScheduleLookup() {
-      rdFound = null;
-      rdUpdateSaveBtn();
-      clearTimeout(rdLookupTimer);
-      if (!document.getElementById('rdPartNo').value.trim()) { rdSetInfo('', ''); return; }
-      rdLookupTimer = setTimeout(rdLookupNow, 400);
-    }
-    async function rdLookupNow() {
-      clearTimeout(rdLookupTimer);
-      const code = document.getElementById('rdPartNo').value.trim();
-      if (!code) { rdFound = null; rdSetInfo('', ''); rdUpdateSaveBtn(); return; }
-      if (rdLookupCtrl) rdLookupCtrl.abort();
-      const ctrl = rdLookupCtrl = new AbortController();
-      rdSetInfo('loading', '查詢中…');
-      try {
-        const res = await fetch(`${API_URL}?action=searchBarcode&code=${encodeURIComponent(code)}`, { signal: ctrl.signal });
-        const r = await res.json();
-        if (ctrl !== rdLookupCtrl || document.getElementById('rdPartNo').value.trim() !== code) return;
-        if (r.status === 'success' && r.data && r.data.part_no) {
-          rdFound = r.data;
-          const spec = partSpecDetail(r.data) || partSpec(r.data) || '-';
-          const cur = Array.isArray(r.data.return_dates) && r.data.return_dates.length
-            ? `<div class="mt-1.5 text-xs text-gray-400">已有回廠日期：${rdChipsHTML(r.data.return_dates, true)}</div>` : '';
-          rdSetInfo('ok', `<p><span class="font-mono font-semibold text-gray-100">${invEsc(r.data.part_no)}</span>　${invEsc(r.data.name || '未命名配件')}</p><p class="text-gray-400">尺寸：${invEsc(spec)}</p>${cur}`);
-        } else {
-          rdFound = null;
-          rdSetInfo('bad', '查無此料號');
-        }
-      } catch (err) {
-        if (err && err.name === 'AbortError') return;
-        rdFound = null;
-        rdSetInfo('bad', '連線失敗，請檢查網路');
-      } finally {
-        rdUpdateSaveBtn();
-      }
-    }
-    function rdUpdateSaveBtn() {
-      const btn = document.getElementById('rdBtnSave');
-      if (!btn) return;
-      const ok = !!rdFound && /^\d{4}-\d{2}-\d{2}$/.test(document.getElementById('rdDate').value) && !rdSaving;
-      btn.disabled = !ok;
-      btn.classList.toggle('opacity-50', !ok);
-      btn.classList.toggle('cursor-not-allowed', !ok);
-      btn.textContent = rdSaving ? '處理中…' : '儲存';
-      btn.title = !rdFound ? '請先輸入正確的料號' : ok ? '' : '請選擇回廠日期';
-    }
-    async function saveReturnDate() {
-      if (rdSaving) return;
-      if ((authRole !== 'A' && authRole !== 'B') || !authPassword) {
-        loginCallback = () => { if (authRole === 'A' || authRole === 'B') saveReturnDate(); };
-        openLoginModal('新增回廠日期需要登入');
-        return;
-      }
-      const date = document.getElementById('rdDate').value;
-      const notesEl = document.getElementById('rdNotes');
-      const notes = notesEl.value.trim();
-      if (!rdFound) { showInvToast('請先輸入正確的料號', 'warn'); return; }
-      if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) { showInvToast('請選擇回廠日期', 'warn'); return; }
-      if (/^[=+\-@]/.test(notes)) { showInvToast('備註不能用 = + - @ 開頭', 'warn'); notesEl.focus(); return; }
-      rdSaving = true;
-      rdUpdateSaveBtn();
-      try {
-        const r = await invApiPost({ action: 'addReturnDate', password: authPassword, part_no: rdFound.part_no, return_date: date, notes, request_id: rdReqId });
-        if (r.status === 'success') {
-          rdReqId = invNewId();
-          showInvToast('✅ ' + (r.message || '已新增'), 'success');
-          document.getElementById('rdPartNo').value = '';
-          notesEl.value = '';
-          rdFound = null;
-          rdSetInfo('', '');
-          loadReturnDates();
-          document.getElementById('rdPartNo').focus();
-        } else if (!handleAuthError(r)) {
-          const old = /未知的操作指令|無效的 action/.test(r.message || '');
-          showInvToast(old ? '❌ 後端還沒更新回廠日期功能，請稍後再試' : '❌ ' + (r.message || '新增失敗'), 'error');
-        }
-      } catch (err) {
-        console.error(err);
-        showInvToast('❌ 連線失敗，請檢查網路後再試一次', 'error');
-      } finally {
-        rdSaving = false;
-        rdUpdateSaveBtn();
-      }
+      if (rdLastList) renderReturnDates(rdLastList.data, rdLastList.total);
     }
 
     // ---------- 查詢 ----------
