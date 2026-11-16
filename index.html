@@ -1606,6 +1606,7 @@
       rows.forEach(({ d, i }, n) => {
         const tr = document.createElement('tr');
         tr.className = 'rv-row ' + (n % 2 ? 'rv-odd' : 'rv-even');
+        tr.dataset.partNo = d.part_no || '';
         tr.innerHTML = cols.map(c => `<td class="${c.td} px-3 py-2 border border-gray-800 ${(c.key === 'name' || c.key === 'notes') ? '' : 'whitespace-nowrap'}">${c.html ? (c.html(d) || '-') : show(c.get(d, i))}</td>`).join('');
         if (canQuick) {
           tr.addEventListener('click', e => {
@@ -1671,8 +1672,10 @@
         return;
       }
 
+      const canQuickRd = authRole === 'A' || authRole === 'B';
       dataList.forEach((data, index) => {
         const card = document.createElement('div');
+        card.dataset.partNo = data.part_no || '';
         card.className = "bg-gray-900 border border-gray-800 rounded-xl p-5 space-y-4 shadow-xl";
 
         card.innerHTML = `
@@ -1708,8 +1711,11 @@
             <p><strong>詳細規格：</strong><span class="text-gray-100">${invEsc(partSpecDetail(data) || '-')}</span></p>
             <p><strong>備註說明：</strong><span class="text-gray-300">${invEsc(data.notes || '無')}</span></p>
           </div>
-          ${rdCardBlock(data.return_dates)}
+          <div data-rd-slot>${rdCardBlock(data.return_dates, canQuickRd)}</div>
         `;
+        if (canQuickRd && data.part_no) {
+          card.addEventListener('click', e => { if (e.target.closest('[data-act="rd"]')) quickAddReturnDate(data.part_no); });
+        }
 
         container.appendChild(card);
       });
@@ -1864,15 +1870,12 @@
         enterEditMode();
       }
     }
+    // 配件查詢（卡片、清單）點回廠日期：在原畫面跳出小視窗新增，不切換頁面
     function quickAddReturnDate(partNo) {
       if (authRole !== 'A' && authRole !== 'B') return;
       if (!partNo) return;
-      switchView('returns');
-      document.getElementById('rdPartNo').value = partNo;
-      rdLookupNow();
-      const card = document.getElementById('rdAddCard');
-      if (card) card.scrollIntoView({ behavior: 'smooth', block: 'start' });
-      setTimeout(() => { const dt = document.getElementById('rdDate'); if (dt) dt.focus(); }, 300);
+      const d = (lastResultList || []).find(x => x && x.part_no === partNo) || { part_no: partNo };
+      rdOpenQuickModal(d);
     }
 
     // ==================== 進階查詢（條件產生器，只有管理員；後端 advancedSearch） ====================
@@ -4114,21 +4117,25 @@
     }
 
     // ---------- 子頁切換 ----------
-    // 「工作單」分頁只給管理員；倉庫人員進來直接看「紀錄」
+    // 「工作單」「統計」「分析」分頁只給管理員；倉庫人員進來直接看「紀錄」
+    const WO_ADMIN_TABS = ['form', 'stats', 'analysis'];
     function woApplyRoleTabs() {
       const btn = document.getElementById('woTabBtnForm');
       if (!btn) return;
       const isAdmin = authRole === 'A';
-      btn.classList.toggle('hidden', !isAdmin);
+      ['woTabBtnForm', 'woTabBtnStats', 'woTabBtnAnalysis'].forEach(id => document.getElementById(id).classList.toggle('hidden', !isAdmin));
       const view = document.getElementById('viewWorkOrder');
-      if (!isAdmin && !document.getElementById('woBoxForm').classList.contains('hidden') && !view.classList.contains('hidden')) switchWoTab('log');
-      else if (!isAdmin && view.classList.contains('hidden') && !document.getElementById('woBoxForm').classList.contains('hidden')) switchWoTab('log', true);
+      if (!isAdmin) {
+        ['wsResult', 'waResult'].forEach(id => { const el = document.getElementById(id); if (el) el.innerHTML = ''; }); // 換成非管理員就清掉統計、分析的內容
+        const onAdminTab = ['woBoxForm', 'woBoxStats', 'woBoxAnalysis'].some(id => !document.getElementById(id).classList.contains('hidden'));
+        if (onAdminTab) switchWoTab('log', view.classList.contains('hidden'));
+      }
       if (rdIsRendered('wlResult') && wlLastOrders) renderWorkOrderLog(wlLastOrders.orders, wlLastOrders.total, wlLastOrders.sizeQ); // 刪除鈕跟著身分
     }
     function rdIsRendered(id) { const el = document.getElementById(id); return !!(el && el.childElementCount); }
     function switchWoTab(tab, noLoad) {
       if (!noLoad) uiSaveState('woTab', tab);
-      if (tab === 'form' && authRole !== 'A') tab = 'log';
+      if (WO_ADMIN_TABS.includes(tab) && authRole !== 'A') tab = 'log'; // 工作單、統計、分析只給管理員
       const map = { form: ['woBoxForm', 'woTabBtnForm'], log: ['woBoxLog', 'woTabBtnLog'], stats: ['woBoxStats', 'woTabBtnStats'], analysis: ['woBoxAnalysis', 'woTabBtnAnalysis'] };
       const defaultBtnClass = 'px-3 py-1.5 rounded-md text-gray-400 hover:text-gray-100 transition';
       const activeBtnClass = 'px-3 py-1.5 rounded-md bg-blue-600 text-gray-100 transition';
@@ -4136,7 +4143,7 @@
         document.getElementById(map[k][0]).classList.toggle('hidden', k !== tab);
         document.getElementById(map[k][1]).className = k === tab ? activeBtnClass : defaultBtnClass;
       });
-      document.getElementById('woTabBtnForm').classList.toggle('hidden', authRole !== 'A'); // className 重設後再隱藏一次
+      WO_ADMIN_TABS.forEach(k => document.getElementById(map[k][1]).classList.toggle('hidden', authRole !== 'A')); // className 重設後再隱藏一次
       if (noLoad) return;
       if (tab === 'log' && !document.getElementById('wlResult').childElementCount) loadWorkOrderLog();
       if (tab === 'stats' && !document.getElementById('wsResult').childElementCount) loadWorkOrderStats();
@@ -4738,14 +4745,133 @@
         return `<span${tip} class="inline-flex items-center gap-1 px-2 py-0.5 rounded-md border font-mono ${compact ? 'text-xs' : 'text-sm'} ${RD_CLS[st]}">${invEsc(r.date)}${compact ? '' : `<span class="font-sans text-xs opacity-80">${invEsc(rdLabel(r.date, today))}</span>`}</span>`;
       }).join('')}</span>`;
     }
-    // 配件查詢卡片：有回廠日期才顯示這一塊
-    function rdCardBlock(list) {
-      if (!Array.isArray(list) || !list.length) return '';
-      const notes = list.filter(r => r.notes).map(r => `${invEsc(r.date)}：${invEsc(r.notes)}`).join('、');
+    // 配件查詢卡片：有回廠日期才顯示這一塊；canAdd（管理員、倉庫）時一律顯示，右邊有「新增」
+    function rdCardBlock(list, canAdd) {
+      const has = Array.isArray(list) && list.length;
+      if (!has && !canAdd) return '';
+      const notes = has ? list.filter(r => r.notes).map(r => `${invEsc(r.date)}：${invEsc(r.notes)}`).join('、') : '';
       return `<div class="bg-gray-950 p-3 rounded border border-gray-800 space-y-1.5 text-xl text-gray-400">
-            <p><strong>回廠日期：</strong></p>${rdChipsHTML(list)}
+            <div class="flex items-center justify-between gap-2"><p><strong>回廠日期：</strong></p>${canAdd ? `<button type="button" data-act="rd" class="bg-green-600 hover:bg-green-500 text-gray-100 text-sm font-semibold px-3 py-1 rounded-md transition">新增</button>` : ''}</div>
+            ${has ? rdChipsHTML(list) : '<p class="text-gray-500">-</p>'}
             ${notes ? `<p class="text-sm text-gray-500">${notes}</p>` : ''}
           </div>`;
+    }
+
+    // ---------- 配件查詢的「新增回廠日期」小視窗 ----------
+    let rdQuickClose = null;
+    function rdOpenQuickModal(part) {
+      if (rdQuickClose) rdQuickClose();
+      const prevFocus = document.activeElement;
+      const reqId = invNewId(); // 同一次開啟重試用同一個，避免重複寫入
+      const spec = partSpecDetail(part) || partSpec(part) || '';
+      const ov = document.createElement('div');
+      ov.id = 'rdQuickModal';
+      ov.className = 'fixed inset-0 z-[85] bg-black/75 backdrop-blur-sm flex items-center justify-center p-4';
+      ov.setAttribute('role', 'dialog');
+      ov.setAttribute('aria-modal', 'true');
+      const inCls = 'w-full bg-gray-950 border border-gray-700 text-gray-100 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-blue-500';
+      ov.innerHTML = `
+        <div class="bg-gray-900 border border-gray-800 rounded-2xl w-full max-w-sm p-5 space-y-4 shadow-2xl">
+          <h3 class="text-base font-bold text-gray-100">新增回廠日期</h3>
+          <div class="rounded-lg border border-gray-800 bg-gray-950 px-3 py-2 text-sm">
+            <p><span class="font-mono font-semibold text-gray-100">${invEsc(part.part_no)}</span>${part.name ? `　<span class="text-gray-300">${invEsc(part.name)}</span>` : ''}</p>
+            ${spec ? `<p class="text-gray-400">尺寸：${invEsc(spec)}</p>` : ''}
+            ${Array.isArray(part.return_dates) && part.return_dates.length ? `<div class="mt-1.5 text-xs text-gray-400">已有回廠日期：${rdChipsHTML(part.return_dates, true)}</div>` : ''}
+          </div>
+          <div class="grid grid-cols-2 gap-3">
+            <div>
+              <label for="rdqDate" class="block text-xs font-medium text-gray-400 mb-1">回廠日期</label>
+              <input type="date" id="rdqDate" class="${inCls} [color-scheme:dark]">
+            </div>
+            <div>
+              <label for="rdqNotes" class="block text-xs font-medium text-gray-400 mb-1">備註（選填）</label>
+              <input type="text" id="rdqNotes" maxlength="200" autocomplete="off" class="${inCls}">
+            </div>
+          </div>
+          <p class="rdq-err hidden text-sm text-red-400"></p>
+          <div class="flex justify-end gap-2 pt-1">
+            <button type="button" class="rdq-cancel bg-gray-800 hover:bg-gray-700 text-gray-300 hover:text-gray-100 font-semibold px-4 py-2 rounded-lg border border-gray-700 transition text-sm">取消</button>
+            <button type="button" class="rdq-save bg-green-600 hover:bg-green-500 shadow-md shadow-green-600/30 text-gray-100 font-semibold px-4 py-2 rounded-lg transition text-sm">儲存</button>
+          </div>
+        </div>`;
+      const errEl = ov.querySelector('.rdq-err');
+      const saveBtn = ov.querySelector('.rdq-save');
+      const showErr = m => { errEl.textContent = m; errEl.classList.toggle('hidden', !m); };
+      const close = () => {
+        if (!ov.isConnected) return;
+        document.removeEventListener('keydown', onKey, true);
+        ov.remove();
+        rdQuickClose = null;
+        try { if (prevFocus && prevFocus.focus && prevFocus.isConnected) prevFocus.focus({ preventScroll: true }); } catch (e) {}
+      };
+      const save = async () => {
+        if (saveBtn.dataset.busy === '1') return;
+        if ((authRole !== 'A' && authRole !== 'B') || !authPassword) {
+          close();
+          loginCallback = () => { if (authRole === 'A' || authRole === 'B') rdOpenQuickModal(part); };
+          openLoginModal('新增回廠日期需要登入');
+          return;
+        }
+        const date = ov.querySelector('#rdqDate').value;
+        const notesEl = ov.querySelector('#rdqNotes');
+        const notes = notesEl.value.trim();
+        if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) { showErr('請選擇回廠日期'); ov.querySelector('#rdqDate').focus(); return; }
+        if (/^[=+\-@]/.test(notes)) { showErr('備註不能用 = + - @ 開頭'); notesEl.focus(); return; }
+        showErr('');
+        try {
+          const r = await withBusy(saveBtn, () => invApiPost({ action: 'addReturnDate', password: authPassword, part_no: part.part_no, return_date: date, notes, request_id: reqId }));
+          if (!r) return;
+          if (r.status === 'success') {
+            close();
+            uiToast('✅ ' + (r.message || '已新增回廠日期'), 'success');
+            await rdRefreshPartDates(part.part_no, { date, notes });
+          } else if (handleAuthError(r)) {
+            close();
+          } else {
+            const old = /未知的操作指令|無效的 action/.test(r.message || '');
+            showErr(old ? '❌ 後端還沒更新回廠日期功能，請稍後再試' : '❌ ' + (r.message || '新增失敗'));
+          }
+        } catch (err) {
+          console.error(err);
+          showErr('❌ 連線失敗，請檢查網路後再試一次');
+        }
+      };
+      const onKey = e => {
+        if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); close(); }
+        else if (e.key === 'Enter' && !e.isComposing) {
+          if (document.activeElement && document.activeElement.classList.contains('rdq-cancel')) return;
+          e.preventDefault(); e.stopPropagation(); save();
+        }
+      };
+      ov.querySelector('.rdq-cancel').addEventListener('click', close);
+      saveBtn.addEventListener('click', save);
+      ov.addEventListener('mousedown', e => { if (e.target === ov) close(); });
+      document.addEventListener('keydown', onKey, true);
+      document.body.appendChild(ov);
+      rdQuickClose = close;
+      setTimeout(() => { const dt = ov.querySelector('#rdqDate'); if (dt) dt.focus({ preventScroll: true }); }, 30);
+    }
+    // 新增成功後：重新讀這個料號的回廠日期，只更新畫面上那一張卡片／那一列（不重畫整個結果、不動捲動位置）
+    async function rdRefreshPartDates(partNo, added) {
+      let list = null;
+      try {
+        const r = await invApiGet({ action: 'searchBarcode', code: partNo });
+        if (r && r.status === 'success' && r.data && r.data.part_no === partNo && Array.isArray(r.data.return_dates)) list = r.data.return_dates;
+      } catch (e) { console.error(e); }
+      const items = (lastResultList || []).filter(x => x && x.part_no === partNo);
+      if (!list) { // 讀不到就在本機補上剛剛新增的那筆
+        const cur = items[0] && Array.isArray(items[0].return_dates) ? items[0].return_dates.slice() : [];
+        cur.push({ date: added.date, notes: added.notes });
+        cur.sort((a, b) => String(a.date).localeCompare(String(b.date)));
+        list = cur;
+      }
+      items.forEach(x => { x.return_dates = list; });
+      const canAdd = authRole === 'A' || authRole === 'B';
+      const sel = `[data-part-no="${CSS.escape(partNo)}"]`;
+      document.querySelectorAll('#resultContainer div' + sel + ' [data-rd-slot]').forEach(slot => { slot.innerHTML = rdCardBlock(list, canAdd); });
+      document.querySelectorAll('#resultContainer tr' + sel + ' [data-act="rd"]').forEach(b => {
+        b.innerHTML = rdChipsHTML(list, true) || '<span class="text-gray-500 px-1">-</span>';
+      });
     }
 
     let rdInited = false, rdFound = null, rdLookupTimer = null, rdLookupCtrl = null, rdSaving = false, rdBusy = false, rdReqId = '';
