@@ -890,7 +890,6 @@
                class="flex-1 min-w-0 bg-gray-950 border border-gray-700 text-gray-100 placeholder-gray-500 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-blue-500">
         <button type="button" id="optAddBtn" onclick="optAdd()" class="bg-blue-600 hover:bg-blue-500 text-gray-100 font-semibold px-4 py-2 rounded-lg transition text-sm whitespace-nowrap">新增</button>
       </div>
-      <p id="optHint" class="text-xs text-gray-400"></p>
       <div id="optList" class="divide-y divide-gray-800 border border-gray-800 rounded-lg"></div>
     </div>
   </div>
@@ -3630,9 +3629,9 @@
         setWoCompanies(woLoadCompanyCache());
         addWoRow(false);
         document.getElementById('woDate').value = woToday();
-        const rg = wlDefaultRange(woToday());
-        ['wlFrom', 'wsFrom'].forEach(id => { document.getElementById(id).value = rg.from; });
-        ['wlTo', 'wsTo'].forEach(id => { document.getElementById(id).value = rg.to; });
+        const lr = wlLogDefaultRange(woToday()); // 紀錄、統計、分析：預設今天 ～ 下個月同一天
+        ['wlFrom', 'wsFrom', 'waFrom'].forEach(id => { document.getElementById(id).value = lr.from; });
+        ['wlTo', 'wsTo', 'waTo'].forEach(id => { document.getElementById(id).value = lr.to; });
         // 產生工作單之後又改了輸入：要重新產生才能儲存（日期、單名不算）
         const dirty = () => { if (woLastResult && !woDirty) { woDirty = true; woUpdateSaveBtn(); } };
         const box = document.getElementById('woDrawingBox');
@@ -3643,7 +3642,7 @@
         name.addEventListener('blur', () => { name.value = woCleanOrderName(name.value); });
         onComboSetup('woOrderName', true);   // 單名：下拉選單＋可直接輸入新單名
         onComboSetup('wlName', false);       // 紀錄查詢的單名：下拉選單（不填＝全部）
-        { const wp = uiLoadState().waPreset; setWaPreset([6, 12, 'year'].includes(wp) ? wp : 6, true); } // 分析：預設近 6 個月（記住上次選的）
+        // 分析的區間也用上面的預設（不再還原上次選的「近 6／12 個月、今年」；按鈕照樣可以用）
         onComboSetup('waName', false);       // 分析的單名：下拉選單（不填＝全部）
         woUpdateSaveBtn();
       }
@@ -4044,6 +4043,14 @@
       const last = new Date(Date.UTC(y, m, 0)).getUTCDate();
       return { from: `${fy}-${p(fm)}-01`, to: `${y}-${p(m)}-${p(last)}` };
     }
+    // 紀錄、統計、分析頁預設區間：今天 ～ 下個月同一天（下個月沒有這天就用下個月最後一天）
+    function wlLogDefaultRange(today) {
+      const y = Number(today.slice(0, 4)), m = Number(today.slice(5, 7)), d = Number(today.slice(8, 10));
+      const p = n => String(n).padStart(2, '0');
+      const ny = m === 12 ? y + 1 : y, nm = m === 12 ? 1 : m + 1;
+      const last = new Date(Date.UTC(ny, nm, 0)).getUTCDate();
+      return { from: today, to: `${ny}-${p(nm)}-${p(Math.min(d, last))}` };
+    }
     // 尺寸統一寫法（跟後端 wl_normSize_ 一樣）：全形轉半形、去空白和後面的 #N、+→鐵、/→偏、鐵／偏只留一個
     function woNormSize(v) {
       return dwSizeCode(woToHalf(String(v === undefined || v === null ? '' : v)).replace(/\s+/g, '').replace(/#\d+$/, ''));
@@ -4100,9 +4107,6 @@
         inp.dataset.bound = '1';
         inp.addEventListener('keydown', e => { if (e.key === 'Enter' && !e.isComposing && e.keyCode !== 229) { e.preventDefault(); optAdd(); } });
       }
-      document.getElementById('optHint').textContent = type === '品牌'
-        ? '改名會連「圖號對照」裡這個品牌的圖號一起改；刪除會一起刪掉這個品牌的圖號。'
-        : '改名、刪除時會問你舊的工作單紀錄要不要一起改／刪。';
       document.getElementById('optModal').classList.remove('hidden');
       document.addEventListener('keydown', optOnKey);
       renderOptList(true);
