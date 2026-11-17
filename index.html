@@ -14,6 +14,8 @@
     ::-webkit-scrollbar-track { background: #1f2937; }
     ::-webkit-scrollbar-thumb { background: #374151; border-radius: 3px; }
 
+    /* 登入密碼：一般文字框顯示成圓點（不觸發瀏覽器密碼管理員） */
+    .ui-mask { -webkit-text-security: disc; text-security: disc; }
     /* 隱藏 number 輸入框的上下箭頭 */
     input::-webkit-outer-spin-button,
     input::-webkit-inner-spin-button {
@@ -157,7 +159,7 @@
       <!-- 🌟 搜尋卡片 1：料號查詢  -->
       <div id="searchBoxPartNo" class="hidden bg-gray-900 border border-gray-800 rounded-xl p-5 space-y-4 shadow-xl">
         <div>
-          <label class="block text-xs font-medium text-gray-400 mb-1">料號</label>
+          <label for="inputPartNo" class="block text-xs font-medium text-gray-400 mb-1">料號</label>
           <input type="text" id="inputPartNo" 
                  oninput="handlePartNoInput()"
                  onkeydown="if(event.key === 'Enter'){ event.preventDefault(); handleSearch('part_no'); }"
@@ -180,7 +182,7 @@
       <!-- 🌟 搜尋卡片 2：名稱查詢 -->
       <div id="searchBoxName" class="hidden bg-gray-900 border border-gray-800 rounded-xl p-5 space-y-4 shadow-xl">
         <div>
-          <label class="block text-xs font-medium text-gray-400 mb-1">名稱</label>
+          <label for="inputName" class="block text-xs font-medium text-gray-400 mb-1">名稱</label>
           <input type="text" id="inputName" 
                  onkeydown="if(event.key === 'Enter'){ event.preventDefault(); handleSearch('name'); }"
                  class="w-full bg-gray-950 border border-gray-700 text-gray-100 placeholder-gray-500 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-blue-500">
@@ -200,21 +202,21 @@
       <div id="searchBoxSpec" class="bg-gray-900 border border-gray-800 rounded-xl p-5 space-y-4 shadow-xl">
         <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
           <div>
-            <label class="block text-xs font-medium text-gray-400 mb-1">長度</label>
+            <label for="inputLength" class="block text-xs font-medium text-gray-400 mb-1">長度</label>
             <input type="number" step="any" id="inputLength" placeholder="" 
                    oninput="handleSpecInput()"
                    onkeydown="if(event.key === 'Enter'){ event.preventDefault(); handleSpecSearch(); }"
                    class="w-full bg-gray-950 border border-gray-700 text-gray-100 placeholder-gray-500 rounded-lg px-3 py-2 focus:outline-none focus:border-blue-500">
           </div>
           <div>
-            <label class="block text-xs font-medium text-gray-400 mb-1">內徑</label>
+            <label for="inputInner" class="block text-xs font-medium text-gray-400 mb-1">內徑</label>
             <input type="number" step="any" id="inputInner" placeholder="" 
                    oninput="handleSpecInput()"
                    onkeydown="if(event.key === 'Enter'){ event.preventDefault(); handleSpecSearch(); }"
                    class="w-full bg-gray-950 border border-gray-700 text-gray-100 placeholder-gray-500 rounded-lg px-3 py-2 focus:outline-none focus:border-blue-500">
           </div>
           <div>
-            <label class="block text-xs font-medium text-gray-400 mb-1">外徑</label>
+            <label for="inputOuter" class="block text-xs font-medium text-gray-400 mb-1">外徑</label>
             <input type="number" step="any" id="inputOuter" placeholder="" 
                    oninput="handleSpecInput()"
                    onkeydown="if(event.key === 'Enter'){ event.preventDefault(); handleSpecSearch(); }"
@@ -644,7 +646,7 @@
 
           <!-- 料號輸入區 (輸入後自動代入) -->
           <div class="space-y-1.5">
-            <label class="block text-xs font-semibold text-gray-300">
+            <label for="existPartNoInput" class="block text-xs font-semibold text-gray-300">
               輸入料號 <span class="text-blue-400 text-xs font-normal">（輸入後自動代入相關資料）</span>
             </label>
             <div class="flex gap-2">
@@ -810,10 +812,13 @@
       </div>
 
       <div class="space-y-1.5">
-        <label class="block text-xs font-semibold text-gray-300">密碼</label>
-        <input type="password" id="adminPasswordInput"
+        <label for="adminPasswordInput" class="block text-xs font-semibold text-gray-300">密碼</label>
+        <!-- 不用 type=password：避免瀏覽器／密碼管理員跳出儲存或自動填入；用遮罩字型顯示成圓點（不支援的瀏覽器會自動改回 password） -->
+        <input type="text" id="adminPasswordInput" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"
+               data-lpignore="true" data-1p-ignore="true" data-bwignore="true" data-form-type="other"
+               oncopy="return false" oncut="return false" ondragstart="return false"
                onkeydown="if(event.key === 'Enter'){ event.preventDefault(); verifyAdminPassword(); }"
-               class="w-full bg-gray-950 border border-gray-700 focus:border-amber-500 text-gray-100 placeholder-gray-500 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-amber-500">
+               class="ui-mask w-full bg-gray-950 border border-gray-700 focus:border-amber-500 text-gray-100 placeholder-gray-500 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-amber-500">
         <p id="passwordErrorMsg" class="hidden text-xs text-red-400 pt-1">❌ 密碼錯誤，請重新輸入！</p>
       </div>
 
@@ -1939,9 +1944,10 @@
       return wrap;
     }
 
-    function advSelect(options, value, cls) {
+    function advSelect(options, value, cls, label) {
       const sel = document.createElement('select');
       sel.className = cls;
+      if (label) sel.setAttribute('aria-label', label);
       options.forEach(([k, label]) => {
         const o = document.createElement('option');
         o.value = k; o.textContent = label;
@@ -1952,9 +1958,10 @@
       return sel;
     }
 
-    function advInput(type, value, onChange) {
+    function advInput(type, value, onChange, label) {
       const inp = document.createElement('input');
       inp.type = 'text';
+      inp.setAttribute('aria-label', label || '條件值');
       inp.autocomplete = 'off';
       if (type === 'num') inp.inputMode = 'decimal';
       inp.value = value || '';
@@ -2025,7 +2032,7 @@
           const row = document.createElement('div');
           row.className = 'flex flex-col sm:flex-row sm:items-center gap-2' + (ci > 0 ? ' pt-2 border-t border-gray-800/70 sm:border-t-0 sm:pt-0' : '');
 
-          const fSel = advSelect(ADV_FIELD_LIST.map(f => [f[0], f[1]]), c.field, selCls + ' w-full sm:w-40 shrink-0');
+          const fSel = advSelect(ADV_FIELD_LIST.map(f => [f[0], f[1]]), c.field, selCls + ' w-full sm:w-40 shrink-0', '查詢欄位');
           fSel.onchange = () => {
             const newType = advFieldType(fSel.value);
             if (newType !== type) { c.op = newType === 'num' ? 'eq' : 'contains'; c.value = ''; c.value2 = ''; }
@@ -2036,18 +2043,18 @@
 
           const line = document.createElement('div');
           line.className = 'flex items-center gap-2 flex-1 min-w-0';
-          const oSel = advSelect(ADV_OP_LIST[type], c.op, selCls + ' w-24 shrink-0');
+          const oSel = advSelect(ADV_OP_LIST[type], c.op, selCls + ' w-24 shrink-0', '比較方式');
           oSel.onchange = () => { c.op = oSel.value; advRender(); };
           line.appendChild(oSel);
 
           if (!advNoValue(c.op)) {
-            line.appendChild(advInput(type, c.value, v => { c.value = v; }));
+            line.appendChild(advInput(type, c.value, v => { c.value = v; }, '條件值'));
             if (c.op === 'between') {
               const til = document.createElement('span');
               til.className = 'text-gray-500 text-sm shrink-0';
               til.textContent = '到';
               line.appendChild(til);
-              line.appendChild(advInput(type, c.value2, v => { c.value2 = v; }));
+              line.appendChild(advInput(type, c.value2, v => { c.value2 = v; }, '條件值（到）'));
             }
           } else {
             const sp = document.createElement('div');
@@ -2430,6 +2437,32 @@
       editActionType = 'update';
       updateEditButtonText();
     }
+
+    // 全站關閉自動填入／自動校正（含之後動態產生的欄位）；原本設定的 autocapitalize（例如料號大寫）保留
+    function uiNoAutofill(root) {
+      const els = root.querySelectorAll ? root.querySelectorAll('input, textarea') : [];
+      [...(root.matches && root.matches('input, textarea') ? [root] : []), ...els].forEach(el => {
+        if (el.type === 'hidden' || el.dataset.naf === '1') return;
+        el.dataset.naf = '1';
+        el.setAttribute('autocomplete', 'off');
+        el.setAttribute('autocorrect', 'off');
+        el.setAttribute('spellcheck', 'false');
+        if (!el.hasAttribute('autocapitalize')) el.setAttribute('autocapitalize', 'off');
+        el.setAttribute('data-lpignore', 'true');
+        el.setAttribute('data-1p-ignore', 'true');
+        el.setAttribute('data-bwignore', 'true');
+      });
+    }
+    uiNoAutofill(document);
+    new MutationObserver(ms => ms.forEach(m => m.addedNodes.forEach(n => { if (n.nodeType === 1) uiNoAutofill(n); })))
+      .observe(document.body, { childList: true, subtree: true });
+    // 不支援遮罩字型的瀏覽器：密碼框改回 password，避免明碼顯示
+    try {
+      if (!(window.CSS && (CSS.supports('-webkit-text-security', 'disc') || CSS.supports('text-security', 'disc')))) {
+        const pw = document.getElementById('adminPasswordInput');
+        if (pw) pw.type = 'password';
+      }
+    } catch (e) {}
 
     // 側欄：每次開網頁都先收起來；點 ☰ 展開（蓋在內容上），選了項目、點外面或按 Esc 就收回
     function setSidebar(open) {
@@ -3646,12 +3679,12 @@
       const row = document.createElement('div');
       row.className = 'wo-row flex flex-wrap items-center gap-2';
       row.innerHTML = `
-        <select class="wo-co w-[4.5rem] bg-gray-950 border border-gray-700 text-gray-100 rounded-lg px-1.5 py-2 text-sm focus:outline-none focus:border-blue-500">${woCompanyOptions(woTopCompany())}</select>
-        <input type="text" class="wo-dw flex-1 min-w-[5rem] bg-gray-950 border border-gray-700 text-gray-100 placeholder-gray-500 rounded-lg px-3 py-2 text-sm font-mono focus:outline-none focus:border-blue-500" autocomplete="off" autocapitalize="characters" spellcheck="false">
+        <select aria-label="品牌" class="wo-co w-[4.5rem] bg-gray-950 border border-gray-700 text-gray-100 rounded-lg px-1.5 py-2 text-sm focus:outline-none focus:border-blue-500">${woCompanyOptions(woTopCompany())}</select>
+        <input type="text" aria-label="圖號" class="wo-dw flex-1 min-w-[5rem] bg-gray-950 border border-gray-700 text-gray-100 placeholder-gray-500 rounded-lg px-3 py-2 text-sm font-mono focus:outline-none focus:border-blue-500" autocomplete="off" autocapitalize="characters" spellcheck="false">
         <div class="flex items-center gap-2 ml-auto">
           <div class="flex items-stretch">
             <button type="button" class="wo-minus w-9 bg-gray-800 hover:bg-gray-700 text-gray-300 font-bold rounded-l-lg border border-gray-700 transition" title="減 1">−</button>
-            <input type="text" inputmode="numeric" pattern="[0-9]*" maxlength="5" value="" autocomplete="off" class="wo-qty w-14 bg-gray-950 border-y border-gray-700 text-gray-100 text-center py-2 text-sm focus:outline-none focus:border-blue-500">
+            <input type="text" inputmode="numeric" pattern="[0-9]*" maxlength="5" value="" autocomplete="off" aria-label="數量" class="wo-qty w-14 bg-gray-950 border-y border-gray-700 text-gray-100 text-center py-2 text-sm focus:outline-none focus:border-blue-500">
             <button type="button" class="wo-plus w-9 bg-gray-800 hover:bg-gray-700 text-gray-300 font-bold rounded-r-lg border border-gray-700 transition" title="加 1">＋</button>
           </div>
           <button type="button" class="wo-del w-9 h-9 flex items-center justify-center rounded-lg text-gray-500 hover:text-red-400 hover:bg-gray-800 transition" title="刪除這一列">✕</button>
@@ -4418,7 +4451,7 @@
         <div class="bg-gray-900 border border-gray-800 rounded-xl p-4 shadow-xl">
           <div class="flex flex-wrap items-center justify-between gap-2 mb-2">
             <h2 class="text-base font-bold text-gray-100">單一尺寸每月趨勢</h2>
-            <select id="waSizeSel" class="bg-gray-950 border border-gray-700 text-gray-100 rounded-lg px-2 py-1.5 text-sm font-mono max-w-full focus:outline-none focus:border-blue-500">${sizeOpts}</select>
+            <select id="waSizeSel" aria-label="選擇尺寸" class="bg-gray-950 border border-gray-700 text-gray-100 rounded-lg px-2 py-1.5 text-sm font-mono max-w-full focus:outline-none focus:border-blue-500">${sizeOpts}</select>
           </div>
           <div class="relative w-full" style="height:220px"><canvas id="waChartSize"></canvas></div>
         </div>`;
