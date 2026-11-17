@@ -54,8 +54,10 @@
       body.sb-collapsed #titleRow { flex-direction: column; align-items: center; gap: 0.75rem; padding: 0; margin-bottom: 1.5rem; }
       body.sb-collapsed #btnTitle { align-items: center; }
       body.sb-collapsed #btnTitle svg { width: 2rem; height: 2rem; }
-      body.sb-collapsed aside nav { display: none !important; } /* 收起時只留 LOGO、☰（和管理員／倉庫的 ＋） */
+      /* 收起時：LOGO、☰、三個選單圖示（和管理員／倉庫的 ＋）；展開時圖示＋文字 */
       body.sb-collapsed .sb-label { display: none; }
+      body.sb-collapsed aside nav a { justify-content: center; padding-left: 0; padding-right: 0; }
+      body.sb-collapsed aside nav a > * + * { margin-left: 0 !important; }
       body.sb-collapsed #addBtnWrap { padding-left: 0; padding-right: 0; }
       body.sb-collapsed #btnOpenAdd { padding-left: 0; padding-right: 0; }
       body.sb-collapsed #btnOpenAdd > * + * { margin-left: 0 !important; }
@@ -104,15 +106,18 @@
       <nav class="space-y-1">
         <a href="#" id="nav-spec" title="配件查詢" aria-label="配件查詢" onclick="event.preventDefault(); switchView('search'); collapseSidebar();"
            class="flex items-center space-x-3 px-3 py-2.5 rounded-lg bg-blue-600 text-gray-100 font-medium transition cursor-default">
-          <span>配件查詢</span>
+          <svg class="w-5 h-5 flex-shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+          <span class="sb-label">配件查詢</span>
         </a>
         <a href="#" id="nav-inv" title="出入庫管理" aria-label="出入庫管理" onclick="event.preventDefault(); switchView('inventory'); collapseSidebar();"
            class="hidden flex items-center space-x-3 px-3 py-2.5 rounded-lg text-gray-400 hover:bg-gray-800 hover:text-gray-100 font-medium transition">
-          <span>出入庫管理</span>
+          <svg class="w-5 h-5 flex-shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 8 12 3 3 8v8l9 5 9-5Z"/><path d="m3 8 9 5 9-5"/><path d="M12 13v8"/></svg>
+          <span class="sb-label">出入庫管理</span>
         </a>
         <a href="#" id="nav-wo" title="工作單" aria-label="工作單" onclick="event.preventDefault(); switchView('workorder'); collapseSidebar();"
            class="hidden flex items-center space-x-3 px-3 py-2.5 rounded-lg text-gray-400 hover:bg-gray-800 hover:text-gray-100 font-medium transition">
-          <span>工作單</span>
+          <svg class="w-5 h-5 flex-shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="5" y="4" width="14" height="17" rx="2"/><path d="M9 2h6v4H9z"/><path d="M9 11h6M9 15h6"/></svg>
+          <span class="sb-label">工作單</span>
         </a>
       </nav>
     </div>
@@ -495,7 +500,10 @@
                      class="w-full bg-gray-950 border border-gray-700 text-gray-100 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-blue-500 [color-scheme:dark]">
             </div>
             <div>
-              <label for="woOrderName" class="block text-xs font-medium text-gray-400 mb-1">單名</label>
+              <div class="flex items-center justify-between mb-1">
+                <label for="woOrderName" class="block text-xs font-medium text-gray-400">單名</label>
+                <button type="button" id="woBtnNameMgr" onclick="openOptModal('單名')" aria-label="管理單名" title="新增、改名、刪除單名" class="wo-opt-mgr hidden text-xs font-semibold text-gray-300 hover:text-gray-100 bg-gray-800 hover:bg-gray-700 border border-gray-700 rounded-md px-2 py-0.5 transition">管理</button>
+              </div>
               <input type="text" id="woOrderName" maxlength="30" autocomplete="off"
                      class="w-full bg-gray-950 border border-gray-700 text-gray-100 placeholder-gray-500 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-blue-500">
             </div>
@@ -505,6 +513,7 @@
               <label for="woCompany" class="text-xs font-medium text-gray-400 whitespace-nowrap">品牌</label>
               <select id="woCompany" onchange="onWoCompanyChange()"
                       class="bg-gray-950 border border-gray-700 text-gray-100 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-blue-500"></select>
+              <button type="button" id="woBtnBrandMgr" onclick="openOptModal('品牌')" aria-label="管理品牌" title="新增、改名、刪除品牌" class="wo-opt-mgr hidden font-semibold text-gray-300 hover:text-gray-100 bg-gray-800 hover:bg-gray-700 border border-gray-700 rounded-md px-2.5 py-2 text-sm transition">管理</button>
               <button type="button" id="woBtnDrawingMgr" onclick="openDwModal()"
                       class="hidden bg-gray-800 hover:bg-gray-700 text-gray-300 hover:text-gray-100 text-sm font-semibold px-3 py-2 rounded-lg border border-gray-700 transition whitespace-nowrap">圖號管理</button>
             </div>
@@ -512,7 +521,7 @@
 
           <div id="woDrawingBox" class="space-y-2">
             <div class="hidden sm:flex items-center gap-2 text-xs font-medium text-gray-400">
-              <span class="w-[4.5rem]">品牌</span><span class="flex-1">圖號</span><span class="w-32 text-center">數量</span><span class="w-9"></span>
+              <span class="w-[4.5rem]">品牌</span><span class="flex-1">圖號,數量</span><span class="w-9"></span>
             </div>
             <div id="woRows" class="space-y-2"></div>
             <button type="button" onclick="addWoRow(true)"
@@ -869,6 +878,23 @@
   </div>
 
   <!-- ==================== 圖號管理（只有管理員） ==================== -->
+  <!-- 選項清單管理（工作單的品牌、單名；只有管理員） -->
+  <div id="optModal" class="hidden fixed inset-0 bg-black/75 backdrop-blur-sm z-50 flex items-center justify-center p-4" role="dialog" aria-modal="true" aria-labelledby="optTitle">
+    <div class="bg-gray-900 border border-gray-800 rounded-2xl w-full max-w-md p-5 space-y-4 shadow-2xl overflow-y-auto max-h-[92vh]">
+      <div class="flex justify-between items-center border-b border-gray-800 pb-3">
+        <h3 id="optTitle" class="text-lg font-bold text-gray-100 tracking-wide">管理品牌</h3>
+        <button type="button" onclick="closeOptModal()" aria-label="關閉" class="w-9 h-9 flex items-center justify-center rounded-lg text-gray-400 hover:text-gray-100 hover:bg-gray-800 transition">✕</button>
+      </div>
+      <div class="flex gap-2">
+        <input type="text" id="optNewName" maxlength="40" autocomplete="off" spellcheck="false" aria-label="新增名稱" placeholder="輸入新名稱"
+               class="flex-1 min-w-0 bg-gray-950 border border-gray-700 text-gray-100 placeholder-gray-500 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-blue-500">
+        <button type="button" id="optAddBtn" onclick="optAdd()" class="bg-blue-600 hover:bg-blue-500 text-gray-100 font-semibold px-4 py-2 rounded-lg transition text-sm whitespace-nowrap">新增</button>
+      </div>
+      <p id="optHint" class="text-xs text-gray-400"></p>
+      <div id="optList" class="divide-y divide-gray-800 border border-gray-800 rounded-lg"></div>
+    </div>
+  </div>
+
   <div id="dwModal" class="hidden fixed inset-0 bg-black/75 backdrop-blur-sm z-50 flex items-center justify-center p-4">
     <div class="bg-gray-900 border border-gray-800 rounded-2xl w-full max-w-lg p-6 space-y-5 shadow-2xl overflow-y-auto max-h-[92vh]">
       <div class="flex justify-between items-center border-b border-gray-800 pb-4">
@@ -945,7 +971,7 @@
     function uiAlert(msg) {
       uiToast(msg, /❌|失敗|無法|錯誤/.test(String(msg)) ? 'error' : 'warn');
     }
-    // uiConfirm(訊息, { okText, cancelText, danger, title }) → Promise<boolean>；Esc＝取消、Enter＝確認
+    // uiConfirm(訊息, { okText, cancelText, danger, title, altText, altDanger }) → Promise<true/false/'alt'>；Esc＝取消、Enter＝確認；有 altText 時多一個按鈕，按了回傳 'alt'
     let uiConfirmClose = null;
     function uiConfirm(message, opts) {
       opts = opts || {};
@@ -964,8 +990,9 @@
           <div class="bg-gray-900 border border-gray-800 rounded-2xl w-full max-w-sm p-5 space-y-4 shadow-2xl">
             ${opts.title ? `<h3 class="text-base font-bold text-gray-100">${invEsc(opts.title)}</h3>` : ''}
             <p class="ui-confirm-msg text-sm text-gray-100 whitespace-pre-line leading-relaxed"></p>
-            <div class="flex justify-end gap-2 pt-1">
+            <div class="flex flex-wrap justify-end gap-2 pt-1">
               <button type="button" class="ui-cancel bg-gray-800 hover:bg-gray-700 text-gray-300 hover:text-gray-100 font-semibold px-4 py-2 rounded-lg border border-gray-700 transition text-sm">${invEsc(opts.cancelText || '取消')}</button>
+              ${opts.altText ? `<button type="button" class="ui-alt ${opts.altDanger ? 'bg-red-600 hover:bg-red-500' : 'bg-gray-700 hover:bg-gray-600'} text-gray-100 font-semibold px-4 py-2 rounded-lg transition text-sm">${invEsc(opts.altText)}</button>` : ''}
               <button type="button" class="ui-ok ${okCls} text-gray-100 font-semibold px-4 py-2 rounded-lg transition text-sm">${invEsc(opts.okText || (opts.danger ? '刪除' : '確定'))}</button>
             </div>
           </div>`;
@@ -981,12 +1008,13 @@
         const onKey = e => {
           if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); done(false); }
           else if (e.key === 'Enter' && !e.isComposing) {
-            if (document.activeElement && document.activeElement.classList.contains('ui-cancel')) return; // 焦點在「取消」就照按鈕
+            if (document.activeElement && (document.activeElement.classList.contains('ui-cancel') || document.activeElement.classList.contains('ui-alt'))) return; // 焦點在其他按鈕就照按鈕
             e.preventDefault(); e.stopPropagation(); done(true);
           }
         };
         ov.querySelector('.ui-ok').addEventListener('click', () => done(true));
         ov.querySelector('.ui-cancel').addEventListener('click', () => done(false));
+        if (opts.altText) ov.querySelector('.ui-alt').addEventListener('click', () => done('alt')); // 第三個選項：回傳 alt
         ov.addEventListener('mousedown', e => { if (e.target === ov) done(false); });
         document.addEventListener('keydown', onKey, true);
         document.body.appendChild(ov);
@@ -2195,6 +2223,8 @@
       document.getElementById('nav-inv').classList.toggle('hidden', !canMove);
       document.getElementById('nav-wo').classList.toggle('hidden', !canWoLog);
       document.getElementById('woBtnDrawingMgr').classList.toggle('hidden', !isAdmin); // 圖號管理：只有管理員
+      document.querySelectorAll('.wo-opt-mgr').forEach(b => b.classList.toggle('hidden', !isAdmin)); // 品牌、單名管理：只有管理員
+      if (!isAdmin) closeOptModal();
       woUpdateSaveBtn(); // 工作單「儲存」：只有管理員
       rdApplyRole(loggedIn); // 回廠日期：新增／刪除給管理員、倉庫人員
       if (!isAdmin) closeDwModal();
@@ -3618,8 +3648,7 @@
         woUpdateSaveBtn();
       }
       woApplyRoleTabs();
-      woRefreshCompanies();
-      refreshOrderNames();
+      woLoadOptions().then(ok => { if (!ok) { woRefreshCompanies(); refreshOrderNames(); } }); // 後端還沒更新（沒有選項清單）就用舊方式
     }
     async function woRefreshCompanies() {
       if (authRole !== 'A' || !authPassword) return;
@@ -3674,60 +3703,101 @@
       input.addEventListener('compositionend', clean);
       input.addEventListener('blur', () => { input.value = woCleanBrand(input.value); });
     }
+    // 一列一欄「圖號,數量」：半形或全形逗號都可以、前後空白會去掉；沒打數量算 1
+    // 回傳 { empty } 或 { error } 或 { drawing, qty }
+    const WO_QTY_MAX = 99999;
+    function woParseLine(v) {
+      const t = woToHalf(String(v || '')).trim();   // 全形逗號（，）也會轉成半形
+      if (!t) return { empty: true };
+      const parts = t.split(',');
+      if (parts.length > 2) return { error: '只能有一個逗號（格式：圖號,數量）' };
+      const drawing = parts[0].trim().toUpperCase();
+      const qs = parts.length > 1 ? parts[1].trim() : '';
+      if (!drawing) return { error: '逗號前面要先打圖號' };
+      if (!/^[A-Z0-9-]+$/.test(drawing)) return { error: '圖號只能用英文、數字和 -' };
+      if (qs === '') return { drawing, qty: 1 };
+      if (!/^\d+$/.test(qs)) return { error: '數量只能是正整數' };
+      const qty = parseInt(qs, 10);
+      if (qty < 1) return { error: '數量要大於 0' };
+      if (qty > WO_QTY_MAX) return { error: '數量太大（最多 ' + WO_QTY_MAX + '）' };
+      return { drawing, qty };
+    }
+    // 顯示／清除這一列的紅字；回傳解析結果
+    function woCheckRow(row) {
+      const inp = row.querySelector('.wo-line'), err = row.querySelector('.wo-err');
+      const r = woParseLine(inp.value);
+      if (r.error) {
+        err.textContent = r.error; err.classList.remove('hidden');
+        inp.classList.add('border-red-500'); inp.setAttribute('aria-invalid', 'true');
+      } else {
+        err.textContent = ''; err.classList.add('hidden');
+        inp.classList.remove('border-red-500'); inp.removeAttribute('aria-invalid');
+      }
+      return r;
+    }
     function addWoRow(focus) {
       const wrap = document.getElementById('woRows');
       const row = document.createElement('div');
       row.className = 'wo-row flex flex-wrap items-center gap-2';
+      const errId = 'woErr' + (++addWoRow.n);
       row.innerHTML = `
         <select aria-label="品牌" class="wo-co w-[4.5rem] bg-gray-950 border border-gray-700 text-gray-100 rounded-lg px-1.5 py-2 text-sm focus:outline-none focus:border-blue-500">${woCompanyOptions(woTopCompany())}</select>
-        <input type="text" aria-label="圖號" class="wo-dw flex-1 min-w-[5rem] bg-gray-950 border border-gray-700 text-gray-100 placeholder-gray-500 rounded-lg px-3 py-2 text-sm font-mono focus:outline-none focus:border-blue-500" autocomplete="off" autocapitalize="characters" spellcheck="false">
-        <div class="flex items-center gap-2 ml-auto">
-          <div class="flex items-stretch">
-            <button type="button" class="wo-minus w-9 bg-gray-800 hover:bg-gray-700 text-gray-300 font-bold rounded-l-lg border border-gray-700 transition" title="減 1">−</button>
-            <input type="text" inputmode="numeric" pattern="[0-9]*" maxlength="5" value="" autocomplete="off" aria-label="數量" class="wo-qty w-14 bg-gray-950 border-y border-gray-700 text-gray-100 text-center py-2 text-sm focus:outline-none focus:border-blue-500">
-            <button type="button" class="wo-plus w-9 bg-gray-800 hover:bg-gray-700 text-gray-300 font-bold rounded-r-lg border border-gray-700 transition" title="加 1">＋</button>
-          </div>
-          <button type="button" class="wo-del w-9 h-9 flex items-center justify-center rounded-lg text-gray-500 hover:text-red-400 hover:bg-gray-800 transition" title="刪除這一列">✕</button>
-        </div>
-        <p class="wo-hint hidden w-full text-xs text-amber-400">圖號只能輸入英文、數字和 -</p>`;
+        <input type="text" aria-label="圖號,數量" aria-describedby="${errId}" class="wo-line flex-1 min-w-[8rem] bg-gray-950 border border-gray-700 text-gray-100 placeholder-gray-500 rounded-lg px-3 py-2 text-sm font-mono focus:outline-none focus:border-blue-500" autocomplete="off" autocorrect="off" autocapitalize="characters" spellcheck="false" enterkeyhint="next">
+        <button type="button" class="wo-del w-9 h-9 flex items-center justify-center rounded-lg text-gray-500 hover:text-red-400 hover:bg-gray-800 transition" title="刪除這一列" aria-label="刪除這一列">✕</button>
+        <p id="${errId}" class="wo-err hidden w-full text-xs text-red-400" role="alert"></p>`;
       const sel = row.querySelector('.wo-co');
-      const dw = row.querySelector('.wo-dw');
-      const qty = row.querySelector('.wo-qty');
+      const inp = row.querySelector('.wo-line');
       sel.onchange = () => { sel.dataset.custom = sel.value === woTopCompany() ? '' : '1'; };
-      const fixQty = () => { const n = parseInt(woDigits(qty.value), 10); qty.value = Number.isFinite(n) && n > 0 ? n : ''; };
-      woBindIdInput(dw, row.querySelector('.wo-hint'));
-      // 數量：只收數字（擋 - e . + 等）；預設空白，0 或空白都視為不計算
-      qty.addEventListener('keydown', e => { if (e.key.length === 1 && !/[0-9０-９]/.test(e.key) && !e.ctrlKey && !e.metaKey) e.preventDefault(); });
-      qty.addEventListener('input', () => { const v = woDigits(qty.value); if (v !== qty.value) qty.value = v; });
-      row.querySelector('.wo-minus').onclick = () => { fixQty(); const n = Math.max(0, Number(qty.value) - 1); qty.value = n > 0 ? n : ''; };
-      row.querySelector('.wo-plus').onclick = () => { fixQty(); qty.value = Number(qty.value) + 1; };
-      qty.onchange = fixQty;
-      qty.onblur = fixQty;
-      // Enter：圖號 → 數量 → 下一列（最後一列就自動新增一列）
-      dw.onkeydown = e => { if (e.key === 'Enter') { e.preventDefault(); qty.focus(); qty.select(); } };
-      qty.onkeydown = e => {
-        if (e.key !== 'Enter') return;
-        e.preventDefault(); fixQty();
-        const next = row.nextElementSibling;
-        if (next) next.querySelector('.wo-dw').focus(); else addWoRow(true);
+      // 打字時：全形英數和全形逗號轉半形、英文轉大寫（注音／拼音選字中不動）；已經有紅字的話即時重新檢查
+      const tidy = () => {
+        const before = inp.value;
+        const after = woToHalf(before).toUpperCase();
+        if (after !== before) {
+          const pos = woToHalf(before.slice(0, inp.selectionStart || 0)).length;
+          inp.value = after;
+          try { inp.setSelectionRange(pos, pos); } catch (e) {}
+        }
+        if (!row.querySelector('.wo-err').classList.contains('hidden')) woCheckRow(row);
       };
+      inp.addEventListener('input', e => { if (!e.isComposing) tidy(); });
+      inp.addEventListener('compositionend', tidy);
+      inp.addEventListener('blur', () => woCheckRow(row));
+      // Enter：檢查這一列 → 下一列（最後一列就自動新增一列）；選字中的 Enter 不算
+      inp.addEventListener('keydown', e => {
+        if (e.key !== 'Enter' || e.isComposing || e.keyCode === 229) return;
+        e.preventDefault();
+        const r = woCheckRow(row);
+        if (r.error) return;                 // 格式錯：留在這一列
+        if (r.empty) return;                 // 空的列不往下新增
+        const next = row.nextElementSibling;
+        if (next) next.querySelector('.wo-line').focus(); else addWoRow(true);
+      });
       row.querySelector('.wo-del').onclick = () => {
         if (wrap.children.length > 1) { row.remove(); return; }
-        dw.value = ''; qty.value = ''; sel.value = woTopCompany(); sel.dataset.custom = '';
+        inp.value = ''; woCheckRow(row); sel.value = woTopCompany(); sel.dataset.custom = '';
       };
       wrap.appendChild(row);
-      if (focus) dw.focus();
+      if (focus) inp.focus();
     }
+    addWoRow.n = 0;
 
+    // 讀所有列：格式錯就回傳 { error, row（第幾列）, el }；空的列略過
     function readWoItems() {
-      return Array.from(document.querySelectorAll('#woRows .wo-row')).map(row => {
-        const n = parseInt(woDigits(row.querySelector('.wo-qty').value), 10);
-        return {
-          company: woCleanBrand(row.querySelector('.wo-co').value || woTopCompany()),
-          drawing: woCleanDrawing(row.querySelector('.wo-dw').value), // 送出前再檢查一次
-          qty: Number.isFinite(n) && n >= 0 ? n : 0
-        };
-      }).filter(it => it.drawing && it.qty >= 1);
+      const items = [];
+      const rows = Array.from(document.querySelectorAll('#woRows .wo-row'));
+      let bad = null;
+      rows.forEach((row, i) => {
+        const r = woCheckRow(row);
+        if (r.error) { if (!bad) bad = { error: r.error, row: i + 1, el: row.querySelector('.wo-line') }; return; }
+        if (r.empty) return;
+        items.push({ company: woCleanBrand(row.querySelector('.wo-co').value || woTopCompany()), drawing: r.drawing, qty: r.qty });
+      });
+      return bad ? { bad } : { items };
+    }
+    // 跳出第幾列格式錯，游標移過去
+    function woShowBadRow(bad) {
+      showInvToast(`第 ${bad.row} 列格式不對：${bad.error}`, 'warn');
+      bad.el.focus();
     }
 
     function clearWorkOrder() {
@@ -3737,7 +3807,7 @@
       woLastResult = null;
       woSetFresh();
       document.getElementById('woResult').innerHTML = '';
-      document.querySelector('#woRows .wo-dw').focus();
+      document.querySelector('#woRows .wo-line').focus();
     }
 
     async function generateWorkOrder() {
@@ -3747,7 +3817,9 @@
         openLoginModal('工作單需要管理員密碼');
         return;
       }
-      const items = readWoItems();
+      const rd = readWoItems();
+      if (rd.bad) { woShowBadRow(rd.bad); return; }
+      const items = rd.items;
       if (!items.length) { showInvToast('請先輸入圖號', 'warn'); return; }
       woLastResult = null;
       woSetFresh();
@@ -3759,7 +3831,7 @@
       try {
         const r = await invApiPost({ action: 'getWorkOrder', password: authPassword, items });
         if (r.status === 'success' && r.data) {
-          if (Array.isArray(r.data.companies) && r.data.companies.length) setWoCompanies(r.data.companies);
+          if (!woOptsLoaded && Array.isArray(r.data.companies) && r.data.companies.length) setWoCompanies(r.data.companies);
           woLastResult = Object.assign({ mode: 'drawing' }, r.data);
           woSetFresh();
           renderWorkOrder();
@@ -3993,6 +4065,197 @@
     }
     // WL-FRONT-END
 
+    // ---------- 選項清單：工作單的品牌、單名（後端「選項清單」分頁；管理只有管理員） ----------
+    let woOptsLoaded = false;   // 已經從選項清單拿到品牌、單名（之後產生工作單不再用圖號對照的品牌覆蓋）
+    let optType = '品牌';
+    let optBusy = false;
+    // 讀選項清單；後端還沒更新或失敗回傳 false
+    async function woLoadOptions() {
+      if ((authRole !== 'A' && authRole !== 'B') || !authPassword) return false;
+      try {
+        const r = await invApiPost({ action: 'getOptions', password: authPassword });
+        if (r.status !== 'success' || !r.data || !Array.isArray(r.data['品牌']) || !Array.isArray(r.data['單名'])) { handleAuthError(r); return false; }
+        woOptsLoaded = true;
+        const brands = Array.isArray(r.data['品牌']) ? r.data['品牌'] : [];
+        if (brands.length) setWoCompanies(brands);
+        if (Array.isArray(r.data['單名'])) {
+          woOrderNames = r.data['單名'].map(woCleanOrderName).filter(Boolean);
+          saveOrderNameCache();
+        }
+        return true;
+      } catch (e) { return false; }
+    }
+    function optList() { return optType === '品牌' ? woCompanies.slice() : woOrderNames.slice(); }
+    function optClean(v) { return optType === '品牌' ? woCleanBrand(v) : woCleanOrderName(v); }
+    async function openOptModal(type) {
+      if (authRole !== 'A' || !authPassword) { openLoginModal('管理' + type + '需要管理員密碼'); return; }
+      optType = type;
+      document.getElementById('optTitle').textContent = '管理' + type;
+      const inp = document.getElementById('optNewName');
+      inp.value = ''; inp.placeholder = '輸入新的' + type;
+      inp.maxLength = type === '品牌' ? 40 : 30;
+      inp.setAttribute('aria-label', '新增' + type);
+      inp.setAttribute('autocapitalize', type === '品牌' ? 'characters' : 'off');
+      if (!inp.dataset.bound) {
+        inp.dataset.bound = '1';
+        inp.addEventListener('keydown', e => { if (e.key === 'Enter' && !e.isComposing && e.keyCode !== 229) { e.preventDefault(); optAdd(); } });
+      }
+      document.getElementById('optHint').textContent = type === '品牌'
+        ? '改名會連「圖號對照」裡這個品牌的圖號一起改；刪除會一起刪掉這個品牌的圖號。'
+        : '改名、刪除時會問你舊的工作單紀錄要不要一起改／刪。';
+      document.getElementById('optModal').classList.remove('hidden');
+      document.addEventListener('keydown', optOnKey);
+      renderOptList(true);
+      const ok = await woLoadOptions();
+      if (!ok) document.getElementById('optList').innerHTML = '<p class="p-4 text-sm text-red-400">讀不到選項清單（後端可能還沒更新到 v34）</p>';
+      else renderOptList();
+      setTimeout(() => inp.focus(), 30);
+    }
+    function closeOptModal() {
+      const m = document.getElementById('optModal');
+      if (!m || m.classList.contains('hidden')) return;
+      m.classList.add('hidden');
+      document.removeEventListener('keydown', optOnKey);
+    }
+    function optOnKey(e) {
+      if (e.key === 'Escape' && !document.getElementById('uiConfirm')) {
+        const editing = document.querySelector('#optList .opt-edit');
+        e.preventDefault();
+        if (editing) renderOptList(); else closeOptModal();
+      }
+    }
+    function renderOptList(loading) {
+      const box = document.getElementById('optList');
+      if (loading) { box.innerHTML = '<p class="p-4 text-sm text-gray-400">讀取中…</p>'; return; }
+      const list = optList();
+      if (!list.length) { box.innerHTML = `<p class="p-4 text-sm text-gray-400">還沒有${invEsc(optType)}</p>`; return; }
+      box.innerHTML = list.map((n, i) => `
+        <div class="opt-row flex items-center gap-2 px-3 py-2" data-i="${i}">
+          <span class="opt-name flex-1 min-w-0 truncate text-sm text-gray-100">${invEsc(n)}</span>
+          <button type="button" class="opt-ren text-xs font-semibold text-gray-300 hover:text-gray-100 bg-gray-800 hover:bg-gray-700 border border-gray-700 rounded-md px-2.5 py-1.5 transition" aria-label="改名 ${invEsc(n)}">改名</button>
+          <button type="button" class="opt-del text-xs font-semibold text-red-300 hover:text-gray-100 bg-gray-800 hover:bg-red-600 border border-gray-700 rounded-md px-2.5 py-1.5 transition" aria-label="刪除 ${invEsc(n)}">刪除</button>
+        </div>`).join('');
+      box.querySelectorAll('.opt-row').forEach(row => {
+        const name = list[Number(row.dataset.i)];
+        row.querySelector('.opt-ren').onclick = () => optStartRename(row, name);
+        row.querySelector('.opt-del').onclick = e => optDelete(name, e.currentTarget);
+      });
+    }
+    function optStartRename(row, name) {
+      renderOptList();
+      row = document.querySelector(`#optList .opt-row[data-i="${row.dataset.i}"]`);
+      row.innerHTML = `
+        <input type="text" class="opt-edit flex-1 min-w-0 bg-gray-950 border border-blue-500 text-gray-100 rounded-lg px-2 py-1.5 text-sm focus:outline-none" maxlength="${optType === '品牌' ? 40 : 30}" autocomplete="off" spellcheck="false" aria-label="新的名稱">
+        <button type="button" class="opt-save text-xs font-semibold text-gray-100 bg-green-700 hover:bg-green-600 rounded-md px-2.5 py-1.5 transition">儲存</button>
+        <button type="button" class="opt-cancel text-xs font-semibold text-gray-300 bg-gray-800 hover:bg-gray-700 border border-gray-700 rounded-md px-2.5 py-1.5 transition">取消</button>`;
+      const inp = row.querySelector('.opt-edit');
+      inp.value = name;
+      const save = () => optRename(name, inp.value, row.querySelector('.opt-save'));
+      row.querySelector('.opt-save').onclick = save;
+      row.querySelector('.opt-cancel').onclick = () => renderOptList();
+      inp.addEventListener('keydown', e => { if (e.key === 'Enter' && !e.isComposing && e.keyCode !== 229) { e.preventDefault(); save(); } });
+      inp.focus(); inp.select();
+    }
+    // 送出選項動作：有忙碌鎖；成功就重新讀清單
+    async function optPost(btn, payload) {
+      if (optBusy) return null;
+      optBusy = true;
+      const restore = uiBusy(btn) || (() => {});
+      try {
+        const r = await invApiPost(Object.assign({ password: authPassword, type: optType }, payload));
+        if (r.status !== 'success' && handleAuthError(r)) return null;
+        return r;
+      } catch (e) {
+        showInvToast('❌ 連線失敗，請檢查網路後再試一次', 'error');
+        return null;
+      } finally { restore(); optBusy = false; }
+    }
+    async function optImpact(name, btn) {
+      const r = await optPost(btn, { action: 'optionImpact', name });
+      if (!r) return null;
+      if (r.status !== 'success') { showInvToast('❌ ' + (r.message || '讀取失敗'), 'error'); return null; }
+      return r.data || {};
+    }
+    async function optAfter(r) {
+      if (!r) return false;
+      if (r.status !== 'success') { showInvToast('❌ ' + (r.message || '操作失敗'), 'error'); return false; }
+      showInvToast('✅ ' + (r.message || '完成'), 'success');
+      await woLoadOptions();
+      renderOptList();
+      return true;
+    }
+    async function optAdd() {
+      const inp = document.getElementById('optNewName');
+      const name = optClean(inp.value);
+      inp.value = name;
+      if (!name) { showInvToast('請輸入' + optType, 'warn'); inp.focus(); return; }
+      if (/^[=+\-@]/.test(name)) { showInvToast(optType + '不能用 = + - @ 開頭', 'warn'); inp.focus(); return; }
+      if (optList().some(x => x.toLowerCase() === name.toLowerCase())) { showInvToast('已經有' + optType + '「' + name + '」', 'warn'); inp.focus(); return; }
+      const r = await optPost(document.getElementById('optAddBtn'), { action: 'addOption', name });
+      if (await optAfter(r)) { inp.value = ''; inp.focus(); }
+    }
+    async function optRename(oldName, raw, btn) {
+      const name = optClean(raw);
+      if (!name) { showInvToast('請輸入新的' + optType, 'warn'); return; }
+      if (name === oldName) { renderOptList(); return; }
+      if (/^[=+\-@]/.test(name)) { showInvToast(optType + '不能用 = + - @ 開頭', 'warn'); return; }
+      if (name.toLowerCase() !== oldName.toLowerCase() && optList().some(x => x.toLowerCase() === name.toLowerCase())) { showInvToast('已經有' + optType + '「' + name + '」，不能改成同一個名字', 'warn'); return; }
+      const imp = await optImpact(oldName, btn);
+      if (!imp) return;
+      let payload = { action: 'renameOption', old_name: oldName, new_name: name };
+      if (optType === '品牌') {
+        const n = imp.drawings || 0;
+        if (!(await uiConfirm(`把品牌「${oldName}」改成「${name}」？\n會一起改 ${n} 筆圖號（圖號對照的公司欄）。`, { okText: '改名' }))) return;
+        payload.expected = n;
+      } else {
+        const n = imp.orders || 0;
+        if (n > 0) {
+          const ans = await uiConfirm(`把單名「${oldName}」改成「${name}」？\n舊的工作單紀錄有 ${n} 張用「${oldName}」。`, { okText: `連 ${n} 張舊紀錄一起改`, altText: '只改選單' });
+          if (!ans) return;
+          payload.apply_records = ans === true;
+          payload.expected = n;
+        } else if (!(await uiConfirm(`把單名「${oldName}」改成「${name}」？`, { okText: '改名' }))) return;
+      }
+      let r = await optPost(btn, payload);
+      if (r && r.code === 'CONFLICT') {
+        const dates = (r.dates || []).join('、');
+        if (!(await uiConfirm(`改名後，這些日期會有兩張「${name}」：\n${dates}\n仍要改名嗎？`, { okText: '仍要改名' }))) return;
+        r = await optPost(btn, Object.assign({}, payload, { allow_conflict: true }));
+      }
+      if (await optAfter(r) && optType === '單名') {
+        const el = document.getElementById('woOrderName');
+        if (woCleanOrderName(el.value) === oldName) el.value = name;
+      }
+    }
+    async function optDelete(name, btn) {
+      const imp = await optImpact(name, btn);
+      if (!imp) return;
+      let payload = { action: 'deleteOption', name };
+      if (optType === '品牌') {
+        const n = imp.drawings || 0;
+        const msg = n > 0
+          ? `刪除品牌「${name}」？\n會刪掉圖號對照裡這個品牌的 ${n} 筆圖號，刪了無法復原。`
+          : `刪除品牌「${name}」？\n圖號對照裡沒有這個品牌的圖號。`;
+        if (!(await uiConfirm(msg, { danger: true, okText: n > 0 ? `刪除品牌和 ${n} 筆圖號` : '刪除品牌' }))) return;
+        payload.expected = n;
+      } else {
+        const n = imp.orders || 0;
+        if (n > 0) {
+          const ans = await uiConfirm(`從清單刪除單名「${name}」？\n舊的工作單紀錄有 ${n} 張用這個單名，要保留還是一起刪？`, { okText: '保留紀錄，只刪清單', altText: `一起刪除 ${n} 張紀錄`, altDanger: true });
+          if (!ans) return;
+          if (ans === 'alt') {
+            if (!(await uiConfirm(`確定要刪除 ${n} 張「${name}」的工作單紀錄？\n刪了無法復原，統計和分析也會少掉這些資料。`, { danger: true, okText: `刪除 ${n} 張紀錄` }))) return;
+            payload.delete_records = true;
+          }
+          payload.expected = n;
+        } else if (!(await uiConfirm(`從清單刪除單名「${name}」？\n沒有工作單紀錄用這個單名。`, { danger: true }))) return;
+      }
+      const r = await optPost(btn, payload);
+      if (await optAfter(r) && optType === '單名' && payload.delete_records && rdIsRendered('wlResult')) {
+        try { loadWorkOrderLog(); } catch (e) {}
+      }
+    }
+
     // ---------- 單名下拉選單（名單＝工作單紀錄裡用過的單名＋這台裝置新增的；輸入新單名就會加入） ----------
     const ORDER_NAME_CACHE_KEY = 'wo_order_names';
     let woOrderNames = [];
@@ -4118,6 +4381,7 @@
       }
       const totals = woCurrentTotals();
       if (!totals.length) { showInvToast('請先產生工作單', 'warn'); return; }
+      { const rd = readWoItems(); if (rd.bad) { woShowBadRow(rd.bad); return; } }
       if (woDirty) { showInvToast('輸入改過了，請先重新按「產生工作單」', 'warn'); return; }
       if (woSavedId) return;
       const date = document.getElementById('woDate').value;
