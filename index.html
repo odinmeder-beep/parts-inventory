@@ -3869,13 +3869,17 @@
       const m = s.match(/^(.*?)\s*[#＃]\s*(\d+)\s*$/);
       return (m ? m[1] : s).trim();
     }
-    // 合併總表：所有圖號的所有位置，依尺寸加總需求數量（寫什麼就統計什麼，不比對資料庫）
+    // 合併用的尺寸 key：統一寫法後不分大小寫，數字照數值比（40*12*37.50 和 40*12*37.5 算同一個；偏、鐵這些字照樣算進 key）
+    function woSizeKey(text) {
+      return String(text || '').toLowerCase().replace(/\d+(?:\.\d+)?/g, n => String(Number(n)));
+    }
+    // 合併總表：所有圖號的所有位置，依尺寸加總需求數量（寫什麼就統計什麼，不比對料號；找不到料號、對到多個料號、格式不對的尺寸也照算）
     function woSizeTotals(d) {
       const map = {}, list = [];
       d.details.forEach(g => g.lines.forEach(l => {
         const text = woNormSize(woSizeText(l.size));
         if (!text) return;
-        const k = text.toLowerCase();
+        const k = woSizeKey(text);
         if (!map[k]) { map[k] = { size: text, total: 0, sources: [] }; list.push(map[k]); }
         map[k].total += Number(l.need) || 0;
         map[k].sources.push(`${g.drawing} ${l.position}`);
@@ -4022,8 +4026,7 @@
       return g;
     }
     const WO_CARD_POS = [['F上', 'R上'], ['F下', 'R下']];
-    const WO_CARD_WARN = { none: '找不到料號', dup: '對到多個料號', bad: '尺寸格式不對' };
-    // 卡片的一格：位置｜尺寸｜N pcs；沒有尺寸的位置兩格都是置中的「-」
+    // 卡片的一格：位置｜尺寸｜N pcs；沒有尺寸的位置兩格都是置中的「-」。不顯示料號比對結果（智祥：目前不需要）
     // 配色跟結果表格（woTable／rv-table）一樣：位置像表頭（bg-gray-800、border-gray-700），格子斑馬紋（#111827／#0b1120）、框線 border-gray-800
     function woCardCell(l, pos, last) {
       const b = 'border-gray-800 border-l' + (last ? '' : ' border-b');
@@ -4032,10 +4035,8 @@
       const dash = `<div class="wc-empty flex items-center justify-center py-3 text-gray-500 ${bg} ${b}">-</div>`;
       const size = l ? woSizeText(l.size) : '';
       if (!size) return lab + dash + dash;
-      const warn = WO_CARD_WARN[l.status];
       return lab + `<div class="wc-size flex flex-col items-center justify-center text-center px-2 sm:px-4 py-3 min-w-0 ${bg} ${b}">
-          <div class="font-mono font-semibold text-[11px] sm:text-sm break-all ${warn ? 'text-amber-400' : 'text-gray-100'}">${invEsc(size)}</div>
-          ${warn ? `<div class="wc-warn text-[11px] sm:text-xs mt-0.5 whitespace-nowrap text-amber-400">${warn}</div>` : ''}
+          <div class="font-mono font-semibold text-[11px] sm:text-sm break-all text-gray-100">${invEsc(size)}</div>
         </div>
         <div class="wc-pcs flex items-center justify-center gap-1 py-3 whitespace-nowrap ${bg} ${b}">
           <span class="text-sm sm:text-base font-bold tabular-nums text-gray-100">${invEsc(l.need)}</span><span class="text-[10px] sm:text-[11px] text-gray-400">pcs</span>
