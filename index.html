@@ -496,6 +496,10 @@
       <!-- 🌟 子頁 1：工作單 -->
       <div id="woBoxForm" class="space-y-6">
         <div class="bg-gray-900 border border-gray-800 rounded-xl p-5 space-y-4 shadow-xl">
+          <div id="woEditBanner" class="hidden flex flex-wrap items-center justify-between gap-2 bg-gray-800 border border-blue-600 rounded-lg px-3 py-2" role="status">
+            <p class="text-sm text-gray-100">正在編輯 <span id="woEditName" class="font-bold"></span> 的工作單 <span id="woEditInfo" class="text-xs text-gray-400 font-mono"></span></p>
+            <button type="button" id="woBtnCancelEdit" onclick="cancelWoEdit()" class="bg-gray-900 hover:bg-gray-700 text-gray-300 hover:text-gray-100 text-sm font-semibold px-3 py-1.5 rounded-lg border border-gray-700 transition">取消編輯</button>
+          </div>
           <div class="grid grid-cols-2 gap-3">
             <div>
               <label for="woDate" class="block text-xs font-medium text-gray-400 mb-1">日期</label>
@@ -3596,6 +3600,7 @@
     let woDirty = false;       // 產生工作單之後輸入又改過（要重新產生才能儲存）
     let woSavedId = '';        // 這次產生的結果已經存進紀錄的單號
     let woSaving = false;
+    let woEditing = null;      // 正在編輯紀錄裡的哪一張：{ order_id, date, order_name }；儲存會覆蓋那張（後端 v37 replaceWorkOrder）
     let woReqId = '';          // 每次產生工作單換一個，避免連點或網路重送存兩次
 
     // ---------- 品牌選單 ----------
@@ -4557,7 +4562,7 @@
       btn.disabled = !has || woDirty || !!woSavedId || woSaving;
       btn.classList.toggle('opacity-50', btn.disabled);
       btn.classList.toggle('cursor-not-allowed', btn.disabled);
-      btn.textContent = woSaving ? '處理中…' : woSavedId ? '已儲存' : '儲存';
+      btn.textContent = woSaving ? '處理中…' : woSavedId ? '已儲存' : woEditing ? '儲存變更' : '儲存';
       btn.title = !has ? '請先產生工作單' : woDirty ? '輸入改過了，請先重新產生工作單' : woSavedId ? '這張已經存進紀錄' : '存到工作單紀錄（不扣庫存）';
     }
 
@@ -4581,25 +4586,30 @@
       if (!name) { showInvToast('請輸入單名', 'warn'); nameEl.focus(); return; }
       if (/^[=+\-@]/.test(name)) { showInvToast('單名不能用 = + - @ 開頭', 'warn'); nameEl.focus(); return; }
       if (!woCheckOrderName()) return; // 單名只能用清單裡的
-      if (!allowDup && !(await uiConfirm(`日期：${date}\n單名：${name}`, { okText: '儲存' }))) return; // 確認框只顯示日期、單名
+      const edit = woEditing; // 編輯紀錄裡的單：覆蓋原本那張，不會多一張
+      const ask = edit ? `會覆蓋原本的「${edit.order_name}」（${edit.date}）這張單\n日期：${date}\n單名：${name}` : `日期：${date}\n單名：${name}`;
+      if (!allowDup && !(await uiConfirm(ask, { okText: edit ? '覆蓋儲存' : '儲存' }))) return; // 確認框只顯示日期、單名
       woSaving = true;
       woUpdateSaveBtn();
       let again = false;
       try {
-        const r = await invApiPost({
-          action: 'saveWorkOrder', password: authPassword, date, order_name: name,
-          items: woSaveItems(woLastResult), // 每個圖號×尺寸一筆（含圖號、圖號數量）
+        const body = {
+          action: edit ? 'replaceWorkOrder' : 'saveWorkOrder', password: authPassword, date, order_name: name,
+          items: woSaveItems(woLastResult), // 每個圖號×位置一筆（含圖號、圖號數量、位置）
           request_id: woReqId + (allowDup ? '-dup' : ''), allow_duplicate: !!allowDup
-        });
+        };
+        if (edit) body.order_id = edit.order_id;
+        const r = await invApiPost(body);
         if (r.status === 'success') {
           addOrderName(name);
           woSavedId = (r.data && r.data.order_id) || 'saved';
           showInvToast('✅ ' + (r.message || '已儲存'), 'success');
+          if (edit) { woEndEdit(); wlAfterChange(); }
         } else if (r.code === 'DUPLICATE' && !allowDup) {
-          again = await uiConfirm(`${r.message}，還要再存一張嗎？`, { okText: '再存一張' });
+          again = await uiConfirm(edit ? `${r.message}，還要存成這個日期和單名嗎？` : `${r.message}，還要再存一張嗎？`, { okText: edit ? '照樣儲存' : '再存一張' });
         } else if (!handleAuthError(r)) {
           const old = /未知的操作指令|無效的 action/.test(r.message || '');
-          showInvToast(old ? '❌ 後端還沒更新工作單紀錄功能，請稍後再試' : '❌ ' + (r.message || '儲存失敗'), 'error');
+          showInvToast(old ? (edit ? '❌ 後端還沒更新編輯功能，請稍後再試' : '❌ 後端還沒更新工作單紀錄功能，請稍後再試') : '❌ ' + (r.message || '儲存失敗'), 'error');
         }
       } catch (err) {
         console.error(err);
@@ -4618,6 +4628,7 @@
       const btn = document.getElementById('woTabBtnForm');
       if (!btn) return;
       const isAdmin = authRole === 'A';
+      if (!isAdmin && woEditing) woEndEdit(); // 不是管理員就不能編輯
       ['woTabBtnForm', 'woTabBtnStats', 'woTabBtnAnalysis'].forEach(id => document.getElementById(id).classList.toggle('hidden', !isAdmin));
       const view = document.getElementById('viewWorkOrder');
       if (!isAdmin) {
@@ -4738,6 +4749,8 @@
         const sizeSum = wlSizeSum(items);
         const shownTotal = filtering ? sumQty(items) : o.total;
         const dwCount = groups.filter(g => g.drawing_no).length;
+        // 編輯：只給管理員；每一列都有圖號（v35 之後存的）才能帶回工作單
+        const canEdit = authRole === 'A' && allItems.length > 0 && allItems.every(it => it.drawing_no);
         const summary = (filtering ? '符合 ' : '') + (hasDw ? `${dwCount} 個圖號、` : '') + `${sizeSum.length} 種尺寸，共 ${shownTotal} 個`;
         // 有位置的圖號（v36 之後存的）用卡片，跟工作單「各圖號明細」卡片一樣；舊資料沒有位置照原本的表格（同尺寸合併）
         const groupHTML = groups.map(g => {
@@ -4770,6 +4783,7 @@
                   <button type="button" class="wl-view px-2.5 py-1 rounded-md text-gray-400 hover:text-gray-100" data-v="sum" aria-pressed="false">尺寸合計</button>
                 </div>` : ''}
                 <button type="button" class="wl-copy bg-gray-800 hover:bg-gray-700 text-gray-300 hover:text-gray-100 text-sm font-semibold px-3 py-1.5 rounded-lg border border-gray-700 transition" title="複製目前顯示的內容，可以直接貼到 Excel">複製</button>
+                ${canEdit ? '<button type="button" class="wl-edit bg-gray-800 hover:bg-gray-700 text-gray-100 text-sm font-semibold px-3 py-1.5 rounded-lg border border-blue-600 transition" title="把整張單帶回工作單頁編輯，儲存會覆蓋這張">編輯</button>' : ''}
                 ${authRole === 'A' ? '<button type="button" class="wl-del bg-red-600 hover:bg-red-500 text-gray-100 text-sm font-semibold px-3 py-1.5 rounded-lg transition shadow-md shadow-red-600/30">刪除整張</button>' : ''}
               </div>
             </div>
@@ -4794,8 +4808,125 @@
         });
         const del = card.querySelector('.wl-del');
         if (del) del.addEventListener('click', () => deleteWorkOrderLog(o, wlSizeSum(allItems).length, del));
+        const ed = card.querySelector('.wl-edit');
+        if (ed) ed.addEventListener('click', () => editWorkOrderLog(o, ed));
         box.appendChild(card);
       });
+    }
+    // ---------- 編輯紀錄裡的整張單（v37）----------
+    // 紀錄沒存品牌：用「圖號對照」找這個圖號在哪些品牌有；有好幾個品牌時，挑各位置尺寸跟紀錄最像的（一樣像就挑第一個）；都找不到就用目前的品牌
+    async function woResolveBrands(o, dws) {
+      const cos = woCompanies.length ? woCompanies : [woTopCompany()];
+      const all = [];
+      dws.forEach(d => cos.forEach(c => all.push({ company: c, drawing: d.drawing_no, qty: 1 })));
+      const details = [];
+      for (let i = 0; i < all.length; i += 200) {
+        const r = await invApiPost({ action: 'getWorkOrder', password: authPassword, items: all.slice(i, i + 200) });
+        if (r.status !== 'success' || !r.data) return { r };
+        (r.data.details || []).forEach(x => details.push(x));
+      }
+      const key = v => woSizeKey(woNormSize(woSizeText(v)));
+      const out = {};
+      dws.forEach(d => {
+        const rec = (o.items || []).filter(it => wlNormDrawing(it.drawing_no) === d.drawing_no);
+        const cands = details.filter(x => wlNormDrawing(x.drawing) === d.drawing_no);
+        let best = null, bestScore = -1;
+        cands.forEach(c => {
+          const lines = c.lines || [];
+          let score = 0;
+          rec.forEach(it => { if (lines.some(l => key(l.size) === key(it.size) && (!it.position || l.position === it.position))) score++; });
+          if (score > bestScore) { best = c; bestScore = score; }
+        });
+        out[d.drawing_no] = best ? woCleanBrand(best.company) : '';
+      });
+      return { brands: out };
+    }
+    // 這張單的圖號和圖號數量（照出現順序）
+    function wlOrderDrawings(o) {
+      const out = [], seen = {};
+      (Array.isArray(o.drawings) && o.drawings.length ? o.drawings : (o.items || [])).forEach(x => {
+        const dw = wlNormDrawing(x.drawing_no);
+        if (!dw || seen[dw]) return;
+        seen[dw] = true;
+        out.push({ drawing_no: dw, qty: Number(x.drawing_qty) || 1 });
+      });
+      return out;
+    }
+    function woFormHasInput() {
+      return !!woLastResult || [...document.querySelectorAll('#woRows .wo-line')].some(i => i.value.trim());
+    }
+    async function editWorkOrderLog(o, btn) {
+      if (authRole !== 'A' || !authPassword) return;
+      const dws = wlOrderDrawings(o);
+      if (!dws.length || !(o.items || []).every(it => it.drawing_no)) { showInvToast('這張是舊資料（沒有圖號），不能編輯', 'warn'); return; }
+      if (woEditing && woEditing.order_id === o.order_id) { switchWoTab('form'); return; }
+      const res = await withBusy(btn, async () => {
+        try {
+          // 先確認後端有編輯功能（v37）：送空單號，有的話會回「單號不正確」
+          const probe = await invApiPost({ action: 'replaceWorkOrder', password: authPassword, order_id: '' });
+          if (/未知的操作指令|無效的 action/.test(probe.message || '')) return { msg: '❌ 後端還沒更新編輯功能，請稍後再試' };
+          if (handleAuthError(probe)) return { handled: true };
+          const b = await woResolveBrands(o, dws);
+          if (b.r) return handleAuthError(b.r) ? { handled: true } : { msg: '❌ ' + (b.r.message || '讀取圖號對照失敗') };
+          return { brands: b.brands };
+        } catch (err) {
+          console.error(err);
+          return { msg: '❌ 連線失敗，請檢查網路後再試一次' };
+        }
+      }, '讀取中…');
+      if (!res || res.handled) return;
+      if (res.msg) { showInvToast(res.msg, 'error'); return; }
+      // 後端確認可以編輯之後，工作單頁有內容才先問
+      if (woFormHasInput() && !(await uiConfirm(`工作單頁目前的內容會換成「${o.order_name}」（${o.date}）這張單，要繼續嗎？`, { okText: '編輯' }))) return;
+      // 帶回工作單頁：日期（照原本的，可以改）、單名、每個圖號一列「圖號,數量」＋品牌
+      switchWoTab('form');
+      document.getElementById('woDate').value = o.date;
+      document.getElementById('woOrderName').value = woCleanOrderName(o.order_name);
+      const wrap = document.getElementById('woRows');
+      wrap.innerHTML = '';
+      const top = woTopCompany();
+      dws.forEach(d => {
+        addWoRow(false);
+        const row = wrap.lastElementChild, sel = row.querySelector('.wo-co');
+        const brand = res.brands[d.drawing_no] || top;
+        if (![...sel.options].some(op => op.value === brand)) sel.add(new Option(brand, brand));
+        sel.value = brand;
+        sel.dataset.custom = brand === top ? '' : '1';
+        row.querySelector('.wo-line').value = `${d.drawing_no},${d.qty}`;
+      });
+      woEditing = { order_id: o.order_id, date: o.date, order_name: o.order_name };
+      woShowEditBanner();
+      woLastResult = null;
+      document.getElementById('woResult').innerHTML = '';
+      woSetFresh();
+      await generateWorkOrder();
+    }
+    function woShowEditBanner() {
+      const on = !!woEditing;
+      document.getElementById('woEditBanner').classList.toggle('hidden', !on);
+      if (on) {
+        document.getElementById('woEditName').textContent = woEditing.order_name;
+        document.getElementById('woEditInfo').textContent = `${woEditing.date}｜${woEditing.order_id}`;
+      }
+      woUpdateSaveBtn();
+    }
+    // 結束編輯（存好了或不是管理員）：拿掉標示，工作單頁內容留著
+    function woEndEdit() {
+      woEditing = null;
+      woShowEditBanner();
+    }
+    // 取消編輯：拿掉標示，清空工作單頁（日期回到今天、單名清空）
+    function cancelWoEdit() {
+      woEndEdit();
+      document.getElementById('woDate').value = woToday();
+      document.getElementById('woOrderName').value = '';
+      clearWorkOrder();
+    }
+    // 紀錄有變動：紀錄重新讀、統計和分析下次重算
+    function wlAfterChange() {
+      if (rdIsRendered('wlResult')) loadWorkOrderLog();
+      document.getElementById('wsResult').innerHTML = '';
+      waClear();
     }
     async function deleteWorkOrderLog(o, sizeCount, btn) {
       if (authRole !== 'A') return;
