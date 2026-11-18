@@ -670,7 +670,7 @@
           <!-- 料號輸入區 (輸入後自動代入) -->
           <div class="space-y-1.5">
             <label for="existPartNoInput" class="block text-xs font-semibold text-gray-300">
-              輸入料號 <span class="text-blue-400 text-xs font-normal">（輸入後自動代入相關資料）</span>
+              輸入料號
             </label>
             <div class="flex gap-2">
               <div class="relative flex-1">
@@ -2420,7 +2420,7 @@
           location_out: document.getElementById('existLocOut').value,
           notes: document.getElementById('existNotes').value,
         };
-        updateBadge('typing', '✏️ 編輯模式中 (修改完成後請點選儲存)');
+        updateBadge('typing', ''); // 編輯模式不顯示狀態文字（智祥：移除）
       }
 
       // 2. 切換各欄位為可編輯狀態與樣式
@@ -2700,7 +2700,7 @@
           populateExistingFields(targetItem);
 
           if (exactMatch) {
-            updateBadge('success', '✅ 已自動代入資料');
+            updateBadge('success', ''); // 完全符合時不顯示狀態文字（智祥：移除）
           } else {
             updateBadge('success', `✅ 已代入 (找到 ${result.data.length} 筆相符)`);
           }
@@ -2837,7 +2837,7 @@
       const badge = document.getElementById('existStatusBadge');
       if (!badge) return;
       badge.innerText = text;
-      badge.className = "text-xs px-2.5 py-0.5 rounded-full transition-colors border ";
+      badge.className = "text-xs px-2.5 py-0.5 rounded-full transition-colors border " + (text ? '' : 'hidden ');
       if (type === 'loading') {
         badge.className += "bg-blue-950/80 text-blue-300 border-blue-700/60 animate-pulse";
       } else if (type === 'success') {
@@ -4092,7 +4092,7 @@
       const sec1 = document.createElement('div');
       const totals = woSizeTotals(d);
       const mRows = woMergedRows(totals);
-      sec1.appendChild(woSectionHeader('合併總表', `共 ${totals.length} 種尺寸（同一個尺寸的數量已加總）`,
+      sec1.appendChild(woSectionHeader('合併總表', `共 ${totals.length} 種尺寸`,
         () => woCopy(woToTSV(null, mRows.map(r => r.slice(0, 2))))));
       if (!totals.length) {
         const e = document.createElement('p');
