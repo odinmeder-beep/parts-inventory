@@ -457,7 +457,7 @@
         <div class="bg-gray-900 border border-gray-800 rounded-xl p-5 space-y-4 shadow-xl">
           <div>
             <label for="rdQKeyword" class="block text-xs font-medium text-gray-400 mb-1">料號或名稱</label>
-            <input type="text" id="rdQKeyword" autocomplete="off" spellcheck="false" placeholder="不填＝全部"
+            <input type="text" id="rdQKeyword" autocomplete="off" spellcheck="false"
                    onkeydown="if(event.key === 'Enter' && !event.isComposing){ event.preventDefault(); loadReturnDates(); }"
                    class="w-full bg-gray-950 border border-gray-700 text-gray-100 placeholder-gray-500 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-blue-500">
           </div>
@@ -624,7 +624,7 @@
               <input type="date" id="waTo" class="w-full bg-gray-950 border border-gray-700 text-gray-100 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-blue-500 [color-scheme:dark]">
             </div>
             <div class="col-span-2">
-              <label for="waName" class="block text-xs font-medium text-gray-400 mb-1">單名（不填＝全部）</label>
+              <label for="waName" class="block text-xs font-medium text-gray-400 mb-1">單名</label>
               <input type="text" id="waName" maxlength="30" autocomplete="off"
                      onkeydown="if(event.key === 'Enter' && !event.isComposing){ event.preventDefault(); loadWorkOrderAnalysis(); }"
                      class="w-full bg-gray-950 border border-gray-700 text-gray-100 placeholder-gray-500 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-blue-500">
@@ -3654,10 +3654,10 @@
         box.addEventListener('click', e => { if (e.target.closest('button')) dirty(); });
         const name = document.getElementById('woOrderName');
         name.addEventListener('blur', () => { name.value = woCleanOrderName(name.value); });
-        onComboSetup('woOrderName', true);   // 單名：下拉選單＋可直接輸入新單名
-        onComboSetup('wlName', false);       // 紀錄查詢的單名：下拉選單（不填＝全部）
+        onComboSetup('woOrderName', false);  // 單名：只能選清單裡的（新單名統一在「管理」新增）
+        onComboSetup('wlName', false);       // 紀錄查詢的單名：下拉選單（空白就是全部）
         // 分析的區間也用上面的預設（不再還原上次選的「近 6／12 個月、今年」；按鈕照樣可以用）
-        onComboSetup('waName', false);       // 分析的單名：下拉選單（不填＝全部）
+        onComboSetup('waName', false);       // 分析的單名：下拉選單（空白就是全部）
         woUpdateSaveBtn();
       }
       woApplyRoleTabs();
@@ -4042,6 +4042,19 @@
           <span class="text-sm sm:text-base font-bold tabular-nums text-gray-100">${invEsc(l.need)}</span><span class="text-[10px] sm:text-[11px] text-gray-400">pcs</span>
         </div>`;
     }
+    // 一張卡片：左邊圖號＋× N 台，右邊 F上/R上、F下/R下；by = { 位置: { size, need } }。edit 有給（{brand}）才能點圖號編輯
+    // 工作單「各圖號明細」和紀錄「依圖號」共用
+    function woCardHTML(drawing, qty, by, edit) {
+      const dw = edit
+        ? `<button type="button" class="wo-edit-dw text-left bg-transparent border-0 p-0 m-0 font-mono font-bold text-xl tracking-tight leading-tight break-all text-gray-100 cursor-pointer hover:underline" title="點一下編輯這個圖號" data-brand="${invEsc(edit.brand)}" data-drawing="${invEsc(drawing)}">${invEsc(drawing)}</button>`
+        : `<span class="font-mono font-bold text-xl tracking-tight leading-tight break-all text-gray-100">${invEsc(drawing)}</span>`;
+      const id = `<div class="wc-id flex flex-col justify-center gap-1 px-4 py-3 bg-gray-800" style="grid-row: span 2">
+          ${dw}
+          <span class="wc-qty text-sm text-gray-400">× ${invEsc(qty)} 台</span>
+        </div>`;
+      const body = WO_CARD_POS.map((row, r) => row.map(p => woCardCell(by[p], p, r === 1)).join('')).join('');
+      return `<article class="wc-card wc-grid rounded-lg border border-gray-800 overflow-hidden">${id}${body}</article>`;
+    }
     // 卡片模式：一個圖號一張卡（管理員點圖號可以編輯，跟表格一樣）；圖號對照沒填尺寸的，四格都是「-」
     function woCards(d) {
       const wrap = document.createElement('div');
@@ -4050,15 +4063,7 @@
       wrap.innerHTML = d.details.map(g => {
         const by = {};
         g.lines.forEach(l => { if (!by[l.position]) by[l.position] = l; });
-        const dw = authRole === 'A'
-          ? `<button type="button" class="wo-edit-dw text-left bg-transparent border-0 p-0 m-0 font-mono font-bold text-xl tracking-tight leading-tight break-all text-gray-100 cursor-pointer hover:underline" title="點一下編輯這個圖號" data-brand="${invEsc(g.company)}" data-drawing="${invEsc(g.drawing)}">${invEsc(g.drawing)}</button>`
-          : `<span class="font-mono font-bold text-xl tracking-tight leading-tight break-all text-gray-100">${invEsc(g.drawing)}</span>`;
-        const id = `<div class="wc-id flex flex-col justify-center gap-1 px-4 py-3 bg-gray-800" style="grid-row: span 2">
-            ${dw}
-            <span class="wc-qty text-sm text-gray-400">× ${invEsc(g.qty)} 台</span>
-          </div>`;
-        const body = WO_CARD_POS.map((row, r) => row.map(p => woCardCell(by[p], p, r === 1)).join('')).join('');
-        return `<article class="wc-card wc-grid rounded-lg border border-gray-800 overflow-hidden">${id}${body}</article>`;
+        return woCardHTML(g.drawing, g.qty, by, authRole === 'A' ? { brand: g.company } : null);
       }).join('');
       wrap.querySelectorAll('.wo-edit-dw').forEach(el => {
         el.addEventListener('click', () => openDwForEdit(el.dataset.brand, el.dataset.drawing));
@@ -4156,8 +4161,8 @@
     function wsMonthLabel(ym) { return String(ym).slice(0, 7); } // 一律 YYYY-MM
     // 圖號統一寫法（跟後端 wl_normDrawing_ 一樣）：全形轉半形、去空白、英文大寫
     function wlNormDrawing(v) { return woToHalf(String(v === undefined || v === null ? '' : v)).replace(/\s+/g, '').toUpperCase(); }
-    // 儲存用：每個「圖號×尺寸」一筆 { size, qty, drawing_no, drawing_qty }。
-    // 同一個圖號出現兩次（例如不同品牌同圖號）合併成一個：圖號數量相加、同尺寸數量相加。沒有任何尺寸的圖號不存。
+    // 儲存用：每個「圖號×位置」一筆 { size, qty, drawing_no, drawing_qty, position }（v36 存位置；v35 後端會忽略位置、自己依圖號＋尺寸合併）。
+    // 同一個圖號出現兩次（例如不同品牌同圖號）合併成一個：圖號數量相加、同位置同尺寸數量相加。沒有任何尺寸的圖號不存。
     function woSaveItems(d) {
       const dwQty = {}, map = {}, out = [];
       (d && Array.isArray(d.details) ? d.details : []).forEach(g => {
@@ -4166,12 +4171,12 @@
         if (!lines.length) return;
         dwQty[dk] = (dwQty[dk] || 0) + (Number(g.qty) || 0);
         lines.forEach(l => {
-          const size = woNormSize(woSizeText(l.size)), k = dk + '|' + size.toLowerCase();
-          if (!map[k]) { map[k] = { size, qty: 0, drawing_no: dw, dk }; out.push(map[k]); }
+          const size = woNormSize(woSizeText(l.size)), pos = String(l.position || ''), k = dk + '|' + pos + '|' + size.toLowerCase();
+          if (!map[k]) { map[k] = { size, qty: 0, drawing_no: dw, dk, position: pos }; out.push(map[k]); }
           map[k].qty += Number(l.need) || 0;
         });
       });
-      return out.map(x => ({ size: x.size, qty: x.qty, drawing_no: x.drawing_no, drawing_qty: dwQty[x.dk] }));
+      return out.map(x => ({ size: x.size, qty: x.qty, drawing_no: x.drawing_no, drawing_qty: dwQty[x.dk], position: x.position }));
     }
     // 紀錄：把一張單的尺寸列依圖號分組（照出現順序）；沒有圖號的（舊資料）放在 drawing_no '' 那組
     function wlGroupByDrawing(items) {
@@ -4193,6 +4198,17 @@
         map[k].qty += Number(it.qty) || 0;
       });
       return out;
+    }
+    // 紀錄卡片用：一個圖號的列都有位置（v36 之後存的）、而且每個位置只有一列，才回傳 { 位置: { size, need } }；否則 null（照表格顯示）
+    function wlCardPositions(g) {
+      if (!g || !g.drawing_no || !g.items.length) return null;
+      const by = {};
+      for (const it of g.items) {
+        const p = String(it.position || '');
+        if (!WO_CARD_POS.some(r => r.includes(p)) || by[p]) return null;
+        by[p] = { size: it.size, need: it.qty };
+      }
+      return by;
     }
     // 圖號排行：每張單每個圖號的圖號數量只算一次；沒有圖號的舊資料不算
     function waDrawingsFromOrders(orders, months) {
@@ -4420,6 +4436,20 @@
     let woOrderNames = [];
     try { woOrderNames = JSON.parse(localStorage.getItem(ORDER_NAME_CACHE_KEY) || '[]').filter(n => typeof n === 'string' && n); } catch (e) { woOrderNames = []; }
     function saveOrderNameCache() { try { localStorage.setItem(ORDER_NAME_CACHE_KEY, JSON.stringify(woOrderNames.slice(0, 300))); } catch (e) { /* 忽略 */ } }
+    // 工作單的單名只能用清單裡已有的（新單名統一在「管理」新增）；回傳錯誤訊息，沒問題回傳 ''
+    function woOrderNameError(name) {
+      const n = woCleanOrderName(name);
+      if (!n) return '請輸入單名';
+      if (!woOrderNames.some(x => x.toLowerCase() === n.toLowerCase())) return `單名「${n}」不在清單裡，請從下拉選單選擇，或先按「管理」新增`;
+      return '';
+    }
+    function woCheckOrderName() {
+      const el = document.getElementById('woOrderName');
+      el.value = woCleanOrderName(el.value);
+      const err = woOrderNameError(el.value);
+      if (err) { showInvToast(err, 'warn'); el.focus(); }
+      return !err;
+    }
     function addOrderName(n) {
       n = woCleanOrderName(n);
       if (!n) return;
@@ -4550,6 +4580,7 @@
       if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) { showInvToast('請選擇日期', 'warn'); document.getElementById('woDate').focus(); return; }
       if (!name) { showInvToast('請輸入單名', 'warn'); nameEl.focus(); return; }
       if (/^[=+\-@]/.test(name)) { showInvToast('單名不能用 = + - @ 開頭', 'warn'); nameEl.focus(); return; }
+      if (!woCheckOrderName()) return; // 單名只能用清單裡的
       if (!allowDup && !(await uiConfirm(`日期：${date}\n單名：${name}`, { okText: '儲存' }))) return; // 確認框只顯示日期、單名
       woSaving = true;
       woUpdateSaveBtn();
@@ -4708,15 +4739,21 @@
         const shownTotal = filtering ? sumQty(items) : o.total;
         const dwCount = groups.filter(g => g.drawing_no).length;
         const summary = (filtering ? '符合 ' : '') + (hasDw ? `${dwCount} 個圖號、` : '') + `${sizeSum.length} 種尺寸，共 ${shownTotal} 個`;
-        const groupHTML = groups.map(g => `
+        // 有位置的圖號（v36 之後存的）用卡片，跟工作單「各圖號明細」卡片一樣；舊資料沒有位置照原本的表格（同尺寸合併）
+        const groupHTML = groups.map(g => {
+          const by = wlCardPositions(g);
+          if (by) return `<div class="wl-dw-group wl-dw-card" data-drawing="${invEsc(g.drawing_no)}">${woCardHTML(g.drawing_no, g.drawing_qty, by, null)}</div>`;
+          const list = wlSizeSum(g.items);
+          return `
             <div class="wl-dw-group space-y-1.5" data-drawing="${invEsc(g.drawing_no)}">
               <div class="flex flex-wrap items-baseline gap-x-3 gap-y-0.5 text-sm">
                 <span class="font-mono font-bold ${g.drawing_no ? 'text-blue-300' : 'text-gray-500'}">${g.drawing_no ? invEsc(g.drawing_no) : '—'}</span>
                 ${g.drawing_no ? `<span class="text-gray-300">× ${invEsc(g.drawing_qty)}</span>` : ''}
-                <span class="text-xs text-gray-400">${g.items.length} 種尺寸，小計 ${g.total} 個</span>
+                <span class="text-xs text-gray-400">${list.length} 種尺寸，小計 ${g.total} 個</span>
               </div>
-              ${sizeTable(g.items)}
-            </div>`).join('');
+              ${sizeTable(list)}
+            </div>`;
+        }).join('');
         card.innerHTML = `
           <summary class="cursor-pointer select-none list-none px-4 py-3 flex flex-wrap items-center gap-x-3 gap-y-1">
             <span class="text-gray-500 group-open:rotate-90 transition-transform">▶</span>
@@ -4736,7 +4773,7 @@
                 ${authRole === 'A' ? '<button type="button" class="wl-del bg-red-600 hover:bg-red-500 text-gray-100 text-sm font-semibold px-3 py-1.5 rounded-lg transition shadow-md shadow-red-600/30">刪除整張</button>' : ''}
               </div>
             </div>
-            ${hasDw ? `<div class="wl-pane-dw space-y-4">${groupHTML}</div><div class="wl-pane-sum hidden">${sizeTable(sizeSum)}</div>` : `<div class="wl-pane-sum">${sizeTable(items)}</div>`}
+            ${hasDw ? `<div class="wl-pane-dw space-y-3">${groupHTML}</div><div class="wl-pane-sum hidden">${sizeTable(sizeSum)}</div>` : `<div class="wl-pane-sum">${sizeTable(items)}</div>`}
           </div>`;
         card.querySelectorAll('table').forEach(t => uiSortable(t));
         let view = hasDw ? 'dw' : 'sum';
@@ -4751,7 +4788,8 @@
           card.querySelector('.wl-pane-sum').classList.toggle('hidden', view !== 'sum');
         }));
         card.querySelector('.wl-copy').addEventListener('click', () => {
-          if (view === 'dw') woCopy(woToTSV(['圖號', '圖號數量', '尺寸', '數量'], items.map(it => [wlNormDrawing(it.drawing_no) || '—', wlNormDrawing(it.drawing_no) ? it.drawing_qty : '', it.size, it.qty])));
+          // 依圖號：每個圖號同尺寸合併成一列（有位置的紀錄一個尺寸可能分在兩個位置），格式跟以前一樣
+          if (view === 'dw') woCopy(woToTSV(['圖號', '圖號數量', '尺寸', '數量'], groups.flatMap(g => wlSizeSum(g.items).map(it => [g.drawing_no || '—', g.drawing_no ? g.drawing_qty : '', it.size, it.qty]))));
           else woCopy(woToTSV(null, (hasDw ? sizeSum : items).map(it => [it.size, it.qty])));
         });
         const del = card.querySelector('.wl-del');
