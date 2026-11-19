@@ -1942,27 +1942,44 @@
     function advInitState() { advState = { join: 'and', groups: [advNewGroup()] }; }
     function advNoValue(op) { return op === 'empty' || op === 'notempty'; }
 
-    // 數字欄只留數字和一個小數點（全形數字、全形句點也會轉成半形）
+    // 數字欄：只留英文、數字和一個小數點（全形轉半形、英文轉大寫、去空白），例如 12、12.5、M12、P1.5
     function advCleanNum(v) {
       let dot = false;
-      return String(v || '').replace(/[\uFF10-\uFF19\uFF0E]/g, ch => String.fromCharCode(ch.charCodeAt(0) - 0xFEE0))
-        .replace(/[^0-9.]/g, '')
+      return String(v || '').replace(/[\uFF01-\uFF5E]/g, ch => String.fromCharCode(ch.charCodeAt(0) - 0xFEE0))
+        .toUpperCase()
+        .replace(/[^A-Z0-9.]/g, '')
         .replace(/\./g, () => { if (dot) return ''; dot = true; return '.'; });
     }
+    // 數字欄的值：「0～5 個英文字母＋數字」→ { p: 英文開頭（沒有是 ''）, n: 數字 }；不是就 null（跟後端 v38 adv_parseNum_ strict 一樣）
+    // 只打數字：跟所有儲存格比（12 也找得到 M12）；有英文開頭（M12）：只跟同樣開頭的比
+    function advParseNum(v) {
+      const s = String(v || '').replace(/[\uFF01-\uFF5E]/g, ch => String.fromCharCode(ch.charCodeAt(0) - 0xFEE0)).replace(/[\s\u3000]+/g, '').toUpperCase();
+      const m = s.match(/^([A-Z]{0,5})(\d+(?:\.\d*)?|\.\d+)$/);
+      return m ? { p: m[1], n: parseFloat(m[2]) } : null;
+    }
 
-    // 把畫面狀態整理成送給後端的 query：缺值的條件列略過，沒有條件的群組也略過
+    // 把畫面狀態整理成送給後端的 query：缺值的條件列略過，沒有條件的群組也略過；數字欄打了但格式不對回傳 { error }
     function advBuildQuery(state) {
       const groups = [];
-      (state.groups || []).forEach(g => {
+      let error = '';
+      (state.groups || []).forEach((g, gi) => {
         const conds = [];
-        (g.conds || []).forEach(c => {
+        (g.conds || []).forEach((c, ci) => {
           const type = advFieldType(c.field);
           const v = String(c.value || '').trim(), v2 = String(c.value2 || '').trim();
           if (advNoValue(c.op)) { conds.push({ field: c.field, op: c.op }); return; }
           if (type === 'num') {
-            const ok = s => /^\d+(\.\d*)?$|^\.\d+$/.test(s);
-            if (!ok(v)) return;
-            if (c.op === 'between') { if (!ok(v2)) return; conds.push({ field: c.field, op: c.op, value: v, value2: v2 }); return; }
+            if (!v) return;
+            const where = `第 ${gi + 1} 組第 ${ci + 1} 個條件：`;
+            const a = advParseNum(v);
+            if (!a) { error = error || where + '請輸入數字，或英文字母加數字（例如 12、M12、P1.5）'; return; }
+            if (c.op === 'between') {
+              if (!v2) return;
+              const b = advParseNum(v2);
+              if (!b) { error = error || where + '「介於」要輸入兩個值（例如 8～12 或 M8～M12）'; return; }
+              if (b.p && b.p !== a.p) { error = error || where + '「介於」兩個值的英文開頭要一樣（例如 M8～M12）'; return; }
+              conds.push({ field: c.field, op: c.op, value: v, value2: v2 }); return;
+            }
             conds.push({ field: c.field, op: c.op, value: v });
           } else {
             if (!v.replace(/\s+/g, '')) return;
@@ -1971,6 +1988,7 @@
         });
         if (conds.length) groups.push({ join: g.join === 'or' ? 'or' : 'and', conds });
       });
+      if (error) return { error };
       return groups.length ? { join: state.join === 'or' ? 'or' : 'and', groups } : null;
     }
 
@@ -2008,7 +2026,7 @@
       inp.type = 'text';
       inp.setAttribute('aria-label', label || '條件值');
       inp.autocomplete = 'off';
-      if (type === 'num') inp.inputMode = 'decimal';
+      if (type === 'num') { inp.inputMode = 'text'; inp.autocapitalize = 'characters'; inp.spellcheck = false; inp.setAttribute('autocorrect', 'off'); } // 數字欄也可以打英文（M12、P1.5）
       inp.value = value || '';
       inp.className = 'w-full min-w-0 bg-gray-950 border border-gray-700 text-gray-100 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-blue-500';
       inp.addEventListener('input', e => {
@@ -2162,6 +2180,7 @@
       if (advBusy) return;
       const query = advBuildQuery(advState || { groups: [] });
       if (!query) { advSetMsg('請至少輸入一個條件'); return; }
+      if (query.error) { advSetMsg(query.error); return; }
       advSetMsg('');
       advBusy = true;
       showLoading();
