@@ -486,7 +486,7 @@
       <div class="border-b border-gray-800 pb-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <h1 class="text-2xl font-bold text-gray-100">工作單</h1>
         <div class="flex bg-gray-900 p-1 rounded-lg border border-gray-800 text-xs font-semibold gap-1">
-          <button id="woTabBtnForm" onclick="switchWoTab('form')" class="px-3 py-1.5 rounded-md bg-blue-600 text-gray-100 transition">工作單</button>
+          <button id="woTabBtnForm" onclick="switchWoTab('form')" class="px-3 py-1.5 rounded-md bg-blue-600 text-gray-100 transition">建立工作單</button>
           <button id="woTabBtnLog" onclick="switchWoTab('log')" class="px-3 py-1.5 rounded-md text-gray-400 hover:text-gray-100 transition">紀錄</button>
           <button id="woTabBtnStats" onclick="switchWoTab('stats')" class="px-3 py-1.5 rounded-md text-gray-400 hover:text-gray-100 transition">統計</button>
           <button id="woTabBtnAnalysis" onclick="switchWoTab('analysis')" class="px-3 py-1.5 rounded-md text-gray-400 hover:text-gray-100 transition">分析</button>
@@ -2244,11 +2244,10 @@
       const canMove = authRole === 'A' || authRole === 'B'; // 出入庫管理：管理員（全部分頁）、倉庫人員（只有「回廠日期」分頁）
       const canEditParts = loggedIn;             // 新增／修改配件資料：倉庫人員和管理員
       const isAdmin = authRole === 'A';
-      const canWorkOrder = authRole === 'A';     // 工作單（產生／儲存）：只有管理員看得到（後端允許 A、B 產生）
       const canWoLog = loggedIn;                 // 工作單「紀錄」「統計」：管理員和倉庫人員都看得到（刪除只有管理員）
       if (!canMove && !document.getElementById('viewInventory').classList.contains('hidden')) switchView('search');
       if (!canWoLog && !document.getElementById('viewWorkOrder').classList.contains('hidden')) switchView('search');
-      woApplyRoleTabs(); // 倉庫人員只看得到「紀錄」「統計」分頁
+      woApplyRoleTabs(); // 倉庫人員看得到「建立工作單」「紀錄」；統計、分析只有管理員
       if (canMove && !document.getElementById('viewInventory').classList.contains('hidden') && authRole !== 'A') switchInvTab('rd'); // 倉庫人員只留「回廠日期」
       invApplyRoleTabs();
       const roleLabel = document.getElementById('roleNameLabel');
@@ -2261,7 +2260,7 @@
       document.getElementById('woBtnDrawingMgr').classList.toggle('hidden', !isAdmin); // 圖號管理：只有管理員
       document.querySelectorAll('.wo-opt-mgr').forEach(b => b.classList.toggle('hidden', !isAdmin)); // 品牌、單名管理：只有管理員
       if (!isAdmin) closeOptModal();
-      woUpdateSaveBtn(); // 工作單「儲存」：只有管理員
+      woUpdateSaveBtn(); // 工作單「儲存」：管理員、倉庫人員（v39）
       rdApplyRole(loggedIn); // 回廠日期：新增／刪除給管理員、倉庫人員
       if (!isAdmin) closeDwModal();
       document.getElementById('tabBtnAdv').classList.toggle('hidden', !isAdmin); // 進階查詢：只有管理員
@@ -2930,7 +2929,7 @@
       if (view === 'returns') { view = 'inventory'; invTab = 'rd'; } // 回廠日期已收進出入庫管理
       if (view === 'inventory' && authRole !== 'A' && authRole !== 'B') view = 'search'; // 出入庫管理：管理員、倉庫人員（倉庫人員只有回廠日期）
       if (view === 'inventory' && authRole === 'B') invTab = 'rd';
-      if (view === 'workorder' && authRole !== 'A' && authRole !== 'B') view = 'search'; // 工作單頁：管理員；倉庫人員只看紀錄、統計
+      if (view === 'workorder' && authRole !== 'A' && authRole !== 'B') view = 'search'; // 工作單頁：管理員；倉庫人員有建立工作單、紀錄
       const navs = { search: 'nav-spec', inventory: 'nav-inv', workorder: 'nav-wo' };
       const views = { search: 'viewSearch', inventory: 'viewInventory', workorder: 'viewWorkOrder' };
       const activeNav = 'flex items-center space-x-3 px-3 py-2.5 rounded-lg bg-blue-600 text-gray-100 font-medium transition cursor-default';
@@ -3688,7 +3687,7 @@
       woLoadOptions().then(ok => { if (!ok) { woRefreshCompanies(); refreshOrderNames(); } }); // 後端還沒更新（沒有選項清單）就用舊方式
     }
     async function woRefreshCompanies() {
-      if (authRole !== 'A' || !authPassword) return;
+      if ((authRole !== 'A' && authRole !== 'B') || !authPassword) return; // v39：倉庫人員也會建立工作單
       try {
         const r = await invApiPost({ action: 'getWorkOrder', password: authPassword, items: [] });
         if (r.status === 'success' && r.data && Array.isArray(r.data.companies) && r.data.companies.length) setWoCompanies(r.data.companies);
@@ -3849,9 +3848,9 @@
 
     async function generateWorkOrder() {
       if (woBusy) return;
-      if (authRole !== 'A' || !authPassword) {
-        loginCallback = () => { if (authRole === 'A') generateWorkOrder(); };
-        openLoginModal('工作單需要管理員密碼');
+      if ((authRole !== 'A' && authRole !== 'B') || !authPassword) {
+        loginCallback = () => { if (authRole === 'A' || authRole === 'B') generateWorkOrder(); };
+        openLoginModal('建立工作單需要登入');
         return;
       }
       const rd = readWoItems();
@@ -4576,7 +4575,7 @@
     function woUpdateSaveBtn() {
       const btn = document.getElementById('woBtnSave');
       if (!btn) return;
-      btn.classList.toggle('hidden', authRole !== 'A');
+      btn.classList.toggle('hidden', authRole !== 'A' && authRole !== 'B'); // v39：倉庫人員也可以儲存
       const has = woCurrentTotals().length > 0;
       btn.disabled = !has || woDirty || !!woSavedId || woSaving;
       btn.classList.toggle('opacity-50', btn.disabled);
@@ -4587,11 +4586,12 @@
 
     async function saveWorkOrderLog(allowDup) {
       if (woSaving) return;
-      if (authRole !== 'A' || !authPassword) {
-        loginCallback = () => { if (authRole === 'A') saveWorkOrderLog(); };
-        openLoginModal('儲存工作單需要管理員密碼');
+      if ((authRole !== 'A' && authRole !== 'B') || !authPassword) {
+        loginCallback = () => { if (authRole === 'A' || authRole === 'B') saveWorkOrderLog(); };
+        openLoginModal('儲存工作單需要登入');
         return;
       }
+      if (woEditing && authRole !== 'A') { woEndEdit(); return; } // 編輯（覆蓋）只有管理員
       const totals = woCurrentTotals();
       if (!totals.length) { showInvToast('請先產生工作單', 'warn'); return; }
       { const rd = readWoItems(); if (rd.bad) { woShowBadRow(rd.bad); return; } }
@@ -4641,18 +4641,19 @@
     }
 
     // ---------- 子頁切換 ----------
-    // 「工作單」「統計」「分析」分頁只給管理員；倉庫人員進來直接看「紀錄」
-    const WO_ADMIN_TABS = ['form', 'stats', 'analysis'];
+    // 「統計」「分析」分頁只給管理員；「建立工作單」「紀錄」管理員、倉庫人員都有（v39）
+    const WO_ADMIN_TABS = ['stats', 'analysis'];
     function woApplyRoleTabs() {
       const btn = document.getElementById('woTabBtnForm');
       if (!btn) return;
       const isAdmin = authRole === 'A';
       if (!isAdmin && woEditing) woEndEdit(); // 不是管理員就不能編輯
-      ['woTabBtnForm', 'woTabBtnStats', 'woTabBtnAnalysis'].forEach(id => document.getElementById(id).classList.toggle('hidden', !isAdmin));
+      btn.classList.toggle('hidden', authRole !== 'A' && authRole !== 'B'); // 建立工作單：管理員、倉庫人員
+      ['woTabBtnStats', 'woTabBtnAnalysis'].forEach(id => document.getElementById(id).classList.toggle('hidden', !isAdmin));
       const view = document.getElementById('viewWorkOrder');
       if (!isAdmin) {
         ['wsResult', 'waResult'].forEach(id => { const el = document.getElementById(id); if (el) el.innerHTML = ''; }); // 換成非管理員就清掉統計、分析的內容
-        const onAdminTab = ['woBoxForm', 'woBoxStats', 'woBoxAnalysis'].some(id => !document.getElementById(id).classList.contains('hidden'));
+        const onAdminTab = ['woBoxStats', 'woBoxAnalysis'].some(id => !document.getElementById(id).classList.contains('hidden'));
         if (onAdminTab) switchWoTab('log', view.classList.contains('hidden'));
       }
       if (rdIsRendered('wlResult') && wlLastOrders) renderWorkOrderLog(wlLastOrders.orders, wlLastOrders.total, wlLastOrders.sizeQ, wlLastOrders.drawQ); // 刪除鈕跟著身分
@@ -4660,7 +4661,7 @@
     function rdIsRendered(id) { const el = document.getElementById(id); return !!(el && el.childElementCount); }
     function switchWoTab(tab, noLoad) {
       if (!noLoad) uiSaveState('woTab', tab);
-      if (WO_ADMIN_TABS.includes(tab) && authRole !== 'A') tab = 'log'; // 工作單、統計、分析只給管理員
+      if (WO_ADMIN_TABS.includes(tab) && authRole !== 'A') tab = 'log'; // 統計、分析只給管理員
       const map = { form: ['woBoxForm', 'woTabBtnForm'], log: ['woBoxLog', 'woTabBtnLog'], stats: ['woBoxStats', 'woTabBtnStats'], analysis: ['woBoxAnalysis', 'woTabBtnAnalysis'] };
       const defaultBtnClass = 'px-3 py-1.5 rounded-md text-gray-400 hover:text-gray-100 transition';
       const activeBtnClass = 'px-3 py-1.5 rounded-md bg-blue-600 text-gray-100 transition';
@@ -4725,7 +4726,8 @@
         const r = await wlPost({ action: 'getWorkOrders', from, to,
           order_name: woCleanOrderName(document.getElementById('wlName').value), size: sizeQ, drawing: drawQ }, 'wlBtnLoad', loadWorkOrderLog);
         if (!r) { box.innerHTML = ''; return; }
-        wlLastOrders = { orders: Array.isArray(r.data) ? r.data : [], total: Number(r.total) || 0, sizeQ, drawQ };
+        wlLastOrders = { orders: Array.isArray(r.data) ? r.data : [], total: Number(r.total) || 0, sizeQ, drawQ,
+          deleted: Array.isArray(r.deleted) ? r.deleted : [], at: Date.now() }; // v39：管理員另外拿到「已刪除（可還原）」
         renderWorkOrderLog(wlLastOrders.orders, wlLastOrders.total, sizeQ, drawQ);
       } finally {
         wlBusy = false;
@@ -4734,7 +4736,7 @@
     function renderWorkOrderLog(orders, total, sizeQ, drawQ) {
       const box = document.getElementById('wlResult');
       box.innerHTML = '';
-      if (!orders.length) { box.innerHTML = wlEmptyHTML('這個條件沒有紀錄'); return; }
+      if (!orders.length) { box.innerHTML = wlEmptyHTML('這個條件沒有紀錄'); wlAppendDeleted(box); return; }
       const head = document.createElement('p');
       head.className = 'text-sm text-gray-400';
       const sk = sizeQ ? sizeQ.toLowerCase() : '';
@@ -4831,6 +4833,7 @@
         if (ed) ed.addEventListener('click', () => editWorkOrderLog(o, ed));
         box.appendChild(card);
       });
+      wlAppendDeleted(box);
     }
     // ---------- 編輯紀錄裡的整張單（v37）----------
     // 紀錄沒存品牌：用「圖號對照」找這個圖號在哪些品牌有；有好幾個品牌時，挑各位置尺寸跟紀錄最像的（一樣像就挑第一個）；都找不到就用目前的品牌
@@ -4950,10 +4953,46 @@
     async function deleteWorkOrderLog(o, sizeCount, btn) {
       if (authRole !== 'A') return;
       const n = sizeCount || (Array.isArray(o.items) ? o.items.length : 0);
-      if (!(await uiConfirm(`確定要刪除 ${o.date}「${o.order_name}」這整張單嗎？會連同單裡全部 ${n} 種尺寸（共 ${o.total} 個）一起刪除，無法復原。`, { danger: true }))) return;
+      if (!(await uiConfirm(`確定要刪除 ${o.date}「${o.order_name}」這整張單嗎？會連同單裡全部 ${n} 種尺寸（共 ${o.total} 個）一起刪除。24 小時內可以在紀錄下方的「已刪除（可還原）」還原，超過 24 小時就會真的刪掉。`, { danger: true }))) return;
       const r = await withBusy(btn, () => wlPost({ action: 'deleteWorkOrder', order_id: o.order_id }, null, () => deleteWorkOrderLog(o, sizeCount, btn)));
       if (!r) return;
-      showToast('已刪除', true);
+      showToast('已刪除（24 小時內可以還原）', true);
+      loadWorkOrderLog();
+      document.getElementById('wsResult').innerHTML = ''; // 統計要重算
+      waClear();                                           // 分析也要重算
+    }
+
+    // v39：已刪除（可還原）：只有管理員；刪除後 24 小時內可以還原，之後後端會真的刪掉
+    function wlRemainText(ms) {
+      const m = Math.max(0, Math.floor(ms / 60000));
+      if (m < 1) return '即將清除';
+      if (m < 60) return `剩 ${m} 分鐘`;
+      return `剩 ${Math.floor(m / 60)} 小時${m % 60 ? ` ${m % 60} 分` : ''}`;
+    }
+    function wlAppendDeleted(box) {
+      const list = authRole === 'A' && wlLastOrders && Array.isArray(wlLastOrders.deleted) ? wlLastOrders.deleted : [];
+      if (!list.length) return;
+      const passed = Date.now() - (wlLastOrders.at || Date.now());
+      const sec = document.createElement('section');
+      sec.id = 'wlDeleted';
+      sec.className = 'bg-gray-900/60 border border-dashed border-gray-700 rounded-xl p-4 space-y-2';
+      sec.innerHTML = `<h3 class="text-sm font-bold text-gray-300">已刪除（可還原）<span class="ml-2 text-xs font-normal text-gray-500">刪除後 24 小時內可以還原，之後會真的刪掉</span></h3>
+        <ul class="divide-y divide-gray-800">${list.map((o, i) => `
+          <li class="wl-del-row flex flex-wrap items-center gap-x-3 gap-y-1 py-2 text-sm" data-id="${invEsc(o.order_id)}">
+            <span class="font-mono text-gray-400">${invEsc(o.date)}</span>
+            <span class="font-bold text-gray-300 line-through decoration-gray-600">${invEsc(o.order_name)}</span>
+            <span class="text-gray-500">共 ${invEsc(o.total)} 個</span>
+            <span class="wl-remain text-xs text-amber-400">${invEsc(wlRemainText((Number(o.remain_ms) || 0) - passed))}</span>
+            <button type="button" class="wl-restore ml-auto bg-gray-800 hover:bg-gray-700 text-gray-100 text-sm font-semibold px-3 py-1 rounded-lg border border-green-600 transition" data-i="${i}">還原</button>
+          </li>`).join('')}</ul>`;
+      sec.querySelectorAll('.wl-restore').forEach(b => b.addEventListener('click', () => restoreWorkOrderLog(list[Number(b.dataset.i)], b)));
+      box.appendChild(sec);
+    }
+    async function restoreWorkOrderLog(o, btn) {
+      if (authRole !== 'A' || !o) return;
+      const r = await withBusy(btn, () => wlPost({ action: 'restoreWorkOrder', order_id: o.order_id }, null, () => restoreWorkOrderLog(o, btn)));
+      if (!r) return;
+      showToast(`已還原「${o.order_name}」`, true);
       loadWorkOrderLog();
       document.getElementById('wsResult').innerHTML = ''; // 統計要重算
       waClear();                                           // 分析也要重算
