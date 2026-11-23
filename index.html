@@ -4089,13 +4089,13 @@
     }
     // 一張卡片：左邊圖號＋× N 台，右邊 F上/R上、F下/R下；by = { 位置: { size, need } }。edit 有給（{brand}）才能點圖號編輯
     // 工作單「各圖號明細」和紀錄「依圖號」共用
-    function woCardHTML(drawing, qty, by, edit) {
+    function woCardHTML(drawing, qty, by, edit, brandSlot) {
       const dw = edit
         ? `<button type="button" class="wo-edit-dw text-left bg-transparent border-0 p-0 m-0 font-mono font-bold text-xl tracking-tight leading-tight break-all text-gray-100 cursor-pointer hover:underline" title="點一下編輯這個圖號" data-brand="${invEsc(edit.brand)}" data-drawing="${invEsc(drawing)}">${invEsc(drawing)}</button>`
         : `<span class="font-mono font-bold text-xl tracking-tight leading-tight break-all text-gray-100">${invEsc(drawing)}</span>`;
       const id = `<div class="wc-id flex flex-col justify-center gap-1 px-4 py-3 bg-gray-800" style="grid-row: span 2">
           ${dw}
-          <span class="wc-qty text-sm text-gray-400">× ${invEsc(qty)} 台</span>
+          <span class="wc-qty text-sm text-gray-400">× ${invEsc(qty)} 台</span>${brandSlot ? wlBrandSlotHTML(drawing) : ''}
         </div>`;
       const body = WO_CARD_POS.map((row, r) => row.map(p => woCardCell(by[p], p, r === 1)).join('')).join('');
       return `<article class="wc-card wc-grid rounded-lg border border-gray-800 overflow-hidden">${id}${body}</article>`;
@@ -4257,6 +4257,7 @@
     function wlCardPositions(g) {
       if (!g || !g.drawing_no || !g.items.length) return null;
       const by = {};
+      if (g.items.every(woIsEmptyItem)) return by; // v41b：沒有尺寸的圖號也用卡片，四格都是「-」
       for (const it of g.items) {
         const p = String(it.position || '');
         if (!WO_CARD_POS.some(r => r.includes(p)) || by[p]) return null;
@@ -4861,6 +4862,7 @@
       if (from && to && from > to) { showInvToast('開始日期不能晚於結束日期', 'warn'); return; }
       const box = document.getElementById('wlResult');
       wlBusy = true;
+      wlBrandCache = {}; wlBrandCos = null; // 品牌每次查詢紀錄重新對照（圖號對照可能改過）
       box.innerHTML = wlLoadingHTML('正在讀取紀錄…');
       const sizeQ = woNormSize(document.getElementById('wlSize').value);
       const dwEl = document.getElementById('wlDrawing');
@@ -4920,14 +4922,14 @@
         // 有位置的圖號（v36 之後存的）用卡片，跟工作單「各圖號明細」卡片一樣；舊資料沒有位置照原本的表格（同尺寸合併）
         const groupHTML = groups.map(g => {
           const by = wlCardPositions(g);
-          if (by) return `<div class="wl-dw-group wl-dw-card" data-drawing="${invEsc(g.drawing_no)}">${woCardHTML(g.drawing_no, g.drawing_qty, by, null)}</div>`;
+          if (by) return `<div class="wl-dw-group wl-dw-card" data-drawing="${invEsc(g.drawing_no)}">${woCardHTML(g.drawing_no, g.drawing_qty, by, null, true)}</div>`;
           const list = wlSizeSum(g.items);
           const noSize = !list.length && g.items.some(woIsEmptyItem); // v41：沒有尺寸的圖號，顯示一列 '-'
           return `
             <div class="wl-dw-group space-y-1.5" data-drawing="${invEsc(g.drawing_no)}">
               <div class="flex flex-wrap items-baseline gap-x-3 gap-y-0.5 text-sm">
                 <span class="font-mono font-bold ${g.drawing_no ? 'text-blue-300' : 'text-gray-500'}">${g.drawing_no ? invEsc(g.drawing_no) : '—'}</span>
-                ${g.drawing_no ? `<span class="text-gray-300">× ${invEsc(g.drawing_qty)}</span>` : ''}
+                ${g.drawing_no ? `<span class="text-gray-300">× ${invEsc(g.drawing_qty)}</span>${wlBrandSlotHTML(g.drawing_no)}` : ''}
                 <span class="text-xs text-gray-400">${noSize ? '沒有尺寸' : `${list.length} 種尺寸，小計 ${g.total} 個`}</span>
               </div>
               ${sizeTable(noSize ? [{ size: WO_EMPTY_SIZE, qty: 0 }] : list)}
@@ -4977,8 +4979,60 @@
         const ed = card.querySelector('.wl-edit');
         if (ed) ed.addEventListener('click', () => editWorkOrderLog(o, ed));
         box.appendChild(card);
+        if (card.open) wlFillBrands(card);                                    // 打開的單才去查品牌
+        card.addEventListener('toggle', () => { if (card.open) wlFillBrands(card); });
       });
       wlAppendDeleted(box);
+    }
+    // ---------- 紀錄卡片的品牌（v41c）：紀錄沒存品牌，用「圖號對照」查這個圖號在哪些品牌有 ----------
+    // 用現有的 getWorkOrder（建立工作單用的唯讀查詢，管理員和倉庫人員都能用）：先拿全部品牌，再把「圖號×每個品牌」丟進去，查得到的就是對照的品牌。
+    // 只查打開的單、查過的圖號記起來（每次按「查詢紀錄」重查）；查不到就不顯示那一行；查詢失敗也不影響紀錄。
+    let wlBrandCache = {}, wlBrandCos = null, wlBrandWait = {};
+    function wlBrandSlotHTML(dw) {
+      const k = wlNormDrawing(dw), b = wlBrandCache[k];
+      const txt = Array.isArray(b) ? b.join(' / ') : '';
+      return `<span class="wl-brand text-xs text-gray-500 leading-tight break-all${txt ? '' : ' hidden'}" data-dw="${invEsc(k)}">${invEsc(txt)}</span>`;
+    }
+    function wlShowBrands(keys) {
+      document.querySelectorAll('#wlResult .wl-brand').forEach(el => {
+        if (keys && !keys.includes(el.dataset.dw)) return;
+        const b = wlBrandCache[el.dataset.dw];
+        const txt = Array.isArray(b) ? b.join(' / ') : '';
+        el.textContent = txt;
+        el.classList.toggle('hidden', !txt);
+      });
+    }
+    async function wlFillBrands(root) {
+      if ((authRole !== 'A' && authRole !== 'B') || !authPassword || !root) return;
+      const keys = [...new Set([...root.querySelectorAll('.wl-brand')].map(el => el.dataset.dw).filter(Boolean))]
+        .filter(k => !Array.isArray(wlBrandCache[k]) && !wlBrandWait[k]);
+      if (!keys.length) return;
+      keys.forEach(k => { wlBrandWait[k] = true; });
+      try {
+        if (!wlBrandCos) {
+          const r = await invApiPost({ action: 'getWorkOrder', password: authPassword, items: [] });
+          if (r.status !== 'success' || !r.data || !Array.isArray(r.data.companies)) return;
+          wlBrandCos = r.data.companies.map(c => String(c || '').trim()).filter(Boolean);
+        }
+        const cos = wlBrandCos, all = [];
+        keys.forEach(k => cos.forEach(c => all.push({ company: c, drawing: k, qty: 1 })));
+        const found = {};
+        keys.forEach(k => { found[k] = []; });
+        for (let i = 0; i < all.length; i += 200) {
+          const r = await invApiPost({ action: 'getWorkOrder', password: authPassword, items: all.slice(i, i + 200) });
+          if (r.status !== 'success' || !r.data) return;
+          (r.data.details || []).forEach(x => {
+            const k = wlNormDrawing(x.drawing), b = woCleanBrand(x.company);
+            if (found[k] && b && !found[k].some(y => y.toLowerCase() === b.toLowerCase())) found[k].push(b);
+          });
+        }
+        keys.forEach(k => { wlBrandCache[k] = found[k]; });
+        wlShowBrands(keys);
+      } catch (e) {
+        /* 查不到品牌不影響紀錄 */
+      } finally {
+        keys.forEach(k => { delete wlBrandWait[k]; });
+      }
     }
     // ---------- 編輯紀錄裡的整張單（v37）----------
     // 紀錄沒存品牌：用「圖號對照」找這個圖號在哪些品牌有；有好幾個品牌時，挑各位置尺寸跟紀錄最像的（一樣像就挑第一個）；都找不到就用目前的品牌
