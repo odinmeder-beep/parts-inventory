@@ -586,7 +586,7 @@
           <button id="wlBtnLoad" onclick="loadWorkOrderLog()" class="w-full bg-blue-600 hover:bg-blue-500 text-gray-100 font-semibold py-2.5 rounded-lg transition shadow-lg shadow-blue-600/30">查詢紀錄</button>
         </div>
         <!-- TEMP v40 import：匯入舊資料（只有管理員；用完整段拿掉，連同 script 裡的 TEMP v40 import 區塊和 woApplyRoleTabs 裡那一行） -->
-        <div class="flex justify-end -mt-1">
+        <div id="wiBar" class="hidden flex justify-end -mt-1">
           <button type="button" id="wiBtnOpen" onclick="wiOpen()" class="hidden text-xs font-semibold text-gray-300 hover:text-gray-100 bg-gray-800 hover:bg-gray-700 border border-gray-700 rounded-md px-2.5 py-1 transition">匯入舊資料</button>
         </div>
         <div id="wiBox" class="hidden bg-gray-900 border border-amber-700/60 rounded-xl p-4 sm:p-5 space-y-3 shadow-xl">
@@ -3923,7 +3923,7 @@
       const map = {}, list = [];
       d.details.forEach(g => g.lines.forEach(l => {
         const text = woNormSize(woSizeText(l.size));
-        if (!text) return;
+        if (!text || woIsEmptySize(text)) return; // v41：'-' 不是尺寸
         const k = woSizeKey(text);
         if (!map[k]) { map[k] = { size: text, total: 0, sources: [] }; list.push(map[k]); }
         map[k].total += Number(l.need) || 0;
@@ -4207,22 +4207,30 @@
     // 圖號統一寫法（跟後端 wl_normDrawing_ 一樣）：全形轉半形、去空白、英文大寫
     function wlNormDrawing(v) { return woToHalf(String(v === undefined || v === null ? '' : v)).replace(/\s+/g, '').toUpperCase(); }
     // 儲存用：每個「圖號×位置」一筆 { size, qty, drawing_no, drawing_qty, position }（v36 存位置；v35 後端會忽略位置、自己依圖號＋尺寸合併）。
-    // 同一個圖號出現兩次（例如不同品牌同圖號）合併成一個：圖號數量相加、同位置同尺寸數量相加。沒有任何尺寸的圖號不存。
+    // 同一個圖號出現兩次（例如不同品牌同圖號）合併成一個：圖號數量相加、同位置同尺寸數量相加。
+    // v41：沒有任何尺寸的圖號也存一筆：尺寸 '-'、數量 0、位置空白（後端 v41 才收；只算進圖號統計）
+    const WO_EMPTY_SIZE = '-';
+    function woIsEmptySize(v) { return String(v === undefined || v === null ? '' : v).trim() === WO_EMPTY_SIZE; }
     function woSaveItems(d) {
-      const dwQty = {}, map = {}, out = [];
+      const dwQty = {}, map = {}, out = [], hasLines = {}, emptyDw = [];
       (d && Array.isArray(d.details) ? d.details : []).forEach(g => {
         const dw = wlNormDrawing(g.drawing), dk = dw;
-        const lines = (Array.isArray(g.lines) ? g.lines : []).filter(l => woNormSize(woSizeText(l.size)));
-        if (!lines.length) return;
+        const lines = (Array.isArray(g.lines) ? g.lines : []).filter(l => { const t = woNormSize(woSizeText(l.size)); return t && !woIsEmptySize(t); });
         dwQty[dk] = (dwQty[dk] || 0) + (Number(g.qty) || 0);
+        if (!lines.length) { if (dw && !emptyDw.includes(dk)) emptyDw.push(dk); return; }
+        hasLines[dk] = true;
         lines.forEach(l => {
           const size = woNormSize(woSizeText(l.size)), pos = String(l.position || ''), k = dk + '|' + pos + '|' + size.toLowerCase();
           if (!map[k]) { map[k] = { size, qty: 0, drawing_no: dw, dk, position: pos }; out.push(map[k]); }
           map[k].qty += Number(l.need) || 0;
         });
       });
+      emptyDw.filter(dk => !hasLines[dk]).forEach(dk => out.push({ size: WO_EMPTY_SIZE, qty: 0, drawing_no: dk, dk, position: '' }));
       return out.map(x => ({ size: x.size, qty: x.qty, drawing_no: x.drawing_no, drawing_qty: dwQty[x.dk], position: x.position }));
     }
+    function woIsEmptyItem(it) { return woIsEmptySize(it && it.size); }
+    // 紀錄「依圖號」複製用：沒有尺寸的圖號留一列 '-'
+    function wlSizeSumOrEmpty(items) { const l = wlSizeSum(items); return !l.length && (items || []).some(woIsEmptyItem) ? [{ size: WO_EMPTY_SIZE, qty: 0 }] : l; }
     // 紀錄：把一張單的尺寸列依圖號分組（照出現順序）；沒有圖號的（舊資料）放在 drawing_no '' 那組
     function wlGroupByDrawing(items) {
       const groups = [], map = {};
@@ -4238,6 +4246,7 @@
     function wlSizeSum(items) {
       const map = {}, out = [];
       (items || []).forEach(it => {
+        if (woIsEmptyItem(it)) return; // v41：沒有尺寸的圖號（'-'）不算一種尺寸
         const k = woToHalf(String(it.size)).replace(/\s+/g, '').toLowerCase();
         if (!map[k]) { map[k] = { size: it.size, qty: 0 }; out.push(map[k]); }
         map[k].qty += Number(it.qty) || 0;
@@ -4578,6 +4587,111 @@
       document.addEventListener('pointerdown', e => { if (!wrap.contains(e.target)) close(); });
     }
 
+    // v41：尺寸／圖號自動完成（自己畫的下拉，不用 datalist：平板上 datalist 不穩）。分析的「單一尺寸每月趨勢」和統計的篩選共用。
+    // getItems() 回 [{ value, total }]（已照總量排好）；打字用「包含」篩，不分大小寫、全形半形、空白。
+    // opts.onPick(value)：點選或鍵盤選了一項；opts.onCommit(text, how)：沒選項時按 Enter（how='enter'）或離開輸入框（how='blur'）；
+    // opts.onInput(text)：每打一個字；opts.clearable：右邊有 × 清除（清除會觸發 onInput('')）
+    const UI_SUGGEST_MAX = 80;
+    const uiSuggestOpen = new Set();
+    document.addEventListener('pointerdown', e => uiSuggestOpen.forEach(x => { if (!x.wrap.isConnected) uiSuggestOpen.delete(x); else if (!x.wrap.contains(e.target)) x.close(); }));
+    function uiSuggestKey(v) { return woToHalf(String(v === undefined || v === null ? '' : v)).replace(/\s+/g, '').toLowerCase(); }
+    function uiSuggest(input, getItems, opts) {
+      opts = opts || {};
+      const wrap = document.createElement('div');
+      wrap.className = 'relative';
+      input.parentNode.insertBefore(wrap, input);
+      wrap.appendChild(input);
+      input.setAttribute('autocomplete', 'off');
+      input.setAttribute('role', 'combobox');
+      input.setAttribute('aria-autocomplete', 'list');
+      input.setAttribute('aria-expanded', 'false');
+      input.classList.add('pr-8');
+      const menu = document.createElement('div');
+      menu.className = 'ui-suggest hidden absolute z-30 left-0 right-0 mt-1 max-h-60 overflow-y-auto bg-gray-900 border border-gray-700 rounded-lg shadow-lg';
+      menu.setAttribute('role', 'listbox');
+      wrap.appendChild(menu);
+      let clr = null;
+      if (opts.clearable) {
+        clr = document.createElement('button');
+        clr.type = 'button'; clr.textContent = '×'; clr.setAttribute('aria-label', '清除');
+        clr.className = 'ui-suggest-clear absolute inset-y-0 right-0 w-8 flex items-center justify-center text-lg text-gray-400 hover:text-gray-100 transition';
+        clr.addEventListener('pointerdown', e => e.preventDefault());
+        clr.addEventListener('mousedown', e => e.preventDefault());
+        clr.addEventListener('click', () => { input.value = ''; syncClr(); close(); if (opts.onInput) opts.onInput(''); input.focus(); });
+        wrap.appendChild(clr);
+      }
+      const syncClr = () => { if (clr) clr.classList.toggle('hidden', !input.value); };
+      let shown = [], active = -1, filter = false, committed = input.value;
+      const close = () => { menu.classList.add('hidden'); input.setAttribute('aria-expanded', 'false'); active = -1; uiSuggestOpen.delete(api); };
+      const isOpen = () => !menu.classList.contains('hidden');
+      const mark = () => [...menu.querySelectorAll('[role=option]')].forEach((b, i) => {
+        const on = i === active;
+        b.classList.toggle('bg-gray-800', on);
+        b.setAttribute('aria-selected', on ? 'true' : 'false');
+        if (on) b.scrollIntoView({ block: 'nearest' });
+      });
+      const pick = v => { input.value = v; committed = v; syncClr(); close(); if (opts.onPick) opts.onPick(v); };
+      const render = () => {
+        const all = getItems() || [];
+        const q = filter ? uiSuggestKey(input.value) : '';
+        const list = q ? all.filter(x => uiSuggestKey(x.value).includes(q)) : all;
+        shown = list.slice(0, UI_SUGGEST_MAX);
+        menu.innerHTML = '';
+        shown.forEach(x => {
+          const b = document.createElement('button');
+          b.type = 'button';
+          b.setAttribute('role', 'option');
+          b.className = 'ui-suggest-item flex w-full items-center justify-between gap-3 text-left px-3 py-2.5 text-sm text-gray-100 hover:bg-gray-800';
+          b.innerHTML = `<span class="font-mono truncate">${invEsc(x.value)}</span><span class="text-xs text-gray-400 shrink-0">${invEsc(x.total)}</span>`;
+          b.addEventListener('pointerdown', e => e.preventDefault()); // 平板／滑鼠點選時輸入框不要先失去焦點
+          b.addEventListener('mousedown', e => e.preventDefault());
+          b.addEventListener('click', () => pick(x.value));
+          menu.appendChild(b);
+        });
+        if (list.length > shown.length) {
+          const p = document.createElement('p');
+          p.className = 'px-3 py-2 text-xs text-gray-500';
+          p.textContent = `還有 ${list.length - shown.length} 項，請再多打幾個字`;
+          menu.appendChild(p);
+        }
+        if (!shown.length) {
+          const p = document.createElement('p');
+          p.className = 'px-3 py-2 text-sm text-gray-500';
+          p.textContent = opts.emptyText || '沒有符合的項目';
+          menu.appendChild(p);
+        }
+        active = -1;
+      };
+      const open = f => { filter = !!f; render(); menu.classList.remove('hidden'); input.setAttribute('aria-expanded', 'true'); uiSuggestOpen.add(api); };
+      const commit = how => {
+        if (input.value === committed && how === 'blur') return;
+        committed = input.value;
+        if (opts.onCommit) opts.onCommit(input.value, how);
+      };
+      input.addEventListener('focus', () => open(false));
+      input.addEventListener('click', () => { if (!isOpen()) open(false); });
+      input.addEventListener('input', () => { syncClr(); open(true); if (opts.onInput) opts.onInput(input.value); });
+      input.addEventListener('keydown', e => {
+        if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+          e.preventDefault();
+          if (!isOpen()) open(filter);
+          if (!shown.length) return;
+          active = e.key === 'ArrowDown' ? (active + 1) % shown.length : (active <= 0 ? shown.length - 1 : active - 1);
+          mark();
+        } else if (e.key === 'Enter') {
+          e.preventDefault();
+          if (isOpen() && active >= 0 && shown[active]) pick(shown[active].value);
+          else { close(); commit('enter'); }
+        } else if (e.key === 'Escape') {
+          close();
+        }
+      });
+      input.addEventListener('blur', () => { close(); commit('blur'); });
+      syncClr();
+      const api = { wrap, close, setValue: v => { input.value = v; committed = v; syncClr(); } };
+      return api;
+    }
+
     // ---------- 工作單：儲存 ----------
     // 剛產生（或清掉）結果：重新允許儲存、換新的 request_id
     function woSetFresh() {
@@ -4587,18 +4701,23 @@
       woUpdateSaveBtn();
     }
 
-    // 目前結果的「尺寸｜總需求」（儲存就存這些）
+    // 目前結果的「尺寸｜總需求」
     function woCurrentTotals() {
       const d = woLastResult;
       if (!d) return [];
       return Array.isArray(d.details) ? woSizeTotals(d) : [];
+    }
+    // 儲存就存這些（v41：沒有尺寸的圖號也算，所以能不能存不再只看尺寸合計）
+    function woCurrentSaveItems() {
+      const d = woLastResult;
+      return d && Array.isArray(d.details) ? woSaveItems(d) : [];
     }
 
     function woUpdateSaveBtn() {
       const btn = document.getElementById('woBtnSave');
       if (!btn) return;
       btn.classList.toggle('hidden', authRole !== 'A' && authRole !== 'B'); // v39：倉庫人員也可以儲存
-      const has = woCurrentTotals().length > 0;
+      const has = woCurrentSaveItems().length > 0;
       btn.disabled = !has || woDirty || !!woSavedId || woSaving;
       btn.classList.toggle('opacity-50', btn.disabled);
       btn.classList.toggle('cursor-not-allowed', btn.disabled);
@@ -4614,8 +4733,7 @@
         return;
       }
       if (woEditing && authRole !== 'A') { woEndEdit(); return; } // 編輯（覆蓋）只有管理員
-      const totals = woCurrentTotals();
-      if (!totals.length) { showInvToast('請先產生工作單', 'warn'); return; }
+      if (!woCurrentSaveItems().length) { showInvToast('請先產生工作單', 'warn'); return; }
       { const rd = readWoItems(); if (rd.bad) { woShowBadRow(rd.bad); return; } }
       if (woDirty) { showInvToast('輸入改過了，請先重新按「產生工作單」', 'warn'); return; }
       if (woSavedId) return;
@@ -4650,7 +4768,10 @@
           again = await uiConfirm(edit ? `${r.message}，還要存成這個日期和單名嗎？` : `${r.message}，還要再存一張嗎？`, { okText: edit ? '照樣儲存' : '再存一張' });
         } else if (!handleAuthError(r)) {
           const old = /未知的操作指令|無效的 action/.test(r.message || '');
-          showInvToast(old ? (edit ? '❌ 後端還沒更新編輯功能，請稍後再試' : '❌ 後端還沒更新工作單紀錄功能，請稍後再試') : '❌ ' + (r.message || '儲存失敗'), 'error');
+          const oldEmpty = body.items.some(woIsEmptyItem) && /尺寸不能用 = \+ - @ 開頭：-|尺寸 - 的數量/.test(r.message || ''); // v40 以前的後端不收 '-'
+          showInvToast(old ? (edit ? '❌ 後端還沒更新編輯功能，請稍後再試' : '❌ 後端還沒更新工作單紀錄功能，請稍後再試')
+            : oldEmpty ? '❌ 後端還沒更新，暫時存不了沒有尺寸的圖號（' + body.items.filter(woIsEmptyItem).map(it => it.drawing_no).join('、') + '），請先把它拿掉再存'
+            : '❌ ' + (r.message || '儲存失敗'), 'error');
         }
       } catch (err) {
         console.error(err);
@@ -4801,14 +4922,15 @@
           const by = wlCardPositions(g);
           if (by) return `<div class="wl-dw-group wl-dw-card" data-drawing="${invEsc(g.drawing_no)}">${woCardHTML(g.drawing_no, g.drawing_qty, by, null)}</div>`;
           const list = wlSizeSum(g.items);
+          const noSize = !list.length && g.items.some(woIsEmptyItem); // v41：沒有尺寸的圖號，顯示一列 '-'
           return `
             <div class="wl-dw-group space-y-1.5" data-drawing="${invEsc(g.drawing_no)}">
               <div class="flex flex-wrap items-baseline gap-x-3 gap-y-0.5 text-sm">
                 <span class="font-mono font-bold ${g.drawing_no ? 'text-blue-300' : 'text-gray-500'}">${g.drawing_no ? invEsc(g.drawing_no) : '—'}</span>
                 ${g.drawing_no ? `<span class="text-gray-300">× ${invEsc(g.drawing_qty)}</span>` : ''}
-                <span class="text-xs text-gray-400">${list.length} 種尺寸，小計 ${g.total} 個</span>
+                <span class="text-xs text-gray-400">${noSize ? '沒有尺寸' : `${list.length} 種尺寸，小計 ${g.total} 個`}</span>
               </div>
-              ${sizeTable(list)}
+              ${sizeTable(noSize ? [{ size: WO_EMPTY_SIZE, qty: 0 }] : list)}
             </div>`;
         }).join('');
         card.innerHTML = `
@@ -4847,7 +4969,7 @@
         }));
         card.querySelector('.wl-copy').addEventListener('click', () => {
           // 依圖號：每個圖號同尺寸合併成一列（有位置的紀錄一個尺寸可能分在兩個位置），格式跟以前一樣
-          if (view === 'dw') woCopy(woToTSV(['圖號', '圖號數量', '尺寸', '數量'], groups.flatMap(g => wlSizeSum(g.items).map(it => [g.drawing_no || '—', g.drawing_no ? g.drawing_qty : '', it.size, it.qty]))));
+          if (view === 'dw') woCopy(woToTSV(['圖號', '圖號數量', '尺寸', '數量'], groups.flatMap(g => wlSizeSumOrEmpty(g.items).map(it => [g.drawing_no || '—', g.drawing_no ? g.drawing_qty : '', it.size, it.qty]))));
           else woCopy(woToTSV(null, (hasDw ? sizeSum : items).map(it => [it.size, it.qty])));
         });
         const del = card.querySelector('.wl-del');
@@ -5023,14 +5145,16 @@
 
 
     // ==================== TEMP v40 import：匯入舊資料（只有管理員；用完整段拿掉，連同 HTML 的 wiBtnOpen／wiBox 和 woApplyRoleTabs 裡那一行） ====================
+    const WO_IMPORT_ENABLED = false; // TEMP v40 import：v41 先關掉（所有人都看不到，管理員也是）；要再打開改成 true
     let wiLast = null;   // 最近一次預覽：{ text, data, reqId }
     function wiApplyRole() {
-      const isA = authRole === 'A';
-      document.getElementById('wiBtnOpen').classList.toggle('hidden', !isA);
-      if (!isA) wiClose(true);
+      const on = authRole === 'A' && WO_IMPORT_ENABLED;
+      document.getElementById('wiBar').classList.toggle('hidden', !on);
+      document.getElementById('wiBtnOpen').classList.toggle('hidden', !on);
+      if (!on) wiClose(true);
     }
     function wiOpen() {
-      if (authRole !== 'A') return;
+      if (authRole !== 'A' || !WO_IMPORT_ENABLED) return;
       document.getElementById('wiBox').classList.remove('hidden');
       woLoadOptions(); // 單名清單（預覽時提醒不在清單裡的單名）
       document.getElementById('wiText').focus();
@@ -5059,7 +5183,7 @@
       if (box.childElementCount) box.insertAdjacentHTML('afterbegin', '<p class="wi-stale text-amber-400 text-xs">內容改過了，請重新按「預覽」</p>');
     }
     async function wiPreview() {
-      if (authRole !== 'A') return;
+      if (authRole !== 'A' || !WO_IMPORT_ENABLED) return;
       const text = document.getElementById('wiText').value;
       if (!text.trim()) { showInvToast('請先貼上資料', 'warn'); return; }
       const n = text.split(/\r\n?|\n/).filter(l => l.trim()).length;
@@ -5099,7 +5223,7 @@
       wiSetImport(!d.error_total && d.orders > 0);
     }
     async function wiImport() {
-      if (authRole !== 'A' || !wiLast) return;
+      if (authRole !== 'A' || !WO_IMPORT_ENABLED || !wiLast) return;
       const text = document.getElementById('wiText').value;
       if (text !== wiLast.text) { wiOnInput(); return; }
       const d = wiLast.data;
@@ -5165,6 +5289,7 @@
         if (!nameMap[nm]) { nameMap[nm] = { name: nm, total: 0, count: 0 }; names.push(nameMap[nm]); }
         nameMap[nm].count++;
         (Array.isArray(o.items) ? o.items : []).forEach(it => {
+          if (woIsEmptyItem(it)) return; // v41：沒有尺寸的圖號只算進圖號排行
           const q = Number(it.qty) || 0, k = waSizeKey(it.size);
           if (!sizeMap[k]) { sizeMap[k] = { size: it.size, total: 0, months: {} }; sizes.push(sizeMap[k]); }
           sizeMap[k].total += q;
@@ -5243,11 +5368,10 @@
       const box = document.getElementById('waResult');
       box.innerHTML = '';
       if (!d) return;
-      if (!d.orderCount || !d.total) { box.innerHTML = wlEmptyHTML(d.name ? `這段期間沒有「${d.name}」的工作單紀錄` : '這段期間沒有工作單紀錄'); return; }
+      if (!d.orderCount || (!d.total && !(d.drawings || []).some(x => x.total > 0))) { box.innerHTML = wlEmptyHTML(d.name ? `這段期間沒有「${d.name}」的工作單紀錄` : '這段期間沒有工作單紀錄'); return; }
       const avg = Math.round(d.total / d.months.length * 10) / 10;
       const top = d.sizes.slice(0, 10);
       const dwTop = (d.drawings || []).filter(x => x.total > 0).slice(0, 10);
-      const sizeOpts = d.sizes.map((x, i) => `<option value="${i}">${invEsc(x.size)}（${x.total}）</option>`).join('');
       box.innerHTML = `
         ${d.note ? `<div class="bg-amber-950/40 border border-amber-800/50 rounded-xl px-4 py-3 text-sm text-amber-300">${invEsc(d.note)}</div>` : ''}
         <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
@@ -5255,19 +5379,28 @@
         </div>
         <p class="text-xs text-gray-500">${invEsc(d.from)} ～ ${invEsc(d.to)}，共 ${d.months.length} 個月${d.name ? `，單名含「${invEsc(d.name)}」` : ''}</p>
         ${d.hasChart ? '' : '<div class="bg-red-950/40 border border-red-800/50 rounded-xl px-4 py-3 text-sm text-red-300">圖表元件載入失敗（請檢查網路後重新分析），先顯示數字。</div>'}
+        <div id="waSizeSec" class="bg-gray-900 border border-gray-800 rounded-xl p-4 shadow-xl">
+          <div class="flex flex-wrap items-center justify-between gap-2 mb-2">
+            <h2 class="text-base font-bold text-gray-100">單一尺寸每月趨勢</h2>
+            <div class="w-full sm:w-64"><input id="waSizeInput" type="text" inputmode="text" spellcheck="false" aria-label="輸入或選擇尺寸" placeholder="輸入尺寸，例如 40*10" class="w-full bg-gray-950 border border-gray-700 text-gray-100 rounded-lg px-3 py-2 text-sm font-mono focus:outline-none focus:border-blue-500"></div>
+          </div>
+          <p id="waSizeMsg" class="hidden text-sm text-gray-400 py-8 text-center"></p>
+          <div id="waSizeBox" class="relative w-full" style="height:220px"><canvas id="waChartSize"></canvas></div>
+        </div>
         ${waSection('waChartMonth', '每月總用量', '', 240)}
         ${waSection('waChartTop', '用量最多的尺寸（前 10）', '點長條可以看該尺寸的每月趨勢', Math.max(160, top.length * 30 + 40))}
         ${dwTop.length ? waSection('waChartDrawing', '做最多的圖號（前 10）', '', Math.max(160, dwTop.length * 30 + 40))
           : '<div id="waDrawingEmpty" class="bg-gray-900 border border-gray-800 rounded-xl p-4 shadow-xl"><h2 class="text-base font-bold text-gray-100">做最多的圖號</h2><p class="text-sm text-gray-400 mt-1">這段期間的紀錄沒有圖號</p></div>'}
-        ${waSection('waChartName', '各單名用量占比', d.names.length > 8 ? '前 8 名，其餘併入「其他」' : '', 260)}
-        <div class="bg-gray-900 border border-gray-800 rounded-xl p-4 shadow-xl">
-          <div class="flex flex-wrap items-center justify-between gap-2 mb-2">
-            <h2 class="text-base font-bold text-gray-100">單一尺寸每月趨勢</h2>
-            <select id="waSizeSel" aria-label="選擇尺寸" class="bg-gray-950 border border-gray-700 text-gray-100 rounded-lg px-2 py-1.5 text-sm font-mono max-w-full focus:outline-none focus:border-blue-500">${sizeOpts}</select>
-          </div>
-          <div class="relative w-full" style="height:220px"><canvas id="waChartSize"></canvas></div>
-        </div>`;
-      document.getElementById('waSizeSel').addEventListener('change', e => waDrawSize(Number(e.target.value)));
+        ${waSection('waChartName', '各單名用量占比', d.names.length > 8 ? '前 8 名，其餘併入「其他」' : '', 260)}`;
+      // 單一尺寸：輸入框＋自動完成（這段期間的尺寸和總量），預設用量最多的尺寸
+      const sizeInput = document.getElementById('waSizeInput');
+      waSizeSuggest = uiSuggest(sizeInput, () => d.sizes.map(x => ({ value: x.size, total: x.total })), {
+        emptyText: '這段期間沒有符合的尺寸',
+        onPick: v => waSelectSize(v),
+        onCommit: v => { if (v.trim()) waSelectSize(v); }
+      });
+      if (d.sizes.length) waSizeSuggest.setValue(d.sizes[0].size);
+      else { sizeInput.disabled = true; sizeInput.placeholder = '沒有尺寸'; waSizeShowMsg('這段期間的紀錄沒有尺寸'); }
       if (!d.hasChart || !window.Chart) return;
       Chart.defaults.color = '#9ca3af';
       Chart.defaults.borderColor = '#1f2937';
@@ -5283,7 +5416,7 @@
         data: { labels: top.map(x => x.size), datasets: [{ label: '用量', data: top.map(x => x.total), backgroundColor: '#22c55e', borderRadius: 4 }] },
         options: Object.assign({}, base, {
           indexAxis: 'y', plugins: { legend: { display: false } }, scales: { x: { beginAtZero: true, ticks: { precision: 0 } } },
-          onClick: (e, els) => { if (els && els.length) { const i = els[0].index; document.getElementById('waSizeSel').value = String(i); waDrawSize(i); } }
+          onClick: (e, els) => { if (els && els.length && top[els[0].index]) waSelectSize(top[els[0].index].size); }
         })
       });
       if (dwTop.length) {
@@ -5304,7 +5437,31 @@
         data: { labels: nm.map(x => x.label), datasets: [{ data: nm.map(x => x.v), backgroundColor: nm.map((_, i) => WA_COLORS[i % WA_COLORS.length]), borderColor: '#111827' }] },
         options: Object.assign({}, base, { plugins: { legend: { position: 'right', labels: { boxWidth: 12 } } } })
       });
-      waDrawSize(0);
+      if (d.sizes.length) waDrawSize(0);
+    }
+    let waSizeSuggest = null;
+    function waSizeShowMsg(msg) {
+      const m = document.getElementById('waSizeMsg'), b = document.getElementById('waSizeBox');
+      if (!m || !b) return;
+      m.textContent = msg || '';
+      m.classList.toggle('hidden', !msg);
+      b.classList.toggle('hidden', !!msg);
+    }
+    // 選尺寸（點選、輸入完全一樣的尺寸按 Enter／離開、點「用量最多的尺寸」長條）：比對不分大小寫、全半形、空白
+    function waSelectSize(text) {
+      const d = waData;
+      if (!d) return false;
+      const k = uiSuggestKey(text);
+      const i = k ? d.sizes.findIndex(x => uiSuggestKey(x.size) === k) : -1;
+      if (i < 0) {
+        if (waCharts.size) { try { waCharts.size.destroy(); } catch (e) {} delete waCharts.size; }
+        waSizeShowMsg('這段期間沒有這個尺寸的紀錄');
+        return false;
+      }
+      if (waSizeSuggest) waSizeSuggest.setValue(d.sizes[i].size);
+      waSizeShowMsg('');
+      waDrawSize(i);
+      return true;
     }
     function waDrawSize(i) {
       const d = waData;
@@ -5321,9 +5478,12 @@
 
     // ---------- 統計 ----------
     let wsLast = null, wsSortBy = 'total', wsBusy = false, wsMode = 'size';
+    let wsFilter = '', wsFilterExact = false; // v41：統計表的篩選（換排序不清掉；切換依尺寸／依圖號會清掉）
     // 依尺寸／依圖號切換（不用重新查詢）
     function setWsMode(m) {
-      wsMode = m === 'drawing' ? 'drawing' : 'size';
+      const nm = m === 'drawing' ? 'drawing' : 'size';
+      if (nm !== wsMode) { wsFilter = ''; wsFilterExact = false; }
+      wsMode = nm;
       document.querySelectorAll('#wsModeBar .ws-mode').forEach(b => {
         const on = b.dataset.mode === wsMode;
         b.className = 'ws-mode px-3 py-1.5 rounded-md transition ' + (on ? 'bg-blue-600 text-gray-100' : 'text-gray-400 hover:text-gray-100');
@@ -5354,21 +5514,26 @@
       box.innerHTML = '';
       const st = wsLast;
       if (!st) return;
-      if (!st.sizes.length) { box.innerHTML = wlEmptyHTML('這段期間沒有工作單紀錄'); return; }
       const byDw = wsMode === 'drawing';
+      if (!st.sizes.length && !(Array.isArray(st.drawings) && st.drawings.length)) { box.innerHTML = wlEmptyHTML('這段期間沒有工作單紀錄'); return; }
       if (byDw && !Array.isArray(st.drawings)) { box.innerHTML = wlEmptyHTML('後端還沒更新圖號統計，請稍後再試'); return; }
       if (byDw && !st.drawings.length) { box.innerHTML = wlEmptyHTML('這段期間的紀錄沒有圖號'); return; }
+      if (!byDw && !st.sizes.length) { box.innerHTML = wlEmptyHTML('這段期間的紀錄沒有尺寸（只有沒有尺寸的圖號），請切到「依圖號」'); return; }
       const head = [byDw ? '圖號' : '尺寸', '區間總量', '月平均'].concat(st.months.map(wsMonthLabel));
       const rows = byDw ? wsDrawingRows(st, wsSortBy) : wsRows(st, wsSortBy);
       const oldCount = byDw ? Math.max(0, (Number(st.order_count) || 0) - (Number(st.drawing_order_count) || 0)) : 0;
+      const baseSub = byDw
+        ? `${invEsc(st.from)} ～ ${invEsc(st.to)}，${st.months.length} 個月、${st.drawing_order_count} 張單，共 ${st.drawings.length} 個圖號、${st.drawing_grand_total} 個${oldCount ? `（另有 ${oldCount} 張舊單沒有圖號）` : ''}`
+        : `${invEsc(st.from)} ～ ${invEsc(st.to)}，${st.months.length} 個月、${st.order_count} 張單，共 ${st.sizes.length} 種尺寸、${st.grand_total} 個`;
+      let shown = rows;
       const sec = document.createElement('div');
-      sec.appendChild(woSectionHeader(byDw ? '圖號統計' : '用量統計',
-        byDw
-          ? `${invEsc(st.from)} ～ ${invEsc(st.to)}，${st.months.length} 個月、${st.drawing_order_count} 張單，共 ${st.drawings.length} 個圖號、${st.drawing_grand_total} 個${oldCount ? `（另有 ${oldCount} 張舊單沒有圖號）` : ''}`
-          : `${invEsc(st.from)} ～ ${invEsc(st.to)}，${st.months.length} 個月、${st.order_count} 張單，共 ${st.sizes.length} 種尺寸、${st.grand_total} 個`,
-        () => woCopy(woToTSV(head, rows))));
+      const header = woSectionHeader(byDw ? '圖號統計' : '用量統計', baseSub, () => woCopy(woToTSV(head, shown))); // 複製只複製目前看得到的列
+      sec.appendChild(header);
+      const subEl = header.querySelector('p');
+      const tools = document.createElement('div');
+      tools.className = 'flex flex-wrap items-center gap-2 mb-2';
       const bar = document.createElement('div');
-      bar.className = 'flex bg-gray-900 p-1 rounded-lg border border-gray-800 text-xs font-semibold gap-1 w-fit mb-2';
+      bar.className = 'flex bg-gray-900 p-1 rounded-lg border border-gray-800 text-xs font-semibold gap-1 w-fit';
       [['total', '總量 大→小'], ['total_asc', '總量 小→大'], ['size', byDw ? '依圖號' : '依尺寸']].forEach(([k, label]) => {
         const b = document.createElement('button');
         b.type = 'button';
@@ -5377,10 +5542,49 @@
         b.onclick = () => setWsSort(k);
         bar.appendChild(b);
       });
-      sec.appendChild(bar);
-      const numCols = head.map((_, i) => i).filter(i => i > 0);
-      sec.appendChild(woTable(head, rows.map(r => r.map((v, i) => i >= 3 && v === 0 ? '' : v)), { numCols, sortable: true }));
+      tools.appendChild(bar);
+      // v41：篩選框（跟分析的尺寸一樣有自動完成）；打字只重畫表格，不重畫輸入框，游標不會跑掉
+      const fwrap = document.createElement('div');
+      fwrap.className = 'w-full sm:w-56';
+      const finput = document.createElement('input');
+      finput.type = 'text';
+      finput.id = 'wsFilterInput';
+      finput.spellcheck = false;
+      finput.placeholder = byDw ? '篩選圖號' : '篩選尺寸';
+      finput.setAttribute('aria-label', byDw ? '篩選圖號' : '篩選尺寸');
+      finput.className = 'w-full bg-gray-950 border border-gray-700 text-gray-100 rounded-lg px-3 py-1.5 text-sm font-mono focus:outline-none focus:border-blue-500';
+      finput.value = wsFilter;
+      fwrap.appendChild(finput);
+      tools.appendChild(fwrap);
+      sec.appendChild(tools);
+      const holder = document.createElement('div');
+      sec.appendChild(holder);
       box.appendChild(sec);
+      const numCols = head.map((_, i) => i).filter(i => i > 0);
+      const apply = () => {
+        const k = uiSuggestKey(wsFilter);
+        shown = !k ? rows : rows.filter(r => wsFilterExact ? uiSuggestKey(r[0]) === k : uiSuggestKey(r[0]).includes(k));
+        subEl.innerHTML = baseSub + (k ? `，符合 ${shown.length} ${byDw ? '個' : '種'}` : '');
+        holder.innerHTML = '';
+        if (!shown.length) holder.innerHTML = `<p class="text-sm text-gray-400 py-6 text-center">沒有符合「${invEsc(wsFilter.trim())}」的${byDw ? '圖號' : '尺寸'}</p>`;
+        else holder.appendChild(woTable(head, shown.map(r => r.map((v, i) => i >= 3 && v === 0 ? '' : v)), { numCols, sortable: true }));
+      };
+      const items = (byDw ? st.drawings.map(x => ({ value: x.drawing_no, total: x.total })) : st.sizes.map(x => ({ value: x.size, total: x.total })))
+        .sort((a, b) => b.total - a.total || String(a.value).localeCompare(String(b.value), 'en', { numeric: true }));
+      uiSuggest(finput, () => items, {
+        clearable: true,
+        emptyText: byDw ? '沒有符合的圖號' : '沒有符合的尺寸',
+        onInput: v => { wsFilter = v; wsFilterExact = false; apply(); },
+        onPick: v => { wsFilter = v; wsFilterExact = true; apply(); },
+        onCommit: (v, how) => { // 按 Enter：打的跟某一項完全一樣（不分大小寫、全半形、空白）就只留那一列
+          if (how !== 'enter') return;
+          const k = uiSuggestKey(v), hit = k && items.find(x => uiSuggestKey(x.value) === k);
+          wsFilter = v; wsFilterExact = !!hit;
+          if (hit) { finput.value = hit.value; wsFilter = hit.value; }
+          apply();
+        }
+      });
+      apply();
     }
 
     // ==================== 圖號管理（只有管理員；後端 getDrawing / addDrawing / updateDrawing / deleteDrawing） ====================
