@@ -539,7 +539,7 @@
             <button id="woBtnGenerate" onclick="generateWorkOrder()" class="flex-1 bg-blue-600 hover:bg-blue-500 text-gray-100 font-semibold py-2.5 rounded-lg transition shadow-lg shadow-blue-600/30">產生工作單</button>
             <button id="woBtnSave" type="button" onclick="saveWorkOrderLog()" disabled title="請先產生工作單"
                     class="hidden flex-1 bg-green-600 hover:bg-green-500 text-gray-100 font-semibold py-2.5 rounded-lg transition shadow-lg shadow-green-600/30 opacity-50 cursor-not-allowed">儲存</button>
-            <button onclick="clearWorkOrder()" class="bg-gray-800 hover:bg-gray-700 text-gray-300 font-semibold px-4 py-2.5 rounded-lg transition">清除</button>
+            <button onclick="woClearClick()" class="bg-gray-800 hover:bg-gray-700 text-gray-300 font-semibold px-4 py-2.5 rounded-lg transition">清除</button>
           </div>
         </div>
 
@@ -2329,6 +2329,7 @@
     });
 
     function logout() {
+      woDraftClear(); // v42：登出就不留草稿
       clearAuth();
       applyRoleUI();
       showInvToast('已登出，目前為現場人員（僅查詢）', 'success');
@@ -3703,7 +3704,15 @@
         onComboSetup('wlName', false);       // 紀錄查詢的單名：下拉選單（空白就是全部）
         // 分析的區間也用上面的預設（不再還原上次選的「近 6／12 個月、今年」；按鈕照樣可以用）
         onComboSetup('waName', false);       // 分析的單名：下拉選單（空白就是全部）
+        // v42：打字就存草稿；切走分頁、關掉頁面時立刻存
+        const form = document.getElementById('woBoxForm');
+        form.addEventListener('input', woDraftSoon);
+        form.addEventListener('change', woDraftSoon);
+        form.addEventListener('click', e => { if (e.target.closest('button')) woDraftSoon(); });
+        document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden' && woDraftTimer) woDraftSave(); });
+        window.addEventListener('pagehide', () => { if (woDraftTimer) woDraftSave(); });
         woUpdateSaveBtn();
+        woDraftRestore(); // v42：上次沒存的工作單拿回來（要自己再按「產生工作單」）
       }
       woApplyRoleTabs();
       woLoadOptions().then(ok => { if (!ok) { woRefreshCompanies(); refreshOrderNames(); } }); // 後端還沒更新（沒有選項清單）就用舊方式
@@ -3859,6 +3868,7 @@
     }
 
     function clearWorkOrder() {
+      woDraftClear(); // v42
       document.getElementById('woRows').innerHTML = '';
       addWoRow(false);
       // 日期、單名保留
@@ -4095,7 +4105,7 @@
         : `<span class="font-mono font-bold text-xl tracking-tight leading-tight break-all text-gray-100">${invEsc(drawing)}</span>`;
       const id = `<div class="wc-id flex flex-col justify-center gap-1 px-4 py-3 bg-gray-800" style="grid-row: span 2">
           ${dw}
-          <span class="wc-qty text-sm text-gray-400">× ${invEsc(qty)} 台</span>${brandSlot ? wlBrandSlotHTML(drawing) : ''}
+          <span class="wc-qty text-sm text-gray-400">× ${invEsc(qty)} 台</span>${brandSlot ? wlBrandSlotHTML(drawing, brandSlot) : ''}
         </div>`;
       const body = WO_CARD_POS.map((row, r) => row.map(p => woCardCell(by[p], p, r === 1)).join('')).join('');
       return `<article class="wc-card wc-grid rounded-lg border border-gray-800 overflow-hidden">${id}${body}</article>`;
@@ -4211,22 +4221,31 @@
     // v41：沒有任何尺寸的圖號也存一筆：尺寸 '-'、數量 0、位置空白（後端 v41 才收；只算進圖號統計）
     const WO_EMPTY_SIZE = '-';
     function woIsEmptySize(v) { return String(v === undefined || v === null ? '' : v).trim() === WO_EMPTY_SIZE; }
+    // v42：每一筆帶品牌（那一列選的品牌；同一個圖號×位置×尺寸來自兩個品牌時用「 / 」連起來）
+    function woJoinBrand(a, b) {
+      const out = [];
+      String(a || '').split(' / ').concat(String(b || '').split(' / ')).map(x => x.trim()).filter(Boolean)
+        .forEach(x => { if (!out.some(y => y.toLowerCase() === x.toLowerCase())) out.push(x); });
+      return out.join(' / ');
+    }
     function woSaveItems(d) {
-      const dwQty = {}, map = {}, out = [], hasLines = {}, emptyDw = [];
+      const dwQty = {}, map = {}, out = [], hasLines = {}, emptyDw = [], dwBrand = {};
       (d && Array.isArray(d.details) ? d.details : []).forEach(g => {
-        const dw = wlNormDrawing(g.drawing), dk = dw;
+        const dw = wlNormDrawing(g.drawing), dk = dw, brand = woCleanBrand(g.company);
+        dwBrand[dk] = woJoinBrand(dwBrand[dk], brand);
         const lines = (Array.isArray(g.lines) ? g.lines : []).filter(l => { const t = woNormSize(woSizeText(l.size)); return t && !woIsEmptySize(t); });
         dwQty[dk] = (dwQty[dk] || 0) + (Number(g.qty) || 0);
         if (!lines.length) { if (dw && !emptyDw.includes(dk)) emptyDw.push(dk); return; }
         hasLines[dk] = true;
         lines.forEach(l => {
           const size = woNormSize(woSizeText(l.size)), pos = String(l.position || ''), k = dk + '|' + pos + '|' + size.toLowerCase();
-          if (!map[k]) { map[k] = { size, qty: 0, drawing_no: dw, dk, position: pos }; out.push(map[k]); }
+          if (!map[k]) { map[k] = { size, qty: 0, drawing_no: dw, dk, position: pos, brand: '' }; out.push(map[k]); }
           map[k].qty += Number(l.need) || 0;
+          map[k].brand = woJoinBrand(map[k].brand, brand);
         });
       });
-      emptyDw.filter(dk => !hasLines[dk]).forEach(dk => out.push({ size: WO_EMPTY_SIZE, qty: 0, drawing_no: dk, dk, position: '' }));
-      return out.map(x => ({ size: x.size, qty: x.qty, drawing_no: x.drawing_no, drawing_qty: dwQty[x.dk], position: x.position }));
+      emptyDw.filter(dk => !hasLines[dk]).forEach(dk => out.push({ size: WO_EMPTY_SIZE, qty: 0, drawing_no: dk, dk, position: '', brand: dwBrand[dk] }));
+      return out.map(x => ({ size: x.size, qty: x.qty, drawing_no: x.drawing_no, drawing_qty: dwQty[x.dk], position: x.position, brand: x.brand }));
     }
     function woIsEmptyItem(it) { return woIsEmptySize(it && it.size); }
     // 紀錄「依圖號」複製用：沒有尺寸的圖號留一列 '-'
@@ -4763,7 +4782,9 @@
         if (r.status === 'success') {
           addOrderName(name);
           woSavedId = (r.data && r.data.order_id) || 'saved';
-          showInvToast('✅ ' + (r.message || '已儲存'), 'success');
+          woDraftClear(); // v42：存好了，草稿不用留
+          if (r.data && r.data.brand_saved) showInvToast('✅ ' + (r.message || '已儲存'), 'success');
+          else showInvToast('✅ ' + (r.message || '已儲存') + '（後端還沒更新到 v42，這次沒有存到品牌，紀錄會改用圖號對照查品牌）', 'warn'); // v41 後端：照存，只是沒有品牌欄
           if (edit) { woEndEdit(); wlAfterChange(); }
         } else if (r.code === 'DUPLICATE' && !allowDup) {
           again = await uiConfirm(edit ? `${r.message}，還要存成這個日期和單名嗎？` : `${r.message}，還要再存一張嗎？`, { okText: edit ? '照樣儲存' : '再存一張' });
@@ -4922,14 +4943,14 @@
         // 有位置的圖號（v36 之後存的）用卡片，跟工作單「各圖號明細」卡片一樣；舊資料沒有位置照原本的表格（同尺寸合併）
         const groupHTML = groups.map(g => {
           const by = wlCardPositions(g);
-          if (by) return `<div class="wl-dw-group wl-dw-card" data-drawing="${invEsc(g.drawing_no)}">${woCardHTML(g.drawing_no, g.drawing_qty, by, null, true)}</div>`;
+          if (by) return `<div class="wl-dw-group wl-dw-card" data-drawing="${invEsc(g.drawing_no)}">${woCardHTML(g.drawing_no, g.drawing_qty, by, null, wlStoredBrands(g.items) || true)}</div>`;
           const list = wlSizeSum(g.items);
           const noSize = !list.length && g.items.some(woIsEmptyItem); // v41：沒有尺寸的圖號，顯示一列 '-'
           return `
             <div class="wl-dw-group space-y-1.5" data-drawing="${invEsc(g.drawing_no)}">
               <div class="flex flex-wrap items-baseline gap-x-3 gap-y-0.5 text-sm">
                 <span class="font-mono font-bold ${g.drawing_no ? 'text-blue-300' : 'text-gray-500'}">${g.drawing_no ? invEsc(g.drawing_no) : '—'}</span>
-                ${g.drawing_no ? `<span class="text-gray-300">× ${invEsc(g.drawing_qty)}</span>${wlBrandSlotHTML(g.drawing_no)}` : ''}
+                ${g.drawing_no ? `<span class="text-gray-300">× ${invEsc(g.drawing_qty)}</span>${wlBrandSlotHTML(g.drawing_no, wlStoredBrands(g.items))}` : ''}
                 <span class="text-xs text-gray-400">${noSize ? '沒有尺寸' : `${list.length} 種尺寸，小計 ${g.total} 個`}</span>
               </div>
               ${sizeTable(noSize ? [{ size: WO_EMPTY_SIZE, qty: 0 }] : list)}
@@ -4988,13 +5009,22 @@
     // 用現有的 getWorkOrder（建立工作單用的唯讀查詢，管理員和倉庫人員都能用）：先拿全部品牌，再把「圖號×每個品牌」丟進去，查得到的就是對照的品牌。
     // 只查打開的單、查過的圖號記起來（每次按「查詢紀錄」重查）；查不到就不顯示那一行；查詢失敗也不影響紀錄。
     let wlBrandCache = {}, wlBrandCos = null, wlBrandWait = {};
-    function wlBrandSlotHTML(dw) {
-      const k = wlNormDrawing(dw), b = wlBrandCache[k];
+    // v42：這張單存了品牌（工作單紀錄的「品牌」欄）就直接用；舊資料沒有才去圖號對照查
+    function wlStoredBrands(items) {
+      const out = [];
+      (items || []).forEach(it => String(it.brand || '').split(' / ').map(x => x.trim()).filter(Boolean)
+        .forEach(x => { if (!out.some(y => y.toLowerCase() === x.toLowerCase())) out.push(x); }));
+      return out.length ? out.join(' / ') : '';
+    }
+    function wlBrandSlotHTML(dw, stored) {
+      const k = wlNormDrawing(dw);
+      if (typeof stored === 'string' && stored) return `<span class="wl-brand text-xs text-gray-500 leading-tight break-all" data-dw="${invEsc(k)}" data-stored="1">${invEsc(stored)}</span>`;
+      const b = wlBrandCache[k];
       const txt = Array.isArray(b) ? b.join(' / ') : '';
       return `<span class="wl-brand text-xs text-gray-500 leading-tight break-all${txt ? '' : ' hidden'}" data-dw="${invEsc(k)}">${invEsc(txt)}</span>`;
     }
     function wlShowBrands(keys) {
-      document.querySelectorAll('#wlResult .wl-brand').forEach(el => {
+      document.querySelectorAll('#wlResult .wl-brand:not([data-stored])').forEach(el => {
         if (keys && !keys.includes(el.dataset.dw)) return;
         const b = wlBrandCache[el.dataset.dw];
         const txt = Array.isArray(b) ? b.join(' / ') : '';
@@ -5004,7 +5034,7 @@
     }
     async function wlFillBrands(root) {
       if ((authRole !== 'A' && authRole !== 'B') || !authPassword || !root) return;
-      const keys = [...new Set([...root.querySelectorAll('.wl-brand')].map(el => el.dataset.dw).filter(Boolean))]
+      const keys = [...new Set([...root.querySelectorAll('.wl-brand:not([data-stored])')].map(el => el.dataset.dw).filter(Boolean))]
         .filter(k => !Array.isArray(wlBrandCache[k]) && !wlBrandWait[k]);
       if (!keys.length) return;
       keys.forEach(k => { wlBrandWait[k] = true; });
@@ -5087,9 +5117,17 @@
           const probe = await invApiPost({ action: 'replaceWorkOrder', password: authPassword, order_id: '' });
           if (/未知的操作指令|無效的 action/.test(probe.message || '')) return { msg: '❌ 後端還沒更新編輯功能，請稍後再試' };
           if (handleAuthError(probe)) return { handled: true };
-          const b = await woResolveBrands(o, dws);
+          // v42：紀錄有存品牌的直接用；沒有的（舊資料）才去圖號對照查
+          const stored = {};
+          dws.forEach(d => {
+            const hit = (o.items || []).find(it => wlNormDrawing(it.drawing_no) === d.drawing_no && String(it.brand || '').trim());
+            if (hit) stored[d.drawing_no] = woCleanBrand(String(hit.brand).split(' / ')[0]);
+          });
+          const need = dws.filter(d => !stored[d.drawing_no]);
+          if (!need.length) return { brands: stored };
+          const b = await woResolveBrands(o, need);
           if (b.r) return handleAuthError(b.r) ? { handled: true } : { msg: '❌ ' + (b.r.message || '讀取圖號對照失敗') };
-          return { brands: b.brands };
+          return { brands: Object.assign({}, b.brands, stored) };
         } catch (err) {
           console.error(err);
           return { msg: '❌ 連線失敗，請檢查網路後再試一次' };
@@ -5109,14 +5147,16 @@
       dws.forEach(d => {
         addWoRow(false);
         const row = wrap.lastElementChild, sel = row.querySelector('.wo-co');
-        const brand = res.brands[d.drawing_no] || top;
-        if (![...sel.options].some(op => op.value === brand)) sel.add(new Option(brand, brand));
+        let brand = res.brands[d.drawing_no] || top;
+        const same = [...sel.options].find(op => op.value.toLowerCase() === brand.toLowerCase());
+        if (same) brand = same.value; else sel.add(new Option(brand, brand));
         sel.value = brand;
         sel.dataset.custom = brand === top ? '' : '1';
         row.querySelector('.wo-line').value = `${d.drawing_no},${d.qty}`;
       });
       woEditing = { order_id: o.order_id, date: o.date, order_name: o.order_name };
       woShowEditBanner();
+      woDraftSave(); // v42：編輯中的內容也存草稿（重新整理後還能繼續改）
       woLastResult = null;
       document.getElementById('woResult').innerHTML = '';
       woSetFresh();
@@ -5141,6 +5181,84 @@
       woEndEdit();
       document.getElementById('woDate').value = woToday();
       document.getElementById('woOrderName').value = '';
+      clearWorkOrder();
+    }
+
+    // ---------- v42：建立工作單的草稿（打到一半重新整理、手機把分頁收掉，回來還在） ----------
+    // 只存這台裝置的 localStorage：日期、單名、上面的品牌、每一列的品牌和「圖號,數量」、是不是在編輯哪一張。不存密碼。
+    const WO_DRAFT_KEY = 'wo_draft_v1';
+    let woDraftTimer = null;
+    function woDraftCollect() {
+      const rows = [...document.querySelectorAll('#woRows .wo-row')].map(row => ({
+        brand: row.querySelector('.wo-co').value,
+        custom: row.querySelector('.wo-co').dataset.custom === '1',
+        line: row.querySelector('.wo-line').value
+      }));
+      return {
+        v: 1, saved_at: Date.now(),
+        date: document.getElementById('woDate').value,
+        name: document.getElementById('woOrderName').value,
+        top: woTopCompany(),
+        rows,
+        editing: woEditing ? { order_id: woEditing.order_id, date: woEditing.date, order_name: woEditing.order_name } : null
+      };
+    }
+    function woDraftSave() {
+      if (woDraftTimer) { clearTimeout(woDraftTimer); woDraftTimer = null; }
+      if (!woInited) return;
+      const d = woDraftCollect();
+      const hasRows = d.rows.some(r => r.line.trim());
+      try {
+        // 沒有任何一列有字、也不是在編輯：就當沒有草稿（單名、日期單獨不算）
+        if (!hasRows && !d.editing) localStorage.removeItem(WO_DRAFT_KEY);
+        else localStorage.setItem(WO_DRAFT_KEY, JSON.stringify(d));
+      } catch (e) {}
+    }
+    function woDraftSoon() {
+      if (woDraftTimer) clearTimeout(woDraftTimer);
+      woDraftTimer = setTimeout(woDraftSave, 400);
+    }
+    function woDraftClear() {
+      if (woDraftTimer) { clearTimeout(woDraftTimer); woDraftTimer = null; }
+      try { localStorage.removeItem(WO_DRAFT_KEY); } catch (e) {}
+    }
+    function woDraftRestore() {
+      let d = null;
+      try { d = JSON.parse(localStorage.getItem(WO_DRAFT_KEY) || 'null'); } catch (e) { d = null; }
+      if (!d || !Array.isArray(d.rows)) return false;
+      const rows = d.rows.filter(r => r && typeof r.line === 'string').slice(0, 300);
+      if (!rows.some(r => r.line.trim()) && !d.editing) { woDraftClear(); return false; }
+      if (/^\d{4}-\d{2}-\d{2}$/.test(d.date || '')) document.getElementById('woDate').value = d.date;
+      document.getElementById('woOrderName').value = woCleanOrderName(String(d.name || ''));
+      const topSel = document.getElementById('woCompany');
+      const top = woCleanBrand(d.top);
+      if (top && [...topSel.options].some(op => op.value === top)) topSel.value = top;
+      const wrap = document.getElementById('woRows');
+      wrap.innerHTML = '';
+      (rows.length ? rows : [{ line: '' }]).forEach(r => {
+        addWoRow(false);
+        const row = wrap.lastElementChild, sel = row.querySelector('.wo-co');
+        const brand = woCleanBrand(r.brand) || woTopCompany();
+        if (![...sel.options].some(op => op.value === brand)) sel.add(new Option(brand, brand));
+        sel.value = brand;
+        sel.dataset.custom = brand === woTopCompany() ? '' : '1';
+        row.querySelector('.wo-line').value = String(r.line || '').slice(0, 200);
+      });
+      // 編輯（覆蓋）只有管理員：不是管理員就當一般新單
+      const e = d.editing;
+      if (e && authRole === 'A' && e.order_id) {
+        woEditing = { order_id: String(e.order_id), date: String(e.date || ''), order_name: String(e.order_name || '') };
+        woShowEditBanner();
+      }
+      woLastResult = null;
+      woSetFresh();
+      document.getElementById('woResult').innerHTML = '';
+      showInvToast('已還原上次未儲存的工作單', 'success');
+      return true;
+    }
+    // 「清除」按鈕：有內容先問（clearWorkOrder 本身不問，給其他地方用）
+    async function woClearClick() {
+      if (woFormHasInput() && !(await uiConfirm('確定要清除嗎？', { okText: '清除', danger: true }))) return;
       clearWorkOrder();
     }
     // 紀錄有變動：紀錄重新讀、統計和分析下次重算
