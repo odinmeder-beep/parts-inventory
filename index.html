@@ -4229,22 +4229,27 @@
       return out.join(' / ');
     }
     function woSaveItems(d) {
-      const dwQty = {}, map = {}, out = [], hasLines = {}, emptyDw = [], dwBrand = {};
+      // v42b：輸出順序跟表單裡圖號第一次出現的順序一樣（沒有尺寸的圖號不再全部排在最後）
+      const dwQty = {}, map = {}, groups = [], byDw = {}, dwBrand = {};
       (d && Array.isArray(d.details) ? d.details : []).forEach(g => {
         const dw = wlNormDrawing(g.drawing), dk = dw, brand = woCleanBrand(g.company);
         dwBrand[dk] = woJoinBrand(dwBrand[dk], brand);
         const lines = (Array.isArray(g.lines) ? g.lines : []).filter(l => { const t = woNormSize(woSizeText(l.size)); return t && !woIsEmptySize(t); });
         dwQty[dk] = (dwQty[dk] || 0) + (Number(g.qty) || 0);
-        if (!lines.length) { if (dw && !emptyDw.includes(dk)) emptyDw.push(dk); return; }
-        hasLines[dk] = true;
+        if (!byDw[dk]) { byDw[dk] = []; groups.push({ dk, dw, rows: byDw[dk] }); }
+        if (!lines.length) return;
         lines.forEach(l => {
           const size = woNormSize(woSizeText(l.size)), pos = String(l.position || ''), k = dk + '|' + pos + '|' + size.toLowerCase();
-          if (!map[k]) { map[k] = { size, qty: 0, drawing_no: dw, dk, position: pos, brand: '' }; out.push(map[k]); }
+          if (!map[k]) { map[k] = { size, qty: 0, drawing_no: dw, dk, position: pos, brand: '' }; byDw[dk].push(map[k]); }
           map[k].qty += Number(l.need) || 0;
           map[k].brand = woJoinBrand(map[k].brand, brand);
         });
       });
-      emptyDw.filter(dk => !hasLines[dk]).forEach(dk => out.push({ size: WO_EMPTY_SIZE, qty: 0, drawing_no: dk, dk, position: '', brand: dwBrand[dk] }));
+      const out = [];
+      groups.forEach(g => {
+        if (g.rows.length) out.push(...g.rows);
+        else if (g.dw) out.push({ size: WO_EMPTY_SIZE, qty: 0, drawing_no: g.dw, dk: g.dk, position: '', brand: dwBrand[g.dk] });
+      });
       return out.map(x => ({ size: x.size, qty: x.qty, drawing_no: x.drawing_no, drawing_qty: dwQty[x.dk], position: x.position, brand: x.brand }));
     }
     function woIsEmptyItem(it) { return woIsEmptySize(it && it.size); }
