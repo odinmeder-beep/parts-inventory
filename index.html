@@ -100,6 +100,8 @@
           <p id="roleMenuName" class="px-2 pb-1 text-sm font-semibold text-gray-100"></p>
           <button type="button" onclick="closeRoleMenu(); openLoginModal();"
                   class="w-full text-left px-2 py-1.5 rounded-md text-sm text-gray-300 hover:bg-gray-800 hover:text-gray-100 transition">切換身分</button>
+          <button type="button" id="secPauseBtn" onclick="closeRoleMenu(); secTogglePause();"
+                  class="hidden w-full text-left px-2 py-1.5 rounded-md text-sm text-red-300 hover:bg-gray-800 hover:text-red-200 transition">🔒 緊急暫停</button>
           <button type="button" onclick="closeRoleMenu(); logout();"
                   class="w-full text-left px-2 py-1.5 rounded-md text-sm text-gray-300 hover:bg-gray-800 hover:text-gray-100 transition">登出</button>
         </div>
@@ -140,6 +142,11 @@
 
   <!-- ==================== 右側主內容區 ==================== -->
   <main class="flex-1 p-4 md:p-8 overflow-y-auto">
+    <!-- v43：倉庫人員暫停中（只有管理員看得到） -->
+    <div id="secBanner" role="status" class="hidden sticky top-0 z-40 -mt-2 mb-4 flex flex-wrap items-center justify-between gap-2 bg-red-900/90 border border-red-700 text-red-100 rounded-lg px-4 py-2.5 text-sm">
+      <span id="secBannerText" class="font-semibold"></span>
+      <button type="button" onclick="secSetPause(false)" class="bg-red-600 hover:bg-red-500 text-gray-100 text-xs font-semibold px-3 py-1.5 rounded-md transition">解除</button>
+    </div>
     <div id="viewSearch" class="max-w-3xl mx-auto space-y-6">
 
       <!-- 頁面標題與三個獨立搜尋按鈕 -->
@@ -2276,6 +2283,7 @@
       roleLabel.textContent = loggedIn ? ROLE_LABELS[authRole] : '';
       roleLabel.classList.toggle('hidden', !loggedIn);          // 未登入時標題下方不顯示任何字
       document.getElementById('roleMenuName').textContent = ROLE_LABELS[authRole];
+      secRender(); // v43：緊急暫停開關、紅條只給管理員
       if (!loggedIn) closeRoleMenu();
       document.getElementById('nav-inv').classList.toggle('hidden', !canMove);
       document.getElementById('nav-wo').classList.toggle('hidden', !canWoLog);
@@ -2328,6 +2336,13 @@
       if (m && !m.classList.contains('hidden') && !m.contains(ev.target)) closeRoleMenu();
     });
 
+    // v43：管理員登入：v43 後端的回應有暫停狀態就直接用，沒有再問一次（舊後端會回未知指令 → 不顯示開關）
+    function secAfterLogin(result) {
+      if (!result || result.role !== 'A') { secRender(); return; }
+      if (result.pause && typeof result.pause === 'object') { secState.supported = true; secState.fetchedAt = Date.now(); secApply(result.pause); }
+      else secRefresh(true);
+    }
+
     function logout() {
       woDraftClear(); // v42：登出就不留草稿
       clearAuth();
@@ -2338,6 +2353,7 @@
     // 後端回覆密碼失效時：清掉記住的密碼，回到僅查詢並請使用者重新登入
     function handleAuthError(result) {
       if (!result) return false;
+      if (result.code === 'PAUSED') { secOnPaused(); return true; } // v43：倉庫人員暫停中
       if (result.code === 'UNAUTHORIZED') {
         clearAuth();
         applyRoleUI();
@@ -2389,6 +2405,7 @@
         if (result.status === 'success' && (result.role === 'A' || result.role === 'B')) {
           saveAuth(result.role, pwd);
           applyRoleUI();
+          secAfterLogin(result); // v43
           const cb = loginCallback;
           closePasswordModal();
           showInvToast('✅ 已登入：' + ROLE_LABELS[result.role], 'success');
@@ -2416,6 +2433,7 @@
         const result = await invApiPost({ action: 'login', password: authPassword });
         if (result.status === 'success' && (result.role === 'A' || result.role === 'B')) {
           if (result.role !== authRole) { saveAuth(result.role, authPassword); applyRoleUI(); }
+          secAfterLogin(result); // v43
         } else if (result.code === 'UNAUTHORIZED') {
           clearAuth(); applyRoleUI();
           showInvToast('登入已失效，目前為現場人員（僅查詢）', 'warn');
@@ -2638,7 +2656,7 @@
           headers: {
             'Content-Type': 'text/plain;charset=utf-8'
           },
-          body: JSON.stringify(payload)
+          body: JSON.stringify(secWithDevice(payload)) // v43：附上裝置代號
         });
 
         const result = await res.json();
@@ -2970,6 +2988,7 @@
       }
       if (view === 'workorder') initWorkOrder();
       if (view === 'inventory') { invApplyRoleTabs(); if (invTab) switchInvTab(invTab); }
+      if (authRole === 'A') secRefresh(false); // v43：切頁時輕量確認暫停狀態（最多約每分鐘一次）
       document.getElementById('nav-inv').classList.toggle('hidden', authRole !== 'A' && authRole !== 'B'); // 依身分決定是否顯示「出入庫管理」
       document.getElementById('nav-wo').classList.toggle('hidden', authRole !== 'A' && authRole !== 'B');  // 依身分決定是否顯示「工作單」
     }
@@ -3009,10 +3028,117 @@
       const res = await fetch(API_URL, {
         method: 'POST',
         headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-        body: JSON.stringify(payload)
+        body: JSON.stringify(secWithDevice(payload))
       });
-      return await res.json();
+      const out = await res.json();
+      if (out && out.code === 'PAUSED') secOnPaused(); // v43：倉庫人員被暫停
+      return out;
     }
+
+    // ---------- v43：登入安全（裝置代號、緊急暫停） ----------
+    // 裝置代號：這台裝置第一次打開時產生的亂碼（只用來分辨是哪一台在登入，不含任何個人資料）
+    const SEC_DEVICE_KEY = 'device_id';
+    function secDeviceId() {
+      let id = '';
+      try { id = localStorage.getItem(SEC_DEVICE_KEY) || ''; } catch (e) {}
+      if (!/^[A-Za-z0-9]{8,32}$/.test(id)) {
+        const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789';
+        const buf = new Uint32Array(10);
+        try { crypto.getRandomValues(buf); } catch (e) { for (let i = 0; i < buf.length; i++) buf[i] = Math.floor(Math.random() * 4294967296); }
+        id = Array.from(buf, n => chars[n % chars.length]).join('');
+        try { localStorage.setItem(SEC_DEVICE_KEY, id); } catch (e) {}
+      }
+      return id;
+    }
+    // 簡短的瀏覽器描述，例如「iPad Safari」「Windows Chrome」
+    function secClient() {
+      const ua = navigator.userAgent || '';
+      const touchMac = /Macintosh/.test(ua) && navigator.maxTouchPoints > 1;
+      const dev = /iPad/.test(ua) || touchMac ? 'iPad' : /iPhone/.test(ua) ? 'iPhone' : /Android/.test(ua) ? (/Mobile/.test(ua) ? 'Android 手機' : 'Android 平板')
+        : /Windows/.test(ua) ? 'Windows' : /Macintosh/.test(ua) ? 'Mac' : /CrOS/.test(ua) ? 'ChromeOS' : /Linux/.test(ua) ? 'Linux' : '其他';
+      const br = /Line\//.test(ua) ? 'LINE' : /SamsungBrowser/.test(ua) ? 'Samsung' : /EdgA?\/|EdgiOS/.test(ua) ? 'Edge' : /Firefox\/|FxiOS/.test(ua) ? 'Firefox'
+        : /CriOS|Chrome\//.test(ua) ? 'Chrome' : /Safari\//.test(ua) ? 'Safari' : '其他瀏覽器';
+      return dev + ' ' + br;
+    }
+    // 帶密碼的請求附上裝置代號和瀏覽器（後端記在「登入紀錄」；不會多送任何密碼）
+    function secWithDevice(payload) {
+      if (!payload || typeof payload !== 'object' || !('password' in payload)) return payload;
+      return Object.assign({}, payload, { device_id: secDeviceId(), client: secClient() });
+    }
+    // 倉庫人員收到「暫停中」：回到未登入（工作單草稿保留，暫停解除、重新登入後還在）
+    let secPausedAt = 0;
+    function secOnPaused() {
+      if (authRole !== 'B') return;
+      clearAuth();      // 只清掉記住的身分；不呼叫 logout()，所以工作單草稿留著
+      applyRoleUI();
+      if (Date.now() - secPausedAt > 3000) { secPausedAt = Date.now(); showInvToast('⛔ 系統暫停中，請聯絡管理員', 'error'); }
+    }
+    // 管理員：暫停狀態（supported=false 代表後端還沒更新到 v43，不顯示開關）
+    const secState = { supported: null, paused: false, until: null, by: null, fetchedAt: 0, busy: false };
+    function secApply(st) {
+      secState.paused = !!(st && st.paused);
+      secState.until = st && st.until ? Number(st.until) : null;
+      secState.by = st && st.by ? st.by : null;
+      secRender();
+    }
+    function secActive() {
+      if (!secState.paused) return false;
+      return secState.until === null || secState.until > Date.now();
+    }
+    function secRender() {
+      const isA = authRole === 'A' && secState.supported === true;
+      const btn = document.getElementById('secPauseBtn');
+      const banner = document.getElementById('secBanner');
+      const on = isA && secActive();
+      if (btn) {
+        btn.classList.toggle('hidden', !isA);
+        btn.textContent = on ? '🔓 解除暫停' : '🔒 緊急暫停';
+      }
+      if (banner) {
+        banner.classList.toggle('hidden', !on);
+        if (on) {
+          const left = secState.until === null ? '直到解除' : '剩 ' + Math.max(1, Math.ceil((secState.until - Date.now()) / 60000)) + ' 分鐘';
+          document.getElementById('secBannerText').textContent = `倉管已暫停（${secState.by === 'manual' ? '手動' : '自動'}），${left}`;
+        }
+      }
+    }
+    async function secRefresh(force) {
+      if (authRole !== 'A' || !authPassword || secState.supported === false) { secRender(); return; }
+      if (secState.busy || (!force && Date.now() - secState.fetchedAt < 55000)) { secRender(); return; }
+      secState.busy = true;
+      try {
+        const r = await invApiPost({ action: 'getPauseStatus', password: authPassword });
+        secState.fetchedAt = Date.now();
+        if (r && r.status === 'success' && r.data) { secState.supported = true; secApply(r.data); }
+        else if (r && /未知的操作指令|無效的 action/.test(r.message || '')) { secState.supported = false; secRender(); } // 舊後端
+        else if (!handleAuthError(r)) secRender();
+      } catch (e) { secRender(); } finally { secState.busy = false; }
+    }
+    async function secSetPause(on) {
+      if (authRole !== 'A' || !authPassword) return;
+      try {
+        const r = await invApiPost({ action: 'setPause', password: authPassword, on: !!on });
+        if (r && r.status === 'success') {
+          secState.supported = true; secState.fetchedAt = Date.now();
+          secApply(r.data);
+          showInvToast(on ? '🔒 已暫停倉庫人員（直到解除）' : '✅ 已解除暫停', 'success');
+        } else if (!handleAuthError(r)) showInvToast('❌ ' + ((r && r.message) || '設定失敗'), 'error');
+      } catch (e) {
+        console.error(e);
+        showInvToast('❌ 連線失敗，請檢查網路後再試一次', 'error');
+      }
+    }
+    async function secTogglePause() {
+      if (secActive()) { await secSetPause(false); return; }
+      if (!(await uiConfirm('確定要緊急暫停嗎？暫停後倉庫人員（B）都不能登入和使用，已經登入的也會被登出，直到你解除。管理員不受影響。', { okText: '暫停', danger: true }))) return;
+      await secSetPause(true);
+    }
+    // 大約每分鐘：更新紅條剩幾分鐘；頁面看得到時順便跟後端確認一次
+    setInterval(() => {
+      if (authRole !== 'A') return;
+      secRender();
+      if (document.visibilityState === 'visible') secRefresh(false);
+    }, 60000);
 
     // ---------- 相機掃描 ----------
     async function startInvScanner() {
